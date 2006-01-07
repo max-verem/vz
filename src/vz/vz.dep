@@ -1,0 +1,16 @@
+# Microsoft Developer Studio Generated Dependency File, included by vz.mak
+
+.\main.cpp : \
+	".\tcpserver.h"\
+	".\vzImage.h"\
+	".\vzMain.h"\
+	".\vzOutput.h"\
+	"c:\program files\microsoft visual studio\vc98\include\basetsd.h"\
+	"c:\program files\microsoft visual studio\vc98\include\gl\glut.h"\
+	
+
+.\tcpserver.cpp : \
+	".\vzImage.h"\
+	".\vzMain.h"\
+	"c:\program files\microsoft visual studio\vc98\include\basetsd.h"\
+	

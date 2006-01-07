@@ -1,0 +1,876 @@
+/*
+    ViZualizator
+    (Real-Time TV graphics production system)
+
+    Copyright (C) 2005 Maksym Veremeyenko.
+    This file is part of ViZualizator (Real-Time TV graphics production system).
+    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2005.
+
+    ViZualizator is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    ViZualizator is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with ViZualizator; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+	
+ChangeLog:
+
+	2005-06-25:
+		*Modified framebuffer requests operations due to TBC scheme
+		modification.
+
+    2005-06-08:
+		*Code cleanup for GPL licence compatibitlity.
+		*Configuring board against config submitted
+		*TV System independent? All params configured agains
+		vzTVSpec struct submitted.
+
+*/
+
+
+#include "../vz/vzOutput-devel.h"
+#include "../vz/vzImage.h"
+#include "../vz/vzOutputInternal.h"
+#include "../vz/vzMain.h"
+#include "../vz/vzTVSpec.h"
+
+#include <stdio.h>
+#include <SlBoardIoctl.h>
+#include <SharedDef.h>
+#include <SlAlpha.h>
+#pragma comment(lib, "SlAlpha.lib") 
+
+// VirtualFrameBuffer4
+#include "../../../../vfb4/include/vfb4-data.h"
+static vfb4_data vfb4_info;
+
+
+/*
+	Acceleration features functions
+*/
+
+// load and transcode n-th field into framebuffer
+void load_n_transcode_field(int field, void* dst, void* src, int flip = 0);
+
+// MMX optimized BGRA to UYVA transcoder
+void BGRA2UYVA (void* dst, void* src, int count);
+
+// is is fast? NO!!! the same as standart lib function....
+void inline memcpy2(void* dst,void *src, int count);
+
+// Init VirtualFrameBuffer 4 device
+int init_vfb4_info(vfb4_data*);
+
+// own DMA acclerated function for transfering transcoded data into FrameBuffer
+void transfer_buffer(unsigned long DST_PHYSICAL_ADDR, unsigned long SRC_PHYSICAL_ADDR, unsigned long SIZE , unsigned long user_reg);
+
+
+// Dll Main function for initialization of virtual framebuffer
+BOOL APIENTRY DllMain( HANDLE hModule, 
+                       DWORD  ul_reason_for_call, 
+                       LPVOID lpReserved
+					 )
+{
+	int i;
+    switch (ul_reason_for_call)
+	{
+		case DLL_PROCESS_ATTACH:
+			if(!(init_vfb4_info(&vfb4_info)))
+				exit(0);
+			break;
+
+		case DLL_THREAD_ATTACH:
+			break;
+
+		case DLL_THREAD_DETACH:
+			break;
+
+		case DLL_PROCESS_DETACH:
+			break;
+    }
+    return TRUE;
+}
+
+
+static const char* vzAlphaStreamOptionsNames[] = 
+{
+// only for AlphaPlus&AlphaComponent
+	"MODE_BYPASS_ON",
+	"MODE_BYPASS_OFF",
+
+	"PROGRAM_VIDEOONLY",
+	"PROGRAM_OVERLAY",
+	"PROGRAM_OVERLAYREPLACE",
+	"PROGRAM_GRAPHICSONLY",
+
+	"PREVIEW_VIDEOONLY",
+	"PREVIEW_OVERLAY",
+	"PREVIEW_OVERLAYREPLACE",
+	"PREVIEW_GRAPHICSONLY",
+
+	"MEM_422",
+	"MEM_4444",
+
+	"DMUX_ON",
+	"DMUX_OFF",
+
+	"CHROMAKEY_ON",
+	"CHROMAKEY_OFF",
+
+	"MODE_PAL",
+	"MODE_NTSC",
+
+	"MULTIPLY_ALPHA_ON",
+	"MULTIPLY_ALPHA_OFF",
+
+	"SWITCH_OUPUT_ON_PREVIEW_ON",
+	"SWITCH_OUPUT_ON_PREVIEW_OFF",
+
+	"PLL_ON",
+	"PLL_OFF",
+
+	"FREERUN_PLL_ON",
+	"FREERUN_PLL_OFF",
+
+	"INPUT_ANALOG",
+	"INPUT_SDI",
+	"INPUT_ANALOG_SYNC",
+	"INPUT_SDI_SYNC",
+
+
+	NULL
+};
+
+
+enum vzAlphaStreamOptions
+{
+// only for AlphaPlus&AlphaComponent
+	MODE_BYPASS_ON = 0,
+	MODE_BYPASS_OFF,
+
+	PROGRAM_VIDEOONLY,
+	PROGRAM_OVERLAY,
+	PROGRAM_OVERLAYREPLACE,
+	PROGRAM_GRAPHICSONLY,
+
+	PREVIEW_VIDEOONLY,
+	PREVIEW_OVERLAY,
+	PREVIEW_OVERLAYREPLACE,
+	PREVIEW_GRAPHICSONLY,
+
+	MEM_422,
+	MEM_4444,
+
+	DMUX_ON,
+	DMUX_OFF,
+
+	CHROMAKEY_ON,
+	CHROMAKEY_OFF,
+
+	MODE_PAL,
+	MODE_NTSC,
+
+	MULTIPLY_ALPHA_ON,
+	MULTIPLY_ALPHA_OFF,
+
+	SWITCH_OUPUT_ON_PREVIEW_ON,
+	SWITCH_OUPUT_ON_PREVIEW_OFF,
+
+	PLL_ON,
+	PLL_OFF,
+
+	FREERUN_PLL_ON,
+	FREERUN_PLL_OFF,
+
+	INPUT_ANALOG,
+	INPUT_SDI,
+	INPUT_ANALOG_SYNC,
+	INPUT_SDI_SYNC
+
+
+};
+
+unsigned int vzAlphaStreamOptions_[][2][2] = 
+{
+	// non SDI						SDI
+	{ {1<<0,0xFFFFFFFF ^ (1<<0) },	{1<<7,0xFFFFFFFF ^ (1<<7) } },	//	MODE_BYPASS_ON,
+	{ {0<<0,0xFFFFFFFF ^ (1<<0) },	{0<<7,0xFFFFFFFF ^ (1<<7) } },	//	MODE_BYPASS_OFF,
+
+	{ {0<<1,0xFFFFFFFF ^ (3<<1) },	{0,0xFFFFFFFF}				},	//	PROGRAM_VIDEOONLY,
+	{ {1<<1,0xFFFFFFFF ^ (3<<1) },	{0,0xFFFFFFFF}				},	//	PROGRAM_OVERLAY,
+	{ {2<<1,0xFFFFFFFF ^ (3<<1) },	{0,0xFFFFFFFF}				},	//	PROGRAM_OVERLAYREPLACE,
+	{ {3<<1,0xFFFFFFFF ^ (3<<1) },	{0,0xFFFFFFFF}				},	//	PROGRAM_GRAPHICSONLY,
+
+	{ {0<<3,0xFFFFFFFF ^ (3<<3) },	{0,0xFFFFFFFF}				},	//	PREVIEW_VIDEOONLY,
+	{ {1<<3,0xFFFFFFFF ^ (3<<3) },	{0,0xFFFFFFFF}				},	//	PREVIEW_OVERLAY,
+	{ {2<<3,0xFFFFFFFF ^ (3<<3) },	{0,0xFFFFFFFF}				},	//	PREVIEW_OVERLAYREPLACE,
+	{ {3<<3,0xFFFFFFFF ^ (3<<3) },	{0,0xFFFFFFFF}				},	//	PREVIEW_GRAPHICSONLY,
+
+	{ {1<<6,0xFFFFFFFF ^ (1<<6) },	{1<<6,0xFFFFFFFF ^ (1<<6) } },	//	MEM_422,
+	{ {0<<6,0xFFFFFFFF ^ (1<<6) },	{0<<6,0xFFFFFFFF ^ (1<<6) }	},	//	MEM_4444,
+
+	{ {1<<8,0xFFFFFFFF ^ (1<<8) },	{0,0xFFFFFFFF}				},	//	DMUX_ON,
+	{ {0<<8,0xFFFFFFFF ^ (1<<8) },	{0,0xFFFFFFFF}				},	//	DMUX_OFF,
+
+	{ {1<<9,0xFFFFFFFF ^ (1<<9) },	{1<<15,0xFFFFFFFF ^(1<<15)}	},	//	CHROMAKEY_ON,
+	{ {0<<9,0xFFFFFFFF ^ (1<<9) },	{0<<15,0xFFFFFFFF ^(1<<15)}	},	//	CHROMAKEY_OFF
+
+	{ {0<<12,0xFFFFFFFF ^(1<<12)},	{0<<12,0xFFFFFFFF ^(1<<12)}	},	//	MODE_PAL,
+	{ {1<<12,0xFFFFFFFF ^(1<<12)},	{1<<12,0xFFFFFFFF ^(1<<12)}	},	//	MODE_NTSC
+
+	{ {0,0xFFFFFFFF},				{0<<0,0xFFFFFFFF ^ (1<<0) }	},	//	MULTIPLY_ALPHA_ON,
+	{ {0,0xFFFFFFFF},				{1<<0,0xFFFFFFFF ^ (1<<0) }	},	//	MULTIPLY_ALPHA_OFF,
+
+	{ {0,0xFFFFFFFF},				{1<<3,0xFFFFFFFF ^ (1<<3) } },	//	SWITCH_OUPUT_ON_PREVIEW_ON,
+	{ {0,0xFFFFFFFF},				{0<<3,0xFFFFFFFF ^ (1<<3) } },	//	SWITCH_OUPUT_ON_PREVIEW_OFF,
+
+	{ {0,0xFFFFFFFF},				{1<<9,0xFFFFFFFF ^ (1<<8) }	},	//	PLL_ON,
+	{ {0,0xFFFFFFFF},				{0<<9,0xFFFFFFFF ^ (1<<8) }	},	//	PLL_OFF
+
+	{ {0,0xFFFFFFFF},				{1<<9,0xFFFFFFFF ^ (1<<9) }	},	//	FREERUN_PLL_ON,
+	{ {0,0xFFFFFFFF},				{0<<9,0xFFFFFFFF ^ (1<<9) }	},	//	FREERUN_PLL_OFF
+
+
+	{ {0,0xFFFFFFFF},				{0<<1,0xFFFFFFFF ^ (3<<1) }	},	//	INPUT_ANALOG,
+	{ {0,0xFFFFFFFF},				{1<<1,0xFFFFFFFF ^ (3<<1) }	},	//	INPUT_SDI,
+	{ {0,0xFFFFFFFF},				{2<<1,0xFFFFFFFF ^ (3<<1) }	},	//	INPUT_ANALOG_SYNC,
+	{ {0,0xFFFFFFFF},				{3<<1,0xFFFFFFFF ^ (3<<1) }	},	//	INPUT_SDI_SYNC,
+
+};
+
+#define ALPHA_SET_CONTROL(CONTROL,PARAM,SDI) CONTROL&=vzAlphaStreamOptions_[PARAM][SDI][1];CONTROL|=vzAlphaStreamOptions_[PARAM][SDI][0];
+
+
+// titles
+char *_titles[4]=
+{
+	"AlphaTM",
+	"AlphaPlus v1",
+	"AlphaPlus v2",
+	"AlphaComponent"
+};
+
+static void* _config = NULL;
+static vzTVSpec* _tv = NULL;
+
+#define ALPHA_BOARD _handle,_id
+
+unsigned char _boards[4];		// array of found boards
+int _handle;					// used id - handle
+unsigned long _id;				// id
+unsigned long _count;			// count of boards
+REGISTRY_INFO _registry[4];
+HANDLE _fields_event[3];
+
+// smart operations....
+MEMORY_ADDRESS _addr_reg;
+MEMORY_ADDRESS _addr_mem;
+unsigned long* _reg;
+
+// framebuffer pointer
+void* image_buffer = NULL;
+
+
+// init
+VZOUTPUTS_EXPORT long vzOutput_FindBoard(char** error_log = NULL)
+{
+	// 1 find boards
+	_count = Alpha_GetBoardCount(_boards,_handle);
+	if (_count == 0)
+	{
+		if (error_log) *error_log = "No boards found";
+		return 0;
+	};
+	return _count;
+};
+
+// init
+VZOUTPUTS_EXPORT void vzOutput_SetConfig(void* config)
+{
+	_config = config;
+//	char* temp = vzConfigParam(_config,"streamalpha","test");
+//	printf("'%s'",temp);
+};
+
+
+VZOUTPUTS_EXPORT long vzOutput_SelectBoard(unsigned long id,char** error_log = NULL)
+{
+	if (id>=_count)
+	{
+		if (error_log) *error_log = "Board number is over";
+		return 0;
+	}
+
+	// set id
+	_id = id;
+
+	printf("streamalpha[%s]",_titles[_boards[_id]]);
+
+	if (error_log) *error_log = _titles[_boards[_id]];
+
+	return _id;
+};
+
+VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
+{
+	// assign tv value 
+	_tv = (vzTVSpec*)tv;
+
+	// map registers (???)
+	Alpha_GetMapRegs(ALPHA_BOARD,&_addr_reg);
+	_reg = (unsigned long*)_addr_reg.m_UserAddress;
+	Alpha_GetMapMemory(ALPHA_BOARD,&_addr_mem);
+
+	// configure board!
+	if(_boards[_id] != ALPHA_TM)
+	{
+		// Component Board!
+		char* v;
+
+		// interrupts enable
+		// seem to enable bits for all interrupts (field#0 and field#1)
+		unsigned long interrupts_enable = (1+2)<<16;
+		// m_TMReg[m_ActiveBoard][PINT_ST] = int_en;
+		_reg[PINT_ST] = interrupts_enable;
+	}
+	else
+	{
+		// SDI Board!
+		// ???? 0x40 - Enable PCI Interrupts
+		// ???? 0x80 - Enable Transform
+		// ???? 0x100 - Enable Grabber
+		_reg[SPDO_BASE1>>2] |= 0x40; 
+
+	};
+
+	// set parameters
+	char* config_option;
+	unsigned int settings = 0;
+
+	printf("streamalpha: general settings:\n");
+	for(int i=0;vzAlphaStreamOptionsNames[i];i++)
+		if(vzConfigParam(_config,"streamalpha",(char*)vzAlphaStreamOptionsNames[i]))
+		{
+			printf("\t'%s'\n",vzAlphaStreamOptionsNames[i]);
+			ALPHA_SET_CONTROL(settings,i,(_boards[_id] == ALPHA_TM)?1:0);
+		};
+
+	Alpha_SetVCONTROL(ALPHA_BOARD,settings);
+
+	// set Phase
+	if(config_option = vzConfigParam(_config,"streamalpha","ColorSubcarrierPhase"))
+	{
+		unsigned char phase = (unsigned char)atol(config_option);
+		Alpha_SetColorSubcarrierPhase(ALPHA_BOARD,phase);
+		printf("\t'ColorSubcarrierPhase'='%d\n",(unsigned int)phase);
+	};
+
+	// set "the offset of source video signal according to sync. signal"
+	if(config_option = vzConfigParam(_config,"streamalpha","SDEL"))
+	{
+		Alpha_SetSDEL(ALPHA_BOARD,atol(config_option));
+		printf("\t'SDEL'='%ld\n",atol(config_option));
+	};
+
+	// set "(the offset of the alpha-channel (Key) according to the source signal (Fill))"
+	if(config_option = vzConfigParam(_config,"streamalpha","ADEL"))
+	{
+		Alpha_SetADEL(ALPHA_BOARD,atol(config_option));
+		printf("\t'ADEL'='%ld\n",atol(config_option));
+	};
+
+	// clear picture
+	TMMEMORY_STRUCT tm_memory;
+	memset(&tm_memory,0,sizeof(TMMEMORY_STRUCT));
+	tm_memory.dwHeight=_tv->TV_FRAME_HEIGHT;
+	tm_memory.dwWidth=_tv->TV_FRAME_WIDTH;
+	tm_memory.Flags=FIELD_01;
+	Alpha_ClearMemory(ALPHA_BOARD,&tm_memory);
+
+	return _count;
+};
+
+HANDLE notify_to_stop_loop, notify_loop_stopped, loop_thread;
+
+
+unsigned long WINAPI output_loop(void* obj)
+{
+	vzOutput* tbc = (vzOutput*)obj;
+
+	printf("streamalpha: Output loop started!\n");
+
+	// define framebuffers queue
+	unsigned long field_length = _tv->TV_FRAME_HEIGHT*_tv->TV_FRAME_WIDTH*4/2;
+	unsigned long vfb_in[4];
+		vfb_in[0] = (vfb4_info.user + 0*field_length);
+		vfb_in[1] = (vfb4_info.user + 1*field_length);
+		vfb_in[2] = (vfb4_info.user + 2*field_length);
+		vfb_in[3] = (vfb4_info.user + 3*field_length);
+
+	unsigned long vfb_out[4];
+		vfb_out[0] = (vfb4_info.physical_low + 0*field_length);
+		vfb_out[1] = (vfb4_info.physical_low + 1*field_length);
+		vfb_out[2] = (vfb4_info.physical_low + 2*field_length);
+		vfb_out[3] = (vfb4_info.physical_low + 3*field_length);
+
+	unsigned long alpha_in[2];
+		alpha_in[0] = (_addr_mem.PhysAddr + YOBUF3);
+		alpha_in[1] = (_addr_mem.PhysAddr + YOBUF3 + (YOBUF4 - YOBUF3)/2 );
+
+	// framebuffer indexes
+	int vfb_in_i = 0;
+	int vfb_out_i = 2;
+	int alpha_in_i = 0;
+
+	// framebuffer lock
+	HANDLE lock ;
+
+
+	// endless loop
+	while(1)
+	{
+		// normalize indexes of framebuffers
+		vfb_in_i = vfb_in_i % 4;
+		vfb_out_i = vfb_out_i % 4;
+		alpha_in_i = alpha_in_i % 2;
+
+		// check if all finished !!!
+		if(WaitForSingleObject(notify_to_stop_loop,0) == WAIT_OBJECT_0)
+		{
+			// event to stop reached !!!
+			ExitThread(0);
+		};
+
+
+		// -----------------------------------------------------------------------------------------
+
+		// update field transfer field #0
+		transfer_buffer
+		(
+			alpha_in[alpha_in_i++],
+			vfb_out[vfb_out_i++],
+			field_length,	// 720*288*4, 
+			(unsigned long)_addr_reg.m_UserAddress
+		);
+
+		// wait for field #0
+		WaitForSingleObject(_fields_event[0],INFINITE);
+		ResetEvent(_fields_event[0]);
+
+		// frame begins
+		tbc->notify_frame_start();
+
+		// first, request new framebuffer
+		int buffer_num;
+		lock = tbc->lock_read(&image_buffer,&buffer_num);
+
+		// transcode field #0
+		if (image_buffer)
+		load_n_transcode_field
+		(
+			_tv->TV_FRAME_1ST,			// depend on PAL/NTSC
+			(void*)vfb_out[vfb_in_i],
+			(void*)image_buffer,
+			1	// flip
+		); 
+		vfb_in_i++;
+
+		// -----------------------------------------------------------------------------------------
+
+		// update field transfer field #1
+		transfer_buffer
+		(
+			alpha_in[alpha_in_i++],
+			vfb_out[vfb_out_i++],
+			field_length,	// 720*288*4, 
+			(unsigned long)_addr_reg.m_UserAddress
+		); 
+
+		// wait for field #1
+		WaitForSingleObject(_fields_event[1],INFINITE);
+		ResetEvent(_fields_event[1]);
+
+		// transcode field #1
+		if (image_buffer)
+		load_n_transcode_field
+		(
+			1 - _tv->TV_FRAME_1ST,			// depend on PAL/NTSC
+			(void*)vfb_out[vfb_in_i],
+			(void*)image_buffer,
+			1	// flip
+		); 
+		vfb_in_i++;
+
+		// release framebuffer
+		ReleaseMutex(lock);
+
+
+		// -----------------------------------------------------------------------------------------
+
+		// frame ends
+		tbc->notify_frame_stop();
+	};
+};
+
+VZOUTPUTS_EXPORT void vzOutput_StartOutputLoop(void* obj)
+{
+	notify_to_stop_loop = CreateEvent(NULL, TRUE, FALSE, NULL);
+	notify_loop_stopped = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+	// events
+	if(!(_fields_event[0] = CreateEvent(NULL, TRUE, FALSE, NULL)))//field0 VSync
+		printf("streamalpha: Unable to Create Event #0\n");
+	if(!(_fields_event[1] = CreateEvent(NULL, TRUE, FALSE, NULL)))//field1 VSync
+		printf("streamalpha: Unable to Create Event #1\n");
+	if(!(_fields_event[2] = CreateEvent(NULL, TRUE, FALSE, NULL)))
+		printf("streamalpha: Unable to Create Event #2\n");
+	
+	Alpha_SetNotificationEvent(ALPHA_BOARD,_fields_event);
+
+	loop_thread = CreateThread
+	(
+		NULL,
+		1024,
+		output_loop,
+		obj, //&_thread_data, // params
+		0,
+		NULL
+	);
+};
+
+
+VZOUTPUTS_EXPORT void vzOutput_StopOutputLoop()
+{
+	// notify to stop thread
+	PulseEvent(notify_to_stop_loop);
+
+	// wait thread for stopped state
+	WaitForSingleObject(notify_loop_stopped,INFINITE);
+
+	// sleep a bit
+	Sleep(80);
+
+	// close everithing
+	CloseHandle(notify_to_stop_loop);
+	CloseHandle(notify_loop_stopped);
+	CloseHandle(loop_thread);
+};
+
+
+void BGRA2UYVA (void* dst, void* src, int count)
+{
+	if ( (!(dst)) || (!(src)) || (!(count)) )
+		return;
+/*
+
+Note: Alpha value is scaled up to TV value [0,255] -> [16,235]
+
+We use equantion (output should be devided on 256 ):
+
+	Y =		0		+76R	+150G	+29B	+0A
+	U =		32768	-43R	-85G	+127B	+0A
+	V =		32768	+127R	-106G	-21B	+0A
+	a =		4096	+0R		+0G		+0G		+229A
+
+Resort in DST mem organization,
+in memory view is	[Ui,Yi,Vi,Ai]
+than loaded in register: (AiViYiUi) (each value is 8-bits)
+
+	a =		4096	+0R		+0G		+0G		+229A
+	V =		32768	+127R	-106G	-21B	+0A
+	Y =		0		+76R	+150G	+29B	+0A
+	U =		32768	-43R	-85G	+127B	+0A
+
+Resort operands agains:
+
+	a =		4096	+229A	+0B		+0G		+0R		
+	V =		32768	+127R	+0A		-21B	-106G	
+	Y =		0		+150G	+76R	+0A		+29B	
+	U =		32768	+127B	-85G	-43R	+0A
+
+As you see you can use iteration with shifting source 
+register and multiplying on contant vectors
+
+constants
+	l1 = (4096,32768,0,32768)
+	l2 = (229,127,150,127)
+	l3 = (0,0,76,-85)
+	l4 = (0,-21,0,-43)
+	l5 = (0,-106,29,0)
+
+for loading into 64 bit register data should reversed
+
+*/
+
+/* 
+	Constants
+	static short _l1[] = {	32768,	0,		32768,	4096	};
+	static short _l2[] = {	127,	150,	127,	229		};
+	static short _l3[] = {	-85,	76,		0,		0		};
+	static short _l4[] = {	-43,	0,		-21,	0		};
+	static short _l5[] = {	0,		29,		-106,	0		};
+*/
+
+	__asm
+	{
+		jmp		begin
+ALIGN 16
+__l1:
+	__asm _emit 0x00
+	__asm _emit 0x80
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x80
+	__asm _emit 0x00
+	__asm _emit 0x10
+__l2:
+	__asm _emit 0x7F
+	__asm _emit 0x00
+	__asm _emit 0x96
+	__asm _emit 0x00
+	__asm _emit 0x7F
+	__asm _emit 0x00
+	__asm _emit 0xE5
+	__asm _emit 0x00
+__l3:
+	__asm _emit 0xAB
+	__asm _emit 0xFF
+	__asm _emit 0x4C
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x00
+__l4:
+	__asm _emit 0xD5
+	__asm _emit 0xFF
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0xEB
+	__asm _emit 0xFF
+	__asm _emit 0x00
+	__asm _emit 0x00
+__l5:
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x1D
+	__asm _emit 0x00
+	__asm _emit 0x96
+	__asm _emit 0xFF
+	__asm _emit 0x00
+	__asm _emit 0x00
+
+begin:
+		// loading source surface pointer
+		mov		esi, dword ptr[src];
+
+		// loading dst surface pointer
+		mov		edi, dword ptr[dst];
+
+		// counter
+		mov		ecx, dword ptr[count];
+
+		// clear registers and set constants
+		movq		MM2, qword ptr[__l1];
+
+		movq		MM3, qword ptr[__l2];
+		movq		MM4, qword ptr[__l3];
+		movq		MM5, qword ptr[__l4];
+		movq		MM6, qword ptr[__l5];
+
+pixel:
+		// prefetch to cache
+		PREFETCHNTA [esi];
+		PREFETCHNTA [edi];
+
+		pxor		MM0,MM0		//	clear register
+
+		// STEP #0: load 1 pixels
+		movd		MM1, qword ptr[esi]
+
+		// STEP #1: unpack pixel
+		punpcklbw	MM1,MM0		//  unpacking
+
+		// STEP #2:	load summ into accum vec #1
+		movq		MM0, MM2
+
+		// STEP #3: calc and add vec #2
+		movq		MM7, MM1	// load pixel into addr
+		pshufw		MM1, MM1,	0x39
+		pmullw		MM7, MM3	// multipy
+		paddw		MM0, MM7	// add to accum
+	
+		// STEP #4: calc and add vec #3
+		movq		MM7, MM1	// load pixel into addr
+		pshufw		MM1, MM1,	0x39
+		pmullw		MM7, MM4	// multipy
+		paddw		MM0, MM7	// add to accum
+
+		// STEP #5: calc and add vec #4
+		movq		MM7, MM1	// load pixel into addr
+		pshufw		MM1, MM1,	0x39
+		pmullw		MM7, MM5	// multipy
+		paddw		MM0, MM7	// add to accum
+
+		// STEP #6: calc and add vec #5
+		movq		MM7, MM1	// load pixel into addr
+		pshufw		MM1, MM1,	0x39
+		pmullw		MM7, MM6	// multipy
+		paddw		MM0, MM7	// add to accum
+
+		// STEP #7: pack pixel
+		pxor		MM1,MM1		// clear MM1
+		psrlw		MM0,8		// divide into 256 :-))
+		PACKUSWB	MM0,MM1
+
+
+		// STEP #8 store pixel
+		movd		qword ptr[edi], MM0
+
+		add			edi , 4
+		add			esi , 4
+
+		loop pixel
+
+		emms
+	}
+};
+
+// trascode and update expected fields
+void load_n_transcode_field(int field, void* dst, void* src, int flip)
+{
+#define PIXEL_SIZE 4
+
+	if ( (!(dst)) || (!(src)) )
+		return;
+
+
+	long step;
+	unsigned char* _dst = (unsigned char*)dst;
+	unsigned char* _src = (unsigned char*)src;
+
+	// reposition source (flip and field order) and set step for source
+	if(flip)
+	{
+		_src += _tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*PIXEL_SIZE - (1+field)*_tv->TV_FRAME_WIDTH*PIXEL_SIZE;
+		step = -1;
+	}
+	else
+	{
+		step = 1;
+		_src += field*PIXEL_SIZE*_tv->TV_FRAME_WIDTH;
+	};
+
+	for(int row=0;row<(_tv->TV_FRAME_HEIGHT/2);row++,_src+= step*2*_tv->TV_FRAME_WIDTH*PIXEL_SIZE , _dst+=_tv->TV_FRAME_WIDTH*PIXEL_SIZE)
+		BGRA2UYVA(_dst, _src, _tv->TV_FRAME_WIDTH);
+};
+
+
+void inline memcpy2(void* dst,void *src, int count)
+{
+	__asm
+	{
+		// loading source surface pointer
+		mov		esi, dword ptr[src];
+
+		// loading dst surface pointer
+		mov		edi, dword ptr[dst];
+
+		// counter
+		mov		ecx, count;
+
+		// divide ecx
+		sar		ecx,6	// devide on 2
+
+
+		// loop data copy
+cp:
+		movq		MM0, qword ptr[esi]
+		movq		MM1, qword ptr[esi+8]
+		movq		MM2, qword ptr[esi+16]
+		movq		MM3, qword ptr[esi+24]
+		movq		MM4, qword ptr[esi+32]
+		movq		MM5, qword ptr[esi+40]
+		movq		MM6, qword ptr[esi+48]
+		movq		MM7, qword ptr[esi+56]
+		add			esi,64
+		movq		qword ptr[edi],MM0
+		movq		qword ptr[edi+8],MM1
+		movq		qword ptr[edi+16],MM2
+		movq		qword ptr[edi+24],MM3
+		movq		qword ptr[edi+32],MM4
+		movq		qword ptr[edi+40],MM5
+		movq		qword ptr[edi+48],MM6
+		movq		qword ptr[edi+56],MM7
+		add			edi,64
+		loop		cp;
+		emms
+	}
+
+	return;
+
+};
+
+void transfer_buffer(unsigned long DST_PHYSICAL_ADDR, unsigned long SRC_PHYSICAL_ADDR, unsigned long SIZE , unsigned long user_reg)
+{
+#define __MMIO(offset)  ( ((unsigned long*)user_reg)[(offset) >> 2])
+#define _DMA_READ 1
+
+	// see pages 10-13 (p.138) of "TM-1000 Preliminary Data Book"
+
+	// The steps involved in a DMA transfer are:
+
+	// 1. Wait until BIU_STATUS dma_cycle.Busy is de-asserted 
+	while ( __MMIO(BIU_STATUS)& (1<<4) ) Sleep(0);
+
+	// 1a. disable interrupt generation after DMA finished
+//	__MMIO(BIU_CTL) &= (0xFFFFFFFF ^ (1<<4) ^ (1<<5));
+
+	// 2. Write to SRC_ADR and DEST_ADR as described above.
+	__MMIO(SRC_ADR) = SRC_PHYSICAL_ADDR;
+	__MMIO(DEST_ADR) = DST_PHYSICAL_ADDR;
+
+	// 3. Write to DMA_CTL to start the dma transaction.This action sets dma_cycle.Busy.
+	__MMIO(DMA_CTL) = SIZE | (_DMA_READ << 26) ;
+
+	// 4. Wait (polling or interrupt based) until dma_cycle.Done is asserted by the hardware.
+//	Sleep(10);
+//	while (!( __MMIO(BIU_STATUS) & (1<<5) ))  Sleep(1);
+
+	// 5. Clear dma_cycle.Done by writing a ‘1’ to it.
+//	__MMIO(BIU_STATUS) |= (1<<5);
+};
+
+int init_vfb4_info(vfb4_data *vfb4_info)
+{
+	unsigned long ret;
+	HANDLE vdf_dev;
+	
+	// clear values in struct
+	memset(vfb4_info,0,sizeof(vfb4_data));
+
+	// open device
+	if (!(vdf_dev = CreateFile(VFB4_API_DEV, GENERIC_READ | GENERIC_WRITE | FILE_FLAG_NO_BUFFERING, 0, NULL, OPEN_EXISTING, 0, NULL)))
+	{
+		printf("Error opening '%s'. Please see vfb4.txt\n",VFB4_API_DEV);
+		return 0;
+	};
+
+	// read data
+	if(!ReadFile(vdf_dev, vfb4_info, sizeof(vfb4_data), &ret, NULL))
+	{
+		printf("Error reading '%s'. Please see vfb4.txt\n",VFB4_API_DEV,GetLastError());
+		return 0;
+	};
+
+	return 1;
+};

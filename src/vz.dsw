@@ -1,0 +1,182 @@
+Microsoft Developer Studio Workspace File, Format Version 6.00
+# WARNING: DO NOT EDIT OR DELETE THIS WORKSPACE FILE!
+
+###############################################################################
+
+Project: "templates_tst"="..\testers\templates_tst\templates_tst.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "test_avifile"="..\TESTERS\test_avifile\test_avifile.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "test_memor"="..\TESTERS\test_memor\test_memor.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "test_streamalpha"="..\testers\test_streamalpha\test_streamalpha.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vzImage
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "test_tcpserver"="..\testers\test_tcpserver\test_tcpserver.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "test_vzTTFont"="..\testers\test_vzTTFont\test_vzTTFont.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vzTTFont
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vzImage
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "vz"=".\vz\vz.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vzImage
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vzOutput
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vzMain
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vzTTFont
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "vzImage"=".\vzImage\vzImage.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "vzMain"=".\vzMain\vzMain.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vzImage
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "vzOutput"=".\vzOutput\vzOutput.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vzImage
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vzMain
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "vzTTFont"=".\vzTTFont\vzTTFont.dsp" - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vzImage
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Global:
+
+Package=<5>
+{{{
+}}}
+
+Package=<3>
+{{{
+}}}
+
+###############################################################################
+
