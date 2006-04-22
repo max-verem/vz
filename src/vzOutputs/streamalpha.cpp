@@ -74,7 +74,7 @@ ChangeLog:
 #pragma comment(lib, "SlAlpha.lib") 
 
 // VirtualFrameBuffer4
-#include "../../../../vfb4/include/vfb4-data.h"
+#include "../../../vfb4/include/vfb4-data.h"
 static vfb4_data vfb4_info;
 
 

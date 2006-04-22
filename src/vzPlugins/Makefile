@@ -18,13 +18,14 @@ CFG=Debug
 !ERROR An invalid configuration is specified.
 !ENDIF 
 
+GLUT_DIR="D:/SDK/GLUT/"
 
 
 !IF  "$(CFG)" == "Debug"
 DEBUGFLAGS	= -D_DEBUG /Z7 /Yd /GZ /GX
 INSTALL_DIR	= ../../install/Debug/plugins/
 OBJS_DIR	= ../../tmp/Debug/plugins/
-LIB_PATH	= /LIBPATH:"../../tmp/Debug/"
+LIB_PATH	= /LIBPATH:"../../tmp/Debug/" /LIBPATH:"$(GLUT_DIR)"
 LINKER_OPT	= /LDd
 LINKER_FLAGS	= $(LIB_PATH)
 CPPFLAGS	= $(CPPFLAGS) /MDd
@@ -36,7 +37,7 @@ CPPFLAGS	= $(CPPFLAGS) /MDd
 DEBUGFLAGS	= 
 INSTALL_DIR	= ../../install/Release/plugins/
 OBJS_DIR	= ../../tmp/Release/plugins/
-LIB_PATH	= /LIBPATH:"../../tmp/Release/"
+LIB_PATH	= /LIBPATH:"../../tmp/Release/" /LIBPATH:"$(GLUT_DIR)"
 LINKER_OPT	= /LD
 LINKER_FLAGS	= $(LIB_PATH)
 CPPFLAGS	= $(CPPFLAGS) /MD
@@ -44,7 +45,7 @@ CPPFLAGS	= $(CPPFLAGS) /MD
 
 # compiler setting
 CPPFLAGS	= $(CPPFLAGS) /G6 -TP -GD 
-INCLUDE_DIR	= -I. -I../vz 
+INCLUDE_DIR	= -I. -I../vz  -I"$(GLUT_DIR)"
 LINKER		= /incremental:no $(LINKER_FLAGS)
 #LINKER		= /NODEFAULTLIB:LIBCMT.LIB /incremental:no $(LINKER_FLAGS)
 

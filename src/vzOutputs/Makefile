@@ -19,8 +19,8 @@ CFG=Debug
 !ENDIF 
 
 # StreamAlpha SDK path
-STREAMALPHA_LIB	= E:\sdk\streamalpha\SDK_Code\Lib
-STREAMALPHA_INC	= E:\sdk\streamalpha\SDK_Code\Inc
+STREAMALPHA_LIB	= d:\sdk\streamalpha\SDK_Code\Lib
+STREAMALPHA_INC	= d:\sdk\streamalpha\SDK_Code\Inc
 
 !IF  "$(CFG)" == "Debug"
 DEBUGFLAGS	= -D_DEBUG /Z7 /Yd /GZ
