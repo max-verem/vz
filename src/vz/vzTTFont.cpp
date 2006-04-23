@@ -441,7 +441,6 @@ try
 #endif
 				*(dst + i) = (colour & 0x00FFFFFF) | ((unsigned long)src[c])<<24;
 			};
-
 	};
 
 
@@ -459,7 +458,7 @@ catch(char *error_string)
 //	char filenam
 //	vzImageSaveTGA("d:\\temp\\test_vzTTFont_0.tga",temp,NULL,0);
 
-
+	free(symbols);
 
 	return temp;
 };

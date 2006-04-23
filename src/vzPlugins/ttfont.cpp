@@ -21,7 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
-    2005-06-08: Code cleanup
+	2006-04-22:
+		*cleanup handle of asynk text loader
+
+	2005-06-08: Code cleanup
 
 
 */
@@ -182,6 +185,8 @@ typedef struct
 	long _l_height;
 	long _h_colour;
 
+	HANDLE _async_text_loader;
+
 } vzPluginData;
 
 // default value of structore
@@ -211,7 +216,8 @@ vzPluginData default_value =
 	NULL,
 	NULL,
 	0,
-	0
+	0,
+	INVALID_HANDLE_VALUE
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
@@ -253,7 +259,11 @@ PLUGIN_EXPORT void destructor(void* data)
 	if(_DATA->_texture_initialized)
 		glDeleteTextures (1, &(_DATA->_texture));
 
-	// try to lock struct
+	// wait and dispose handle
+	if (INVALID_HANDLE_VALUE != _DATA->_async_text_loader)
+		CloseHandle(_DATA->_async_text_loader);
+
+		// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 
 	// free image data if it's not released
@@ -513,9 +523,12 @@ PLUGIN_EXPORT void notify(void* data)
 		_DATA->_s_text_buf = (char*)realloc(_DATA->_s_text_buf,strlen(_DATA->s_text) + 1);
 		memcpy(_DATA->_s_text_buf,_DATA->s_text,strlen(_DATA->s_text)+1);
 
+		// wait until previous start finish
+		if (INVALID_HANDLE_VALUE != _DATA->_async_text_loader)
+			CloseHandle(_DATA->_async_text_loader);
 		//start thread for texture loading
 		unsigned long thread;
-		CreateThread(0, 0, _text_loader, data, 0, &thread);
+		_DATA->_async_text_loader = CreateThread(0, 0, _text_loader, data, 0, &thread);
 	}
 
 	ReleaseMutex(_DATA->_lock_update);

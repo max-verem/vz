@@ -99,6 +99,7 @@ vzConfig::vzConfig(char* config_file)
 		};
 	};
 
+	delete parser;
 };
 
 vzConfig::~vzConfig()

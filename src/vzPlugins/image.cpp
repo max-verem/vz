@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-04-23:
+		*cleanup handle of asynk image loader
+
     2005-06-08: Code cleanup
 
 */
@@ -59,6 +62,7 @@ typedef struct
 	unsigned int _texture;
 	unsigned int _texture_initialized;
 	vzImage* _image;
+	HANDLE _async_image_loader;
 } vzPluginData;
 
 // default value of structore
@@ -75,7 +79,8 @@ vzPluginData default_value =
 	0.0f,0.0f,
 	0,
 	0,
-	NULL
+	NULL,
+	INVALID_HANDLE_VALUE
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
@@ -330,8 +335,10 @@ PLUGIN_EXPORT void notify(void* data)
 		};
 
 		//start thread for texture loading
-		unsigned long thread;
-		CreateThread(0, 0, _image_loader, data, 0, &thread);
+		if (INVALID_HANDLE_VALUE != _DATA->_async_image_loader)
+			CloseHandle(_DATA->_async_image_loader);
+		//start thread for texture loading
+		_DATA->_async_image_loader = CreateThread(0, 0, _image_loader, data, 0, NULL);
 
 		// release mutex -  let created tread work
 		ReleaseMutex(_DATA->_lock_update);

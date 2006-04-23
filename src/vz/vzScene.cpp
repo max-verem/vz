@@ -226,8 +226,7 @@ vzScene::~vzScene()
 	CloseHandle(_lock_for_command);
 	if(_tree) delete _tree;
 	if(_motion) delete _motion;
-
-	if(_stencil) delete  _stencil;
+	if(_stencil) free(_stencil);
 };
 
 

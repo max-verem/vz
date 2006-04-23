@@ -48,8 +48,9 @@ extern const char* VZ_TITLE;
 extern float VZ_VERSION_NUMBER;
 extern const char* VZ_VERSION_SUFFIX;
 
+#define MAX_CLIENTS 32
 
-void CMD_screenshot(char* filename,char* &error_log)
+static void CMD_screenshot(char* filename,char* &error_log)
 {
 	// lock scene
 	WaitForSingleObject(scene_lock,INFINITE);
@@ -61,7 +62,7 @@ void CMD_screenshot(char* filename,char* &error_log)
 	ReleaseMutex(scene_lock);
 };
 
-void CMD_loadscene(char* filename,char* &error_log)
+static void CMD_loadscene(char* filename,char* &error_log)
 {
 	// lock scene
 	if (WaitForSingleObject(scene_lock,INFINITE) != WAIT_OBJECT_0)
@@ -162,7 +163,7 @@ void FIND_TO_TERM(char* &src,char* &buf, char* term)
 
 
 
-unsigned long WINAPI tcpserver_client(void* _socket)
+static unsigned long WINAPI tcpserver_client(void* _socket)
 {
 	SOCKET socket = (SOCKET)_socket;
 
@@ -337,14 +338,20 @@ unsigned long WINAPI tcpserver_client(void* _socket)
 
 	free(in_buffer);
 	closesocket(socket);
-	ExitThread(0);
 	return 0;
 };
 
 
+static HANDLE clients_threads[MAX_CLIENTS];
+
 unsigned long WINAPI tcpserver(void* _config)
 {
 	char* temp;
+	int j;
+	unsigned long r;
+
+	// cleanup handles array
+	for(j=0;j<MAX_CLIENTS;j++) clients_threads[j] = INVALID_HANDLE_VALUE;
 
 	// check if server is enabled
 	if(!vzConfigParam(_config,"tcpserver","enable"))
@@ -417,8 +424,26 @@ unsigned long WINAPI tcpserver(void* _config)
 		printf("tcpserver: accepted connection from %s:%ld\n",inet_ntoa(s_remote.sin_addr),s_remote.sin_port);
 
 		// create thread for client operation
-		unsigned long thread;
-		CreateThread(0, 0, tcpserver_client, (void*)socket_incoming, 0, &thread);
+		for(j=0;j<MAX_CLIENTS;j++)
+		{
+			// cleanup hanldes
+			if(clients_threads[j] != INVALID_HANDLE_VALUE)
+				if(GetExitCodeThread(clients_threads[j], &r))
+					if(r != STILL_ACTIVE)
+					{
+						CloseHandle(clients_threads[j]);
+						clients_threads[j] = INVALID_HANDLE_VALUE;
+					};
+
+			if(clients_threads[j] == INVALID_HANDLE_VALUE)
+			{
+				clients_threads[j] = CreateThread(0, 0, tcpserver_client, (void*)socket_incoming, 0, NULL);
+				j = MAX_CLIENTS + 1;
+			};
+		}
+		// all slots are busy
+		if(j == MAX_CLIENTS)
+			closesocket(socket_incoming);
 	};
 
 };

@@ -125,11 +125,11 @@ vzContainer::~vzContainer()
 	
 	// delete functions
 	for(i=0;i<_functions.count();i++)
-		delete _functions.value(i);
+		delete (vzContainerFunction*)_functions.value(i);
 
 	// delete containers
 	for(i=0;i<_containers.count();i++)
-		delete _containers.value(i);
+		delete (vzContainer*)_containers.value(i);
 
 	delete _attributes;
 

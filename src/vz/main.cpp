@@ -58,7 +58,7 @@ ChangeLog:
 */
 const char* VZ_TITLE = "ViZualizator";
 float VZ_VERSION_NUMBER = 1.0f;
-const char* VZ_VERSION_SUFFIX = "test-rc0";
+const char* VZ_VERSION_SUFFIX = "test-rc1";
 vzTVSpec tv;
 
 /*
@@ -318,7 +318,6 @@ void vz_glut_start(int argc, char** argv)
 	printf("Assigning GLUT functions... ");
 	glutDisplayFunc(vz_glut_display); 
 	glutReshapeFunc(vz_glut_reshape); 
-	glutMouseFunc(vz_glut_mouse);
 	glutMouseFunc(vz_glut_mouse);
 	glutKeyboardFunc(vz_glut_keyboard);
 	glutIdleFunc(vz_glut_idle);
