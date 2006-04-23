@@ -64,6 +64,9 @@ ChangeLog:
 		*'destination alpha blending' ft. 'glBlendFuncSeparateEXT' NOT TESTED!!!
 		due to hardware issuie.
 
+	2006-04-23:
+		*XML init section removed
+
 	2005-06-09:
 		* disabled fields rendering.... 
 
@@ -128,18 +131,6 @@ int vzScene::load(char* file_name)
 {
 	printf("Loading scene '%s'... ",file_name);
 
-	// Init xml processor
-    try
-    {
-		XMLPlatformUtils::Initialize();
-	}
-    catch (...)
-    {
-		XMLPlatformUtils::Terminate();
-		printf("Error: unable to 'XMLPlatformUtils::Initialize()'\n");
-		return 0;
-    }
-
 	//init parser
 	XercesDOMParser *parser = new XercesDOMParser;
 
@@ -152,7 +143,6 @@ int vzScene::load(char* file_name)
     catch (...)
     {
 		delete parser;
-		XMLPlatformUtils::Terminate();
 		printf("Failed!\n");
 		return 0;
     }
@@ -215,7 +205,6 @@ int vzScene::load(char* file_name)
 
 	delete parser;
 
-	XMLPlatformUtils::Terminate();
 	printf("OK!\n");
 
 	return 1;
@@ -334,7 +323,8 @@ void vzScene::display(long frame)
 	for(int field = 0; field<=_fields;field++)
 	{
 		// set directors for propper position
-		_motion->assign(frame, field);
+		if(_motion)
+			_motion->assign(frame, field);
 
 		/*
 			setup stencil function 

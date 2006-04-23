@@ -77,6 +77,23 @@ vzContainerFunction::~vzContainerFunction()
 {
 	delete _attributes;
 	delete _params;
-	if((_function) && (_data))
-		_function->destructor(_data);
+	if(_function)
+	{
+		// free text params
+		for(unsigned int i=0;i<_function->count();i++)
+		{
+			vzPluginParameter* p = _function->value(i);
+			if(p->name[0] == 's')
+			{
+				void* param = get_data_param_ptr(p->name);
+				if(*((char**)param))
+					free((*((char**)param)));
+				*((char**)param) = NULL;
+			};
+		};
+
+		// destruct instance
+		if(_data) _function->destructor(_data);
+	};
+		
 };

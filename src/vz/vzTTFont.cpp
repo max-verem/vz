@@ -65,6 +65,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 VZTTFONT_API vzTTFont::vzTTFont(char* name,int height,int width)
 {
 	_ready = 0;
+	lock = CreateMutex(NULL,FALSE,NULL);
 
 	//filename
 	sprintf(_file_name,"fonts/%s.ttf",name);
@@ -85,16 +86,18 @@ VZTTFONT_API vzTTFont::vzTTFont(char* name,int height,int width)
 
 	_baseline = (((FT_Face)_font_face)->bbox.yMax*_height) / (((FT_Face)_font_face)->bbox.yMax - ((FT_Face)_font_face)->bbox.yMin);
 
-	lock = CreateMutex(NULL,FALSE,NULL);
-
 	_ready = 1;
 };
 
 VZTTFONT_API vzTTFont::~vzTTFont()
 {
+	CloseHandle(lock);
+
 	for(int i=0;i<65536;i++)
 		if (_glyphs_cache[i])
 			FT_Done_Glyph((FT_Glyph)_glyphs_cache[i]);
+
+	FT_Done_Face((FT_Face)_font_face);
 };
 
 

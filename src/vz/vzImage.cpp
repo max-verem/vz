@@ -49,9 +49,11 @@ typedef struct {
    char  imagedescriptor;
 } TGA_HEADER;
 
+//#define ERROR_LOG(MSG,LOG) printf("\n" __FILE__ ":%d: " MSG " '%s'\n",__LINE__,LOG);
 
 VZIMAGE_API void vzImageFree(vzImage* image)
 {
+///printf("\n**vzImageFree: %dx%d @ %.8X\n",image->width,image->height,image->surface);
 	free(image->surface);
 	free(image);
 };
@@ -65,11 +67,10 @@ VZIMAGE_API vzImage* vzImageNew(int width,int height, long surface_size)
 	temp->base_y = 0;
 	temp->base_x = 0;
 	temp->base_width = width;
-	temp->base_height = width;
+	temp->base_height = height;
+///printf("\n**vzImageNew: %dx%d @ %.8X\n",temp->width,temp->height,temp->surface);
 	return temp;
 };
-
-#define ERROR_LOG(MSG,LOG) printf(__FILE__ ":%d: " MSG " '%s'\n",__LINE__,LOG);
 
 VZIMAGE_API vzImage* vzImageLoadTGA(char* filename, char** error_log)
 {
@@ -224,7 +225,7 @@ VZIMAGE_API vzImage* vzImageLoadTGA(char* filename, char** error_log)
 	fclose(image);
 
 //	ERROR_LOG("vzImageLoadTGA returing",filename);	
-	
+///printf("\n**vzImageLoadTGA: %dx%d @ %.8X (%s)\n",temp->width,temp->height,temp->surface,filename);
 	return temp;
 };
 
@@ -712,6 +713,10 @@ VZIMAGE_API vzImage* vzImageExpand2X(vzImage* src)
 			row++
 	)
 		memcpy(p_dst,p_src,4*src->width);
+
+///printf("\n**vzImageExpand2X: [%dx%d @ %.8X] ->  [%dx%d @ %.8X]\n",
+///src->width,src->height,src->surface,
+///new_width, new_height, new_surface);
 
 	// replacing parameters
 	src->base_height = src->width;

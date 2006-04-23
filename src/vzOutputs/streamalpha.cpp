@@ -695,8 +695,8 @@ begin:
 
 pixel:
 		// prefetch to cache
-		PREFETCHNTA [esi];
-		PREFETCHNTA [edi];
+////		PREFETCHNTA [esi];
+////		PREFETCHNTA [edi];
 
 		pxor		MM0,MM0		//	clear register
 

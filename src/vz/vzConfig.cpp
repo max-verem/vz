@@ -34,17 +34,6 @@ static const unsigned short tag_module[] = {'m', 'o', 'd', 'u', 'l', 'e',0};
 
 vzConfig::vzConfig(char* config_file)
 {
-	// Init xml processor
-    try
-    {
-		XMLPlatformUtils::Initialize();
-	}
-    catch (...)
-    {
-		XMLPlatformUtils::Terminate();
-		return;
-    }
-
 	//init parser
 	XercesDOMParser *parser = new XercesDOMParser;
 
@@ -55,7 +44,6 @@ vzConfig::vzConfig(char* config_file)
     catch (...)
     {
 		delete parser;
-		XMLPlatformUtils::Terminate();
 		return;
     }
 

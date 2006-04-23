@@ -50,7 +50,6 @@ vzXMLAttributes::vzXMLAttributes(DOMNode* node) : vzHash<char*>()
 
 		if (temp_name)
 			free(temp_name);
-
 	};
 
 
