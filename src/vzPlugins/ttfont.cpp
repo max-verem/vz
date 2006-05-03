@@ -49,8 +49,8 @@ HANDLE _dump_counter_lock;
 long _dump_counter = 0;
 #endif
 
-HANDLE _fonts_list_lock;
-vzHash<vzTTFont*> vzTTFontList;
+static HANDLE _fonts_list_lock;
+static vzHash<vzTTFont*> vzTTFontList;
 
 BOOL APIENTRY DllMain( HANDLE hModule, 
                        DWORD  ul_reason_for_call, 
@@ -83,7 +83,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     return TRUE;
 }
 
-vzTTFont* get_font(char* name,long height)
+static vzTTFont* get_font(char* name,long height)
 {
 #ifdef _DEBUG
 	printf(__FILE__ "::getfont looking for font '%s' - '%d' ... ", name, height);
@@ -263,7 +263,7 @@ PLUGIN_EXPORT void destructor(void* data)
 	if (INVALID_HANDLE_VALUE != _DATA->_async_text_loader)
 		CloseHandle(_DATA->_async_text_loader);
 
-		// try to lock struct
+	// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 
 	// free image data if it's not released
@@ -275,6 +275,9 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// unlock
 	ReleaseMutex(_DATA->_lock_update);
+
+	// free space for internal text buffer
+	free(_DATA->_s_text_buf);
 
 	// close
 	CloseHandle(_DATA->_lock_update);
