@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2006-05-01: 
+        *memory leak fixed on '_attributes' object
+
     2005-06-08: Code cleanup
 
 */
@@ -91,6 +94,8 @@ vzMotionParameter::~vzMotionParameter()
 {
 	for(unsigned int i=0;i<count();i++)
 		delete value(i);
+	if(_attributes)
+		delete _attributes;
 };
 
 void vzMotionParameter::assign(long frame, int field)

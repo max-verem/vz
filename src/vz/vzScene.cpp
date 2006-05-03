@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-05-01: 
+		*_stencil always allocates - one alloc for all tree.
+
 	2005-07-07:
 		*No AUXi buffers disallowed - modification of stencil buffer ALWAYS 
 		uses AUX0 stencil buffer as base prebuild!
@@ -101,12 +104,11 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 	 _enable_glBlendFuncSeparateEXT = (_config->param("vzMain","enable_glBlendFuncSeparateEXT"))?1:0;
 	 _blend_dst_alpha = (_config->param("vzMain","blend_dst_alpha"))?1:0;
 	 _fields = (_config->param("vzMain","fields"))?1:0;
+	_stencil = malloc(_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
 
 	 // build 8-bit stencil buffers
 	 if(_fields)
 	 {
-		_stencil = malloc(_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
-
 		// prepare interlaced 8-bit stencil buffer
 		for(int i=0,f=1 - _tv->TV_FRAME_1ST;i<_tv->TV_FRAME_HEIGHT;i++,f=1-f)
 			memset
@@ -118,9 +120,6 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 	 }	 
 	 else
 	 {
-		// mark stencil buffer pointer to null
-		_stencil = malloc(_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
-
 		// prepare non interlaces
 		memset(_stencil,1 ,_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
 	 };
