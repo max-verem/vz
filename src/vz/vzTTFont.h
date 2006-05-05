@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-05-06:
+		*Migration to freetype-2.1.10 - linking with freetype.lib instead of 
+		libfreetype.lib
+
     2005-06-08: Code cleanup
 
 */
@@ -31,7 +35,8 @@ ChangeLog:
 
 #ifdef VZTTFONT_EXPORTS
 #define VZTTFONT_API __declspec(dllexport)
-#pragma comment(lib, "libfreetype.lib") 
+#pragma comment(lib, "freetype.lib") 
+//#pragma comment(lib, "libfreetype.lib") 
 #else
 #define VZTTFONT_API __declspec(dllimport)
 #pragma comment(lib, "vzTTFont.lib") 
