@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-05-06:
+		*freetype seems not multithread safe. lock it.
+		*FT library initalization and moved to LIB load section
+
     2005-06-08: Code cleanup
 
 */
@@ -36,7 +40,8 @@ ChangeLog:
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
-FT_Library  ft_library;
+static FT_Library  ft_library;
+static HANDLE ft_library_lock;
 
 
 BOOL APIENTRY DllMain( HANDLE hModule, 
@@ -47,6 +52,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
+			ft_library_lock = CreateMutex(NULL,FALSE,NULL);
 			FT_Init_FreeType( &ft_library );
 			break;
 		case DLL_THREAD_ATTACH:
@@ -73,13 +79,26 @@ VZTTFONT_API vzTTFont::vzTTFont(char* name,int height,int width)
 	// clear cache of glyphs
 	for(int i=0;i<65536;i++) _glyphs_cache[i] = NULL;
 
+	// lock ft library
+	WaitForSingleObject(ft_library_lock,INFINITE);
+
 	// init new face
 	if(FT_New_Face(ft_library,_file_name,0,(FT_Face*)&_font_face))
+	{
+		// unlock ft library
+		ReleaseMutex(ft_library_lock);
+
 		return;
+	};
 
 	// setting font dims
 	if(FT_Set_Pixel_Sizes((FT_Face)_font_face,_width = width,_height = height))
+	{
+		// unlock ft library
+		ReleaseMutex(ft_library_lock);
+
 		return;
+	};
 
 //	if(FT_Set_Char_Size(_font_face,(_width = width)*64,(_height = height)*64,72,72))
 //		return;
@@ -87,17 +106,27 @@ VZTTFONT_API vzTTFont::vzTTFont(char* name,int height,int width)
 	_baseline = (((FT_Face)_font_face)->bbox.yMax*_height) / (((FT_Face)_font_face)->bbox.yMax - ((FT_Face)_font_face)->bbox.yMin);
 
 	_ready = 1;
+
+	// unlock ft library
+	ReleaseMutex(ft_library_lock);
 };
 
 VZTTFONT_API vzTTFont::~vzTTFont()
 {
 	CloseHandle(lock);
 
+	// lock ft library
+	WaitForSingleObject(ft_library_lock,INFINITE);
+
+	// free all glyphs
 	for(int i=0;i<65536;i++)
 		if (_glyphs_cache[i])
 			FT_Done_Glyph((FT_Glyph)_glyphs_cache[i]);
-
 	FT_Done_Face((FT_Face)_font_face);
+
+	// unlock ft library
+	ReleaseMutex(ft_library_lock);
+
 };
 
 
@@ -126,14 +155,20 @@ void* vzTTFont::_get_glyph(unsigned short char_code)
 		// saving glyph index
 		_glyphs_indexes[char_code] = glyph_index;
 
+		// lock ft library
+		WaitForSingleObject(ft_library_lock,INFINITE);
+
 		// loading glyph info face
 		FT_Load_Glyph( (FT_Face)_font_face, glyph_index, FT_LOAD_RENDER | FT_LOAD_NO_HINTING);
 	
 		// storing 
 		FT_Glyph temp_glyph;
 		FT_Get_Glyph( ((FT_Face)_font_face)->glyph, &temp_glyph);
-		FT_BitmapGlyph bmp = (FT_BitmapGlyph)temp_glyph;
+//		FT_BitmapGlyph bmp = (FT_BitmapGlyph)temp_glyph;
 		_glyphs_cache[char_code] = temp_glyph;
+
+		// unlock ft library
+		ReleaseMutex(ft_library_lock);
 	};
 	
 	// unlock
@@ -176,6 +211,12 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 
 	// determinate string length
 	int length = 0; for(;string[length];length++);
+#ifdef _DEBUG
+	if(length < 0)
+	{
+		printf("Problem Here!!!");
+	};
+#endif
 
 	// building array of renderer bitmaps
 	vzTTFontSymbol *symbols = (vzTTFontSymbol*) malloc(length*sizeof(vzTTFontSymbol));
