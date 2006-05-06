@@ -22,6 +22,8 @@
 
 ChangeLog:
 	2006-05-06:
+		*translating coordinates of glyphs to prevent negative value of
+		x axis position.
 		*freetype seems not multithread safe. lock it.
 		*FT library initalization and moved to LIB load section
 
@@ -67,6 +69,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 
 
 #define _MAX(A,B) ((A>B)?A:B)
+#define _MIN(A,B) ((A<B)?A:B)
 
 VZTTFONT_API vzTTFont::vzTTFont(char* name,int height,int width)
 {
@@ -393,7 +396,7 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 	};
 
 	// calculate bounding box
-	long maxX = 0, maxY = 0;
+	long maxX = 0, maxY = 0, minX = 0, minY = 0;
 	for(i_text=0;i_text<length;i_text++)
 	{
 		// set flag about draw
@@ -409,9 +412,21 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 			continue;
 
 		maxY = _MAX(maxY,symbols[i_text].y + symbols[i_text].bmp->bitmap.rows); 
+		minY = _MIN(minY,symbols[i_text].y); 
 		maxX = _MAX(maxX,symbols[i_text].x + symbols[i_text].bmp->left + symbols[i_text].bmp->bitmap.width);
+		minX = _MIN(minX,symbols[i_text].x);
 		symbols[i_text].draw = 1;
 	};
+
+	// translate with X coordinate
+	if(minX < 0)
+	{
+		for(i_text=0;i_text<length;i_text++)
+			symbols[i_text].x -= minX;
+		maxX -= minX;
+		minX = 0;
+	};
+
 
 	// RENDER IMAGE
 	long image_width = maxX + 1;
@@ -460,8 +475,8 @@ try
 				{
 					unsigned long* from = (unsigned long* )temp->surface;
 					unsigned long* to = dst + i;
-					long length = to - from;
-					if ((length >= image_width*image_height) || (length <0))
+					long len = to - from;
+					if ((len >= image_width*image_height) || (len <0))
 					{
 						FILE* f = fopen("vzTTFont.log","wt");
 						fprintf
@@ -474,7 +489,7 @@ try
 							i,
 							from,
 							to,
-							length,
+							len,
 							text,
 							i_text
 						);
