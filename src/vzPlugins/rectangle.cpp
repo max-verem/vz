@@ -35,7 +35,7 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"rectangle",
 	1.0,
-	"test-rc0"
+	"rc4"
 };
 
 // internal structure of plugin
