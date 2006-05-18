@@ -131,7 +131,7 @@ int set_data_param_fromtext(char* name, char* value, void* data ,vzFunction* fun
 
 		// long hex
 		case 'h':
-			*((long*)param) = (long)strtol(value,NULL,0);
+			*((unsigned long*)param) = (unsigned long)strtoul(value,NULL,16);
 			break;
 
 		// four characters
