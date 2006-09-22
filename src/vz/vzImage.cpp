@@ -69,6 +69,7 @@ VZIMAGE_API vzImage* vzImageNew(int width,int height, long surface_size)
 	temp->base_width = width;
 	temp->base_height = height;
 ///printf("\n**vzImageNew: %dx%d @ %.8X\n",temp->width,temp->height,temp->surface);
+	memset(temp->surface, 0, surface_size);
 	return temp;
 };
 

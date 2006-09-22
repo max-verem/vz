@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-09-21:
+		*Fix not initialized '_font_face' destroying
+		*Split code of glyphs layouting
+
 	2006-05-06:
 		*translating coordinates of glyphs to prevent negative value of
 		x axis position.
@@ -71,10 +75,32 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 #define _MAX(A,B) ((A>B)?A:B)
 #define _MIN(A,B) ((A<B)?A:B)
 
+struct vzTTFontSymbol
+{
+	FT_BitmapGlyph bmp;
+	FT_Glyph glyph;
+	unsigned short character;
+	long x,y;
+	long draw;
+} ;
+
+struct vzTTFontSymbols
+{
+	long length;
+	long width, height;
+	struct vzTTFontSymbol *data;
+} ;
+
 VZTTFONT_API vzTTFont::vzTTFont(char* name,int height,int width)
 {
 	_ready = 0;
+	_font_face = NULL;
 	lock = CreateMutex(NULL,FALSE,NULL);
+
+	// init symbols collection
+	_symbols_lock = CreateMutex(NULL,FALSE,NULL);
+	_symbols_count = 0;
+	_symbols = malloc(0);
 
 	//filename
 	sprintf(_file_name,"fonts/%s.ttf",name);
@@ -116,16 +142,36 @@ VZTTFONT_API vzTTFont::vzTTFont(char* name,int height,int width)
 
 VZTTFONT_API vzTTFont::~vzTTFont()
 {
+	int i;
+
 	CloseHandle(lock);
+
+	/* destroy symbols collection*/
+	for(i=0; i<_symbols_count; i++)
+	{
+		vzTTFontSymbols* item = ((vzTTFontSymbols**)_symbols)[i];
+		if(item)
+		{
+			free(item->data);
+			free(item);
+		}
+
+	};
+	free(_symbols);
+	CloseHandle(_symbols_lock);
+
 
 	// lock ft library
 	WaitForSingleObject(ft_library_lock,INFINITE);
 
 	// free all glyphs
-	for(int i=0;i<65536;i++)
+	for(i=0;i<65536;i++)
 		if (_glyphs_cache[i])
 			FT_Done_Glyph((FT_Glyph)_glyphs_cache[i]);
-	FT_Done_Face((FT_Face)_font_face);
+
+
+	if (_font_face)
+		FT_Done_Face((FT_Face)_font_face);
 
 	// unlock ft library
 	ReleaseMutex(ft_library_lock);
@@ -181,24 +227,129 @@ void* vzTTFont::_get_glyph(unsigned short char_code)
 	return _glyphs_cache[char_code];
 };
 
-typedef struct
-{
-	FT_BitmapGlyph bmp;
-	FT_Glyph glyph;
-	unsigned short character;
-	long x,y;
-	long draw;
-} vzTTFontSymbol;
 
 VZTTFONT_API long vzTTFont::ready()
 {
 	return _ready;
 };
 
-VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space, long break_word, long limit_width,long limit_height)
+VZTTFONT_API void vzTTFont::delete_symbols(long id)
 {
+	/* lock struct */
+	WaitForSingleObject((HANDLE)_symbols_lock,INFINITE);
+
+	/* cast array */
+	vzTTFontSymbols **symbols = (vzTTFontSymbols **)_symbols;
+
+	/* check condition */
+	if
+	(
+		(id >= 0)
+		&&
+		(id < _symbols_count)
+		&&
+		(symbols[id] != NULL)
+	)
+	{
+		free(symbols[id]->data);
+		free(symbols[id]);
+		symbols[id] = NULL;
+	};
+
+	ReleaseMutex((HANDLE)_symbols_lock);
+};
+
+VZTTFONT_API long vzTTFont::get_symbol_width(long id)
+{
+	/* default value for param */
+	long param = 0;
+
+	/* lock struct */
+	WaitForSingleObject((HANDLE)_symbols_lock,INFINITE);
+
+	/* cast array */
+	vzTTFontSymbols **symbols = (vzTTFontSymbols **)_symbols;
+
+	/* check condition */
+	if
+	(
+		(id >= 0)
+		&&
+		(id < _symbols_count)
+		&&
+		(symbols[id] != NULL)
+	)
+		param = symbols[id]->width;
+
+	ReleaseMutex((HANDLE)_symbols_lock);
+
+	return param;
+};
+
+VZTTFONT_API long vzTTFont::get_symbol_height(long id)
+{
+	/* default value for param */
+	long param = 0;
+
+	/* lock struct */
+	WaitForSingleObject((HANDLE)_symbols_lock,INFINITE);
+
+	/* cast array */
+	vzTTFontSymbols **symbols = (vzTTFontSymbols **)_symbols;
+
+	/* check condition */
+	if
+	(
+		(id >= 0)
+		&&
+		(id < _symbols_count)
+		&&
+		(symbols[id] != NULL)
+	)
+		param = symbols[id]->height;
+
+	ReleaseMutex((HANDLE)_symbols_lock);
+
+	return param;
+}
+
+
+
+VZTTFONT_API long vzTTFont::insert_symbols(void *new_sym)
+{
+	int i = 0;
+
+	/* lock struct */
+	WaitForSingleObject((HANDLE)_symbols_lock,INFINITE);
+
+	/* cast array */
+	vzTTFontSymbols **symbols = (vzTTFontSymbols **)_symbols;
+
+	/* cast input */
+	vzTTFontSymbols *new_symbols = (vzTTFontSymbols*)new_sym;
+
+	/* search for empty slots */
+	for(i=0; (i<_symbols_count) && (symbols[i] != NULL); i++);
+	if(i == _symbols_count)
+	{
+		/* no empty slots found */
+		_symbols_count++;
+		_symbols = (symbols = (vzTTFontSymbols**) realloc(_symbols, sizeof(struct vzTTFontSymbols)*_symbols_count));
+	};
+
+	/* insert pointer into collection */
+	symbols[i] = new_symbols;
+
+	ReleaseMutex((HANDLE)_symbols_lock);
+
+	return i;
+};
+
+VZTTFONT_API long vzTTFont::compose(char* string_utf8, float line_space, long break_word, long limit_width,long limit_height)
+{
+	/* check if font inited */
 	if(!(_ready))
-		return NULL;
+		return -1;
 
 	// line space
 	long __height = (long) (line_space*_height);
@@ -210,54 +361,50 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 	int _baseline = _height;
 
 	// convert to unicode string
-	unsigned short int* string = utf8uni((unsigned char*)text);
+	unsigned short int* string_uni = utf8uni((unsigned char*)string_utf8);
 
 	// determinate string length
-	int length = 0; for(;string[length];length++);
-#ifdef _DEBUG
-	if(length < 0)
-	{
-		printf("Problem Here!!!");
-	};
-#endif
+	int length = 0; for(;string_uni[length];length++);
 
 	// building array of renderer bitmaps
-	vzTTFontSymbol *symbols = (vzTTFontSymbol*) malloc(length*sizeof(vzTTFontSymbol));
+	vzTTFontSymbols *symbols = (vzTTFontSymbols *)malloc(sizeof(struct vzTTFontSymbols));
+	symbols->data = (vzTTFontSymbol*) malloc(length*sizeof(struct vzTTFontSymbol));
+	symbols->length = length;
 
+	/* start coords */
 	long posX = 0, posY = 0;
 
 	// filling
 	for(int i_text=0;i_text<length;i_text++)
 	{
-		symbols[i_text].glyph		=	(FT_Glyph)_get_glyph(string[i_text]);
-		symbols[i_text].bmp			=	(FT_BitmapGlyph)symbols[i_text].glyph;
-		symbols[i_text].character	=	string[i_text];
-
-		symbols[i_text].x = posX;
-		symbols[i_text].y = posY;
+		symbols->data[i_text].glyph		=	(FT_Glyph)_get_glyph(string_uni[i_text]);
+		symbols->data[i_text].bmp		=	(FT_BitmapGlyph)symbols->data[i_text].glyph;
+		symbols->data[i_text].character	=	string_uni[i_text];
+		symbols->data[i_text].x			= posX;
+		symbols->data[i_text].y			= posY;
 
 //		symbols[i_text].draw = 0;
 
 		// control symbols
-		if (string[i_text] == 0x0A)
+		if (string_uni[i_text] == 0x0A)
 		{
 			posX = 0;
 			continue;
 		};
 			
-		if(string[i_text] == 0x0D)
+		if(string_uni[i_text] == 0x0D)
 		{
 			posY += __height;
 			continue;
 		};
 
 		// check if glyph is present
-		if(!(symbols[i_text].glyph))
+		if(!(symbols->data[i_text].glyph))
 #ifdef _DEBUG
 		{
 			// try to log (may by utf convertion fails?
 			FILE* f = fopen("vzTTFont.log","at+");
-			fprintf(f,"Error symbol (%X) found in string \"%s\"\n",string[i_text],text);
+			fprintf(f,"Error symbol (%X) found in string \"%s\"\n",string_uni[i_text], string_utf8);
 			fclose(f);
 
 			// if glyph not correctly defined - return;
@@ -278,22 +425,22 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 //		};
 
 		// fix position of symbol
-		symbols[i_text].x += symbols[i_text].bmp->left;
-		symbols[i_text].y += _baseline - symbols[i_text].bmp->top;
+		symbols->data[i_text].x += symbols->data[i_text].bmp->left;
+		symbols->data[i_text].y += _baseline - symbols->data[i_text].bmp->top;
 
 		// increment position of pointer
-		if (string[i_text] == 0x20)
+		if (string_uni[i_text] == 0x20)
 		{
 			// space
 			posX += _height/4;	// space is half height
 		}
 		else
 		{
-			posX += symbols[i_text].bmp->left + symbols[i_text].bmp->bitmap.width;
+			posX += symbols->data[i_text].bmp->left + symbols->data[i_text].bmp->bitmap.width;
 		};
 	};
 
-	free(string);
+	free(string_uni);
 
 	// WRAP IT
 	// lets wrap it!!!!!!!!!!
@@ -304,24 +451,37 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 		for(i_text=0;i_text<length;i_text++)
 		{
 			// check for specials newlines symbols
-			if ((symbols[i_text].character == 0x0A) || (symbols[i_text].character == 0x0D))
+			if 
+			(
+				(symbols->data[i_text].character == 0x0A)
+				||
+				(symbols->data[i_text].character == 0x0D)
+			)
 			{
 				i_line_begin = i_text + 1;
 				continue;
 			};
 
 			// skip whitespace
-			if (symbols[i_text].character == 0x20)
+			if (symbols->data[i_text].character == 0x20)
 				continue;
 
 			// check if glyph is present
-			if(!(symbols[i_text].glyph))
+			if(!(symbols->data[i_text].glyph))
 				// if glyph not correctly defined - skip;
 				continue;
 
-
 			long offset;
-			if (((offset = symbols[i_text].x) + symbols[i_text].bmp->bitmap.width) >= limit_width)
+			if 
+			(
+				(
+					(offset = symbols->data[i_text].x)
+					+
+					symbols->data[i_text].bmp->bitmap.width
+				)
+				>= 
+				limit_width
+			)
 			{
 				// symbol that comes out of limit found
 				
@@ -341,14 +501,14 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 						// vec = (-offset,+__height)
 						for(int j=i_text;j<length;j++)
 						{
-							long x_prev = symbols[j].x;
+							long x_prev = symbols->data[j].x;
 
-							symbols[j].x -= offset;
-							symbols[j].y += __height;
+							symbols->data[j].x -= offset;
+							symbols->data[j].y += __height;
 
-							if (symbols[j].x < 0)
+							if (symbols->data[j].x < 0)
 							{
-								symbols[j].x = x_prev;
+								symbols->data[j].x = x_prev;
 								offset = 0;
 							};
 						};
@@ -360,28 +520,44 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 				{
 					// look back to line begin (position is i_line_begin)
 					// and find first white space
-					for(int j=i_text - 1; (j > i_line_begin) && (symbols[j].character != 0x20) && (symbols[j].character != 0x0D) && (symbols[j].character != 0x0A); j--);
+					for
+					(
+						int j=i_text - 1; 
+						(j > i_line_begin) 
+						&& 
+						(symbols->data[j].character != 0x20)
+						&&
+						(symbols->data[j].character != 0x0D)
+						&&
+						(symbols->data[j].character != 0x0A); 
+						j--
+					);
 
 					// check symbol code found
-					if( (symbols[j].character == 0x20) || (symbols[j].character == 0x0D) || (symbols[j].character == 0x0A) )
+					if
+					(
+						(symbols->data[j].character == 0x20)
+						||
+						(symbols->data[j].character == 0x0D)
+						||
+						(symbols->data[j].character == 0x0A) 
+					)
 					{
 						// change position from next character to end
 						for(int k = j + 1; k < length; k++)
 						{
 							// calculate offset
 							if(k == j + 1)
+								offset = symbols->data[k].x;
+
+							long x_prev = symbols->data[k].x;
+
+							symbols->data[k].x -= offset;
+							symbols->data[k].y += __height;
+
+							if (symbols->data[k].x < 0)
 							{
-								offset = symbols[k].x;
-							};
-
-							long x_prev = symbols[k].x;
-
-							symbols[k].x -= offset;
-							symbols[k].y += __height;
-
-							if (symbols[k].x < 0)
-							{
-								symbols[k].x = x_prev;
+								symbols->data[k].x = x_prev;
 								offset = 0;
 							};
 						};
@@ -392,7 +568,6 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 			};
 
 		};
-
 	};
 
 	// calculate bounding box
@@ -400,47 +575,87 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 	for(i_text=0;i_text<length;i_text++)
 	{
 		// set flag about draw
-		symbols[i_text].draw = 0;
+		symbols->data[i_text].draw = 0;
 
 		// check if glyph is present
-		if(!(symbols[i_text].glyph))
+		if(!(symbols->data[i_text].glyph))
 			// if glyph not correctly defined - skip
 			continue;
 
 		// vertical limit check
-		if ( (limit_height <= symbols[i_text].y + symbols[i_text].bmp->bitmap.rows) && (limit_height != (-1)) )
+		if
+		(
+			(limit_height <= symbols->data[i_text].y + symbols->data[i_text].bmp->bitmap.rows)
+			&& 
+			(limit_height != (-1)) 
+		)
 			continue;
 
-		maxY = _MAX(maxY,symbols[i_text].y + symbols[i_text].bmp->bitmap.rows); 
-		minY = _MIN(minY,symbols[i_text].y); 
-		maxX = _MAX(maxX,symbols[i_text].x + symbols[i_text].bmp->left + symbols[i_text].bmp->bitmap.width);
-		minX = _MIN(minX,symbols[i_text].x);
-		symbols[i_text].draw = 1;
+		// calc new min/max
+		maxY = _MAX(maxY,symbols->data[i_text].y + symbols->data[i_text].bmp->bitmap.rows); 
+		minY = _MIN(minY,symbols->data[i_text].y); 
+		maxX = _MAX(maxX,symbols->data[i_text].x + symbols->data[i_text].bmp->left + symbols->data[i_text].bmp->bitmap.width);
+		minX = _MIN(minX,symbols->data[i_text].x);
+		symbols->data[i_text].draw = 1;
 	};
 
 	// translate with X coordinate
 	if(minX < 0)
 	{
 		for(i_text=0;i_text<length;i_text++)
-			symbols[i_text].x -= minX;
+			symbols->data[i_text].x -= minX;
 		maxX -= minX;
 		minX = 0;
 	};
 
+	symbols->width = maxX + 1;
+	symbols->height = maxY + 1;
 
-	// RENDER IMAGE
-	long image_width = maxX + 1;
-	long image_height = maxY + 1;
-	// create a surface
-	vzImage* temp = vzImageNew			
+	return insert_symbols(symbols);
+};
+
+inline void blit_glyph(unsigned long* dst, long dst_width, unsigned char* src, long src_height, long src_width, unsigned long colour
+#ifdef _DEBUG
+, unsigned long* dst_limit
+#endif
+)
+{
+	for
 	(
-		image_width,
-		image_height,
-		4*image_width*image_height
-	);
+		int j=0,c=0;
+		j<src_height;
+		j++,dst+=dst_width,src+=src_width
+	)
+		for
+		(
+			int i=0;
+			i<src_width;
+			i++,c++
+		)
+		{
+#ifdef _DEBUG
+			if (dst > dst_limit)
+			{
+				fprintf(stderr, "Assert in 'blit_glyph' - dst > dst_limit\n");
+			}
+			else
+			{
+#endif
 
-	// clear surface
-	memset(temp->surface,0,4*image_width*image_height);
+			*(dst + i) = (colour & 0x00FFFFFF) | ((unsigned long)src[i])<<24;
+#ifdef _DEBUG
+			}
+#endif
+		};
+}
+
+
+VZTTFONT_API void vzTTFont::render_to(vzImage* image, long x , long y, long text_id, long colour)
+{
+	/* get symbol */
+	vzTTFontSymbols *symbols = ((vzTTFontSymbols **)_symbols)[text_id];
+	
+	if (symbols == NULL) return;
 
 #ifdef _DEBUG
 // critical section... some times seem something wrong happens
@@ -449,57 +664,54 @@ try
 #endif
 
 	// draw into surface
-	for(i_text=0;i_text<length;i_text++)
+	for(int i_text=0;i_text<symbols->length;i_text++)
 	{
 		// check if glyph is present
-		if(!(symbols[i_text].draw))
+		if(!(symbols->data[i_text].draw))
 			// if glyph not correctly defined - return;
 			continue;
 
-		// dest surface begins
-		unsigned long* dst = (unsigned long* )temp->surface;
-		// incement on x position
-		dst += symbols[i_text].x;
-		// increment on image width multiplyed on Y position
-		dst += 	image_width*symbols[i_text].y;
+		/* check if glyph is inside of surface */
+		if
+		(
+			/* symbols is right of surface*/
+			((symbols->data[i_text].x + x) < 0)
+			||
+			/* symbols is below of surface*/
+			((symbols->data[i_text].y + y) < 0)
+			||
+			/* symbols is right of surface*/
+			((symbols->data[i_text].x + x + symbols->data[i_text].bmp->bitmap.width) > image->width)
+			||
+			/* symbols is below of surface*/
+			((symbols->data[i_text].y + y + symbols->data[i_text].bmp->bitmap.rows) > image->height)
+		)
+			continue;
 
-
-		unsigned char* src = symbols[i_text].bmp->bitmap.buffer;
-
-
-		for(int j=0,c=0;j<symbols[i_text].bmp->bitmap.rows;j++,dst+=image_width)
-			for(int i=0;i<symbols[i_text].bmp->bitmap.width;i++,c++)
-			{
+		/* blit glyph */
+		blit_glyph
+		(
+			/* base dst pointer */
+			(unsigned long* )image->surface 
+				/* incement on x position */
+				+ symbols->data[i_text].x + x					
+				/* incement on y position */
+				+ (symbols->data[i_text].y + y)*image->width,
+			/* source width */
+			symbols->width,
+			/* glyph surface ptr */
+			symbols->data[i_text].bmp->bitmap.buffer,
+			/* glyph rows */
+			symbols->data[i_text].bmp->bitmap.rows,
+			/* glyph width */
+			symbols->data[i_text].bmp->bitmap.width,
+			/* colour */
+			colour
 #ifdef _DEBUG
-				// some checks
-				{
-					unsigned long* from = (unsigned long* )temp->surface;
-					unsigned long* to = dst + i;
-					long len = to - from;
-					if ((len >= image_width*image_height) || (len <0))
-					{
-						FILE* f = fopen("vzTTFont.log","wt");
-						fprintf
-						(
-							f,
-							__FILE__ "!Error Here! (image_width='%ld', image_height='%ld', j='%d', i='%d', from='%ld', to='%ld', length='%ld',  text='%s', i_text='%d' ", 
-							image_width,
-							image_height,
-							j,
-							i,
-							from,
-							to,
-							len,
-							text,
-							i_text
-						);
-						fclose(f);
-						exit(-1);
-					};
-				};
+			, (unsigned long* )image->surface + image->width*image->height
 #endif
-				*(dst + i) = (colour & 0x00FFFFFF) | ((unsigned long)src[c])<<24;
-			};
+		);
+
 	};
 
 
@@ -508,16 +720,39 @@ try
 catch(char *error_string)
 {
 	// try to log (may by utf convertion fails?
-	FILE* f = fopen("vzTTFont.log","wt");
-	fprintf(f,"Error '%s' happen with string \"%s\"\n",error_string, text);
-	fclose(f);
+	fprintf(stderr, "Error happens: '%s' \n", error_string);
 };
 #endif
 
 //	char filenam
 //	vzImageSaveTGA("d:\\temp\\test_vzTTFont_0.tga",temp,NULL,0);
+}
 
-	free(symbols);
+VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space, long break_word, long limit_width,long limit_height)
+{
+	if(!(_ready))
+		return NULL;
+
+	/* compose text layout */
+	long text_id = compose(text, line_space, break_word, limit_width, limit_height);
+	if(text_id == (-1))
+		return NULL;
+
+	/* get symbol */
+	vzTTFontSymbols *symbols = ((vzTTFontSymbols **)_symbols)[text_id];
+
+	// create a surface
+	vzImage* temp = vzImageNew			
+	(
+		symbols->width,
+		symbols->height,
+		4*symbols->width*symbols->height
+	);
+
+	// RENDER IMAGE
+	render_to(temp, 0, 0, text_id, colour);
+
+	delete_symbols(text_id);
 
 	return temp;
 };

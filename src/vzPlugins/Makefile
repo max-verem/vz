@@ -18,7 +18,7 @@ CFG=Debug
 !ERROR An invalid configuration is specified.
 !ENDIF 
 
-GLUT_DIR="D:/SDK/glut/"
+GLUT_DIR="C:/SDK/glut/"
 
 
 !IF  "$(CFG)" == "Debug"
