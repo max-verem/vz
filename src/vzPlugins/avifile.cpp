@@ -65,7 +65,7 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"avifile",
 	1.0,
-	"rc4"
+	"rc6"
 };
 
 #define CMD_PLAY		FOURCC_TO_LONG('_','P','L','Y')

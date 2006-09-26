@@ -35,7 +35,7 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"alpha",
 	1.0,
-	"rc4"
+	"rc6"
 };
 
 // internal structure of plugin

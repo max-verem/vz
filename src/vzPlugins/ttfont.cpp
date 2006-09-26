@@ -87,7 +87,7 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"ttfont",
 	1.0,
-	"rc5"
+	"rc6"
 };
 
 // internal structure of plugin
