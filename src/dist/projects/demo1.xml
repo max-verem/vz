@@ -1,0 +1,163 @@
+﻿<?xml version="1.0"?>
+
+<!--
+	vz - Realtime graphics renderer.
+	demo #1
+
+[root@chogori ~]# telnet support 8001
+Trying 10.1.5.8...
+Connected to support.internal.m1stereo.tv (10.1.5.8).
+Escape character is '^]'.
+vz::tcpserver
+vz in$> renderman.load(./projects/demo1.xml)
+vz out$> OK!Load
+vz in$> scene.tree.function.text_2.s_text=Senior Deputy Officer
+vz out$> OK
+vz in$> scene.tree.function.text_1.s_text=Vasilij Pupkin
+vz out$> OK
+vz in$> scene.tree.motion.director.main.start()
+vz out$> OK
+vz in$> scene.tree.motion.director.main.cont()
+vz out$> OK
+vz in$> quit
+vz out$> Bye!
+Connection closed by foreign host.
+[root@chogori ~]#
+
+
+-->
+
+<scene>
+
+<!-- objects tree -->
+<tree visible="1">
+
+	<!-- text string -->
+	<container visible="1">
+		<function name="alpha" id="text_alpha">
+			<param name="f_value" value="1.0"/>
+		</function>
+
+		<container visible="1">
+			<function name="translate">
+				<param name="f_x" value="100"/>
+				<param name="f_y" value="105"/>
+			</function>
+			<function name="ttfont" id="text_1">
+				<param name="s_text" value="TEST MESSAGE #1"/>
+				<param name="s_font" value="m1-hb"/>
+				<param name="l_height" value="24"/>
+				<param name="h_colour" value="0xFFDCDCDC"/>
+				<param name="L_center" value="_LM_"/>
+			</function>
+		</container>
+
+		<container visible="1">
+			<function name="translate">
+				<param name="f_x" value="100"/>
+				<param name="f_y" value="77"/>
+			</function>
+			<function name="ttfont" id="text_2">
+				<param name="s_text" value="TEST MESSAGE #2"/>
+				<param name="s_font" value="m1-hb"/>
+				<param name="l_height" value="15"/>
+				<param name="h_colour" value="0xFFDCDCDC"/>
+				<param name="L_center" value="_LM_"/>
+			</function>
+		</container>
+
+	</container>
+
+	<!-- background container #2 - gradient bar -->
+	<container visible="1">
+		<function name="alpha" id="fg_alpha">
+			<param name="f_value" value="1.0"/>
+		</function>
+		<container visible="1">
+			<function name="translate">
+				<param name="f_x" value="600"/>
+				<param name="f_y" value="100"/>
+			</function>
+			<function name="rotate" id="rot_star">
+				<param name="f_angle" value="0.0"/>
+				<param name="f_z" value="1.0"/>
+			</function>
+			<function name="image">
+				<param name="s_filename" value="./projects/demo1/star.tga"/>
+				<param name="L_center" value="_CM_"/>
+			</function>
+		</container>
+
+		<container visible="1">
+			<function name="translate">
+				<param name="f_x" value="68"/>
+				<param name="f_y" value="126"/>
+			</function>
+			<function name="image">
+				<param name="s_filename" value="./projects/demo1/fg.tga"/>
+				<param name="L_center" value="_LT_"/>
+			</function>
+		</container>
+
+	</container>
+
+	<!-- background container #1 - long brown bar-->
+	<container visible="1">
+		<function name="alpha" id="bg_alpha">
+			<param name="f_value" value="0.5"/>
+		</function>
+		<container visible="1">
+			<function name="translate">
+				<param name="f_x" value="0"/>
+				<param name="f_y" value="126"/>
+			</function>
+			<function name="image">
+				<param name="s_filename" value="./projects/demo1/bg.tga"/>
+				<param name="L_center" value="_LT_"/>
+			</function>
+		</container>
+	</container>
+
+
+
+</tree>
+
+<motion>
+	<director id="main" dur="72" loop="0" pos="0" run="0">
+		<control>
+			<key time="36" enable="1" action="1" value="" id="stop_1" /> 
+		</control>
+
+		<param name="tree.function.bg_alpha.f_value">
+			<timeline t1="0" t2="12" y1="0.0" y2="1.0" f="1"  />  <!-- #1 -->
+			<timeline t1="13" t2="60" y1="1.0" y2="1.0" f="1"  /> <!-- #2 --> 
+			<timeline t1="61" t2="71" y1="1.0" y2="0.0" f="1"  /> <!-- #3 -->
+		</param>
+
+		<param name="tree.function.fg_alpha.f_value">
+			<timeline t1="0" t2="12" y1="0.0" y2="0.0" f="1"  /> <!-- #1 -->
+			<timeline t1="13" t2="36" y1="0.0" y2="1.0" f="1"  /> <!-- #2 -->
+			<timeline t1="37" t2="48" y1="1.0" y2="1.0" f="1"  /> <!-- #3 -->
+			<timeline t1="49" t2="60" y1="1.0" y2="0.0" f="1"  /> <!-- #4 -->
+			<timeline t1="61" t2="71" y1="0.0" y2="0.0" f="1"  /> <!-- #5 -->
+		</param>
+
+		<param name="tree.function.text_alpha.f_value">
+			<timeline t1="0" t2="24" y1="0.0" y2="0.0" f="1"  /> <!-- #1 -->
+			<timeline t1="25" t2="36" y1="0.0" y2="1.0" f="1"  /> <!-- #2 -->
+			<timeline t1="37" t2="48" y1="1.0" y2="0.0" f="1"  /> <!-- #3 -->
+			<timeline t1="49" t2="71" y1="0.0" y2="0.0" f="1"  /> <!-- #4 -->
+		</param>
+
+	</director>
+
+	<director id="star_rotation" dur="125" loop="1" pos="0" run="1">
+		<param name="tree.function.rot_star.f_angle">
+			<timeline t1="0" t2="124" y1="0" y2="360.0" f="1"/>
+		</param>
+	</director>	
+
+</motion>
+
+
+</scene>

@@ -1,0 +1,187 @@
+﻿<?xml version="1.0"?>
+
+<!--
+	vz - Realtime graphics renderer.
+	demo #2
+
+See vzdemo2.sh.bz2 for script
+
+
+-->
+
+<scene>
+
+<!-- objects tree -->
+<tree visible="1">
+
+	<!-- main metalic bar-->
+	<container visible="1">
+
+		<function name="translate">
+			<param name="f_x" value="30"/>
+			<param name="f_y" value="200"/>
+		</function>
+
+
+		<container visible="1">
+			<function name="alpha" id="desc_alpha">
+				<param name="f_value" value="0.5"/>
+			</function>
+
+			<function name="translate">
+				<param name="f_x" value="190.0"/>
+				<param name="f_y" value="-30.0"/>
+<!--				<param name="f_z" value="-2.0"/> -->
+			</function>
+			<function name="ttfont" id="desc">
+				<param name="s_text" value="Long long message to the customers!!! Pay money stupids!!"/>
+				<param name="f_limit_width" value="450.0"/>
+				<param name="s_font" value="m1-h"/>
+				<param name="l_height" value="20"/>
+				<param name="h_colour" value=" 0xFFFFFF"/>
+				<param name="h_colour" value=" 0x312E30"/>
+				<param name="L_center" value="_LT_"/>
+			</function>
+		</container>
+
+
+		<!-- top short text -->
+		<container visible="1">
+			<function name="scale">
+				<param name="f_scale_y" value="2.0"/>
+			</function>
+			<function name="translate">
+				<param name="f_x" value="85.0"/>
+				<param name="f_y" value="-19.0"/>
+<!--				<param name="f_z" value="0.0"/> -->
+<!--				<param name="f_y" value="-40.0"/> -->
+			</function>
+			<function name="ttfont" id="text_top">
+				<param name="s_text" value="I-O-O-O-I"/>
+				<param name="s_font" value="m1-h"/>
+				<param name="l_height" value="20"/>
+				<param name="h_colour" value=" 0x312E30"/>
+				<param name="L_center" value="_CM_"/>
+			</function>
+		</container>
+
+
+		<container visible="1">
+			<function name="image">
+				<param name="s_filename" value="./projects/demo2/fg.tga"/>
+				<param name="L_center" value="_LT_"/>
+			</function>
+		</container>
+
+
+
+	</container>
+
+
+
+
+	<!-- small metalic bars with text-->
+	<container visible="1">
+		<function name="translate">
+			<param name="f_x" value="56.0"/>
+			<param name="f_y" value="200.0"/>
+		</function>
+
+		<!-- bar #1 (bottom) -->
+		<container visible="1">
+			<function name="translate" id="bar_1_y">
+				<param name="f_y" value="-100.0"/>
+			</function>
+
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="25.0"/>
+					<param name="f_y" value="-18.0"/>
+				</function>
+				<function name="ttfont" id="text_name_1">
+					<param name="s_text" value="NAME #1"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="14"/>
+					<param name="h_colour" value=" 0x312E30"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+			</container>
+
+			<container visible="1">
+				<function name="image">
+					<param name="s_filename" value="./projects/demo2/bar1.tga"/>
+					<param name="L_center" value="_LT_"/>
+				</function>
+			</container>
+
+
+		</container>
+
+
+		<!-- bar #2 (top) -->
+		<container visible="1">
+			<function name="translate" id="bar_2_y">
+				<param name="f_y" value="-73.0"/>
+			</function>
+
+			<container visible="1">
+
+				<function name="image">
+					<param name="s_filename" value="./projects/demo2/bar1.tga"/>
+					<param name="L_center" value="_LT_"/>
+				</function>
+
+			</container>
+
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="25.0"/>
+					<param name="f_y" value="-18.0"/>
+				</function>
+				<function name="ttfont" id="text_name_2">
+					<param name="s_text" value="NAME #2"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="14"/>
+					<param name="h_colour" value=" 0x312E30"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+			</container>
+
+		</container>
+
+
+	</container>
+
+
+
+</tree>
+
+<motion>
+	<director id="d_names" dur="50" loop="0" pos="0" run="0">
+		<control>
+			<key time="24" enable="1" action="1" value="" id="c2"/>
+		</control>
+		<param name="tree.function.bar_1_y.f_y">
+			<timeline t1="0" t2="24" y1="0.0" y2="-100.0" f="1"/>
+			<timeline t1="25" t2="49" y1="-100.0" y2="0.0" f="1"/>
+		</param>
+		<param name="tree.function.bar_2_y.f_y">
+			<timeline t1="0" t2="24" y1="0.0" y2="-73.0" f="1"/>
+			<timeline t1="25" t2="49" y1="-73.0" y2="0.0" f="1"/>
+		</param>
+	</director>
+
+	<director id="d_desc" dur="25" loop="0" pos="0" run="0">
+		<control>
+			<key time="12" enable="1" action="1" value="" id="c1"/>
+		</control>
+		<param name="tree.function.desc_alpha.f_value">
+			<timeline t1="0" t2="12" y1="0.0" y2="1.0" f="1"/>
+			<timeline t1="13" t2="24" y1="1.0" y2="0.0" f="1"/>
+		</param>
+	</director>
+
+</motion>
+
+
+</scene>
