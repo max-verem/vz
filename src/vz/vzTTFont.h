@@ -81,10 +81,10 @@ public:
 
 	vzTTFont(char* name,int height,int width = 0);
 	long ready();
-	vzImage* render(char* text, long colour, float line_space = 1.0,  long break_word = 0, long limit_width=-1,long limit_height = -1);
+	vzImage* render(char* text, long colour, float line_space = 1.0,  long break_word = 0, long limit_width = -1,long limit_height = -1);
 
 	void delete_symbols(long id);
-	long compose(char* string_utf8, float line_space, long break_word, long limit_width,long limit_height);
+	long compose(char* string_utf8, float line_space = 1.0, long break_word = 0, long limit_width = -1, long limit_height = -1);
 	void render_to(vzImage* image, long x , long y, long text_id, long colour);
 	long get_symbol_width(long id);
 	long get_symbol_height(long id);

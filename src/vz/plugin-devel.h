@@ -45,11 +45,14 @@ ChangeLog:
 #define PLUGIN_PARAMETER_OFFSET(struct_begin,member) ((unsigned char*)(&struct_begin.member)-(unsigned char*)(&struct_begin))
 
 // some debug output
+#define DEBUG_LINE_ARG "%s:%d: "
+#define DEBUG_LINE_PARAM __FILE__,__LINE__
 #ifdef _DEBUG
 #include <stdio.h>
 #define DEBUG_PROC_ENTRY(method,warning) printf(__FILE__ "::" method " '" warning "'\n");
 #else
 #define DEBUG_PROC_ENTRY(method,warning)
+#define DEBUG_LINE_ENTRY()
 #endif
 
 #ifdef _DEBUG

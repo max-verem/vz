@@ -8,7 +8,7 @@ CFG=Debug
 !MESSAGE You can specify a configuration when running NMAKE
 !MESSAGE by defining the macro CFG on the command line. For example:
 !MESSAGE 
-!MESSAGE NMAKE CFG="Debug"
+!MESSAGE NMAKE CFG="Debug" or NMAKE CFG="Release"
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
@@ -50,7 +50,7 @@ LINKER		= /incremental:no $(LINKER_FLAGS)
 #LINKER		= /NODEFAULTLIB:LIBCMT.LIB /incremental:no $(LINKER_FLAGS)
 
 # created modules
-TARGET = "$(OBJS_DIR)" "$(INSTALL_DIR)" avifile.dll mask.dll ttfont.dll image.dll translate.dll rotate.dll alpha.dll rectangle.dll scale.dll
+TARGET = "$(OBJS_DIR)" "$(INSTALL_DIR)" ttfont_hcrawl.dll avifile.dll mask.dll ttfont.dll image.dll translate.dll rotate.dll alpha.dll rectangle.dll scale.dll
 
 all: $(TARGET)
 

@@ -698,7 +698,7 @@ try
 				/* incement on y position */
 				+ (symbols->data[i_text].y + y)*image->width,
 			/* source width */
-			symbols->width,
+			image->width,
 			/* glyph surface ptr */
 			symbols->data[i_text].bmp->bitmap.buffer,
 			/* glyph rows */

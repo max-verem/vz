@@ -61,11 +61,10 @@ VZIMAGE_API void vzImageFree(vzImage* image)
 VZIMAGE_API vzImage* vzImageNew(int width,int height, long surface_size)
 {
 	vzImage* temp = (vzImage*) malloc(sizeof(vzImage));
+	memset(temp, 0, sizeof(vzImage));
 	temp->width = width;
 	temp->height = height;
 	temp->surface = malloc(surface_size);
-	temp->base_y = 0;
-	temp->base_x = 0;
 	temp->base_width = width;
 	temp->base_height = height;
 ///printf("\n**vzImageNew: %dx%d @ %.8X\n",temp->width,temp->height,temp->surface);
@@ -233,23 +232,37 @@ VZIMAGE_API vzImage* vzImageLoadTGA(char* filename, char** error_log)
 
 VZIMAGE_API void vzImageFlipVertical(vzImage* image)
 {
-//ERROR_LOG("vzImageFlipVertical","enter");
-	// check if pixel width is supported
-	if((image->surface_type == GL_BGRA_EXT) || (image->surface_type == GL_RGBA))
-	{
-//		ERROR_LOG("vzImageFlipVertical","flip started");
-		// supported 32bit values of pixel
-		unsigned long *surface = (unsigned long *)image->surface;
-		for(long j=0;j<(image->height >> 1);j++)
-			for(long i=0;i<image->width;i++)
-			{
-				long p = surface[j*image->width + i];
-				surface[j*image->width + i] = surface[(image->height - 1 - j)*image->width + i];
-				surface[(image->height - 1 - j)*image->width + i] = p;
-			};
-	};
+	int i;
 
-	image->base_y = image->height - image->base_y;
+	// check if pixel width is supported or default '0' value
+	if
+	(
+		(image->surface_type == GL_BGRA_EXT) 
+		|| 
+		(image->surface_type == GL_RGBA) 
+		|| 
+		(image->surface_type == 0)
+	)
+	{
+		// supported 32bit values of pixel
+		unsigned long step = 4*image->width;
+		unsigned char *src_surface = (unsigned char *)image->surface;
+		unsigned char *dst = (unsigned char *)malloc(image->width*image->height*4);
+		unsigned char *dst_surface = dst + step*(image->height - 1);
+		
+		/* move */
+		for(i=0 ; i < image->height ; i++, dst_surface -= step, src_surface += step)
+			memcpy(dst_surface, src_surface, step);
+
+		/* free old surface */
+		free(image->surface);
+
+		/* append new */
+		image->surface = dst;
+
+		/* change base */
+		image->base_y = image->height - image->base_y;
+	};
 };
 
 char* get_glerror()

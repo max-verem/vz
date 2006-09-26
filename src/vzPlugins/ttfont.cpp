@@ -39,6 +39,8 @@ ChangeLog:
 #include <process.h>
 #include <stdio.h>
 
+#include "get_font.h"
+
 // set flag to dump images
 #ifdef _DEBUG
 //#define  _DUMP_IMAGES
@@ -48,9 +50,6 @@ ChangeLog:
 HANDLE _dump_counter_lock;
 long _dump_counter = 0;
 #endif
-
-static HANDLE _fonts_list_lock;
-static vzHash<vzTTFont*> vzTTFontList;
 
 BOOL APIENTRY DllMain( HANDLE hModule, 
                        DWORD  ul_reason_for_call, 
@@ -83,72 +82,12 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     return TRUE;
 }
 
-static vzTTFont* get_font(char* name,long height)
-{
-#ifdef _DEBUG
-	printf(__FILE__ "::getfont looking for font '%s' - '%d' ... ", name, height);
-#endif
-
-	// lock list
-	WaitForSingleObject(_fonts_list_lock,INFINITE);
-
-	// build key name is 
-	char key[1024];
-	sprintf(key,"'%s'-'%d'",name,height);
-
-#ifdef _DEBUG
-	printf("key=\"%s\"... ",key);
-#endif
-
-
-	// try to find object
-	vzTTFont* temp;
-	if(temp = vzTTFontList.find(key))
-	{
-		ReleaseMutex(_fonts_list_lock);
-
-#ifdef _DEBUG
-		printf("OK(found)\n");
-#endif
-
-		return temp;
-	};
-	
-	// object not found - create and load
-	temp = new vzTTFont(name,height);
-
-	// check if object is ready - success font load
-	if(!temp->ready())
-	{
-#ifdef _DEBUG
-		printf("FAILED(not loaded)\n");
-#endif
-
-		delete temp;
-		ReleaseMutex(_fonts_list_lock);
-		return NULL;
-	};
-
-	// save object in hash
-	vzTTFontList.push(key,temp);
-
-	ReleaseMutex(_fonts_list_lock);
-
-#ifdef _DEBUG
-		printf("OK(added)\n");
-#endif
-
-	
-	return temp;
-};
-
-
 // declare name and version of plugin
 PLUGIN_EXPORT vzPluginInfo info =
 {
 	"ttfont",
 	1.0,
-	"rc4"
+	"rc5"
 };
 
 // internal structure of plugin
