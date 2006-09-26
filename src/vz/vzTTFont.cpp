@@ -414,16 +414,33 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, float line_space, long br
 #else
 			continue;
 #endif
+/*
+		int p = FT_HAS_KERNING(((FT_Face)_font_face));
 
-//		symbols[i_text].draw = 1;
+		if (i_text)
+		{
+			FT_Vector kerning_delta;
 
-//		if (FT_HAS_KERNING(((FT_Face)_font_face)) && (i_text))
-//		{
-//			FT_Vector kerning_delta;
-//			FT_Get_Kerning((FT_Face)_font_face,string[i_text - 1],string[i_text],FT_KERNING_DEFAULT,&kerning_delta);
-//			posX += kerning_delta.x;
-//		};
+			unsigned int prev = _glyphs_indexes[string_uni[i_text - 1]];
+			unsigned int curr = _glyphs_indexes[string_uni[i_text]];
 
+			if 
+			(
+				0 == FT_Get_Kerning
+				(
+					(FT_Face)_font_face,
+					prev,
+					curr,
+					FT_KERNING_UNSCALED,
+					&kerning_delta
+				)
+			)
+			{
+				posX += kerning_delta.x;
+			};
+
+		};
+*/
 		// fix position of symbol
 		symbols->data[i_text].x += symbols->data[i_text].bmp->left;
 		symbols->data[i_text].y += _baseline - symbols->data[i_text].bmp->top;
@@ -642,7 +659,7 @@ inline void blit_glyph(unsigned long* dst, long dst_width, unsigned char* src, l
 			{
 #endif
 
-			*(dst + i) = (colour & 0x00FFFFFF) | ((unsigned long)src[i])<<24;
+			*(dst + i) |= (colour & 0x00FFFFFF) | ((unsigned long)src[i])<<24;
 #ifdef _DEBUG
 			}
 #endif
