@@ -244,80 +244,6 @@ void vzScene::display(long frame)
 	// load gl/wgl EXTensions
 	load_GL_EXT();
 
-	// some preparation with stencil buffer
-
-	// prepare aux buffers
-	if(_GL_AUX_BUFFERS < 0)
-	{
-		// aux buffers count was never cheched
-
-		// check aux buffers count 
-		glGetIntegerv( GL_AUX_BUFFERS, &_GL_AUX_BUFFERS);
-		printf("vzScene: GL_AUX_BUFFERS = '%d'\n",_GL_AUX_BUFFERS);
-
-		// check if aux buffers present
-		if (_GL_AUX_BUFFERS >0)
-		{
-			// backup read buffer number
-			int v_GL_DRAW_BUFFER;
-			glGetIntegerv( GL_DRAW_BUFFER, &v_GL_DRAW_BUFFER);
-
-			// draw data into aux buffer 0
-
-			// setup draw buffer to AUXes
-			glDrawBuffer(GL_AUX0);
-			glStencilMask(0xFF);
-			// set stencil buffer from memmory
-			glDrawPixels
-			(
-				_tv->TV_FRAME_WIDTH,
-				_tv->TV_FRAME_HEIGHT,
-				GL_STENCIL_INDEX,
-				GL_UNSIGNED_BYTE,
-				_stencil
-			);
-			
-			// restore read buffer
-			glDrawBuffer(v_GL_DRAW_BUFFER);
-		};
-	};
-
-	if(_GL_AUX_BUFFERS > 0)
-	{
-		// copy stencil buffer from frame in AUX buffer
-		
-		// backup read buffer number
-		int v_GL_READ_BUFFER;
-		glGetIntegerv( GL_READ_BUFFER, &v_GL_READ_BUFFER);
-
-		// setup new read buffer
-		glReadBuffer(GL_AUX0);
-
-		// copy pixels
-		glRasterPos2i(0,0);
-		glStencilMask(0xFF);
-		glColorMask(0,0,0,0);
-		glDisable(GL_STENCIL_TEST);
-		glCopyPixels(0,0,_tv->TV_FRAME_WIDTH,_tv->TV_FRAME_HEIGHT,GL_STENCIL);
-		glEnable(GL_STENCIL_TEST);
-		glColorMask(1,1,1,1);
-			
-		// restore read buffer
-		glReadBuffer(v_GL_READ_BUFFER);
-	}
-	else
-	{
-		// set stencil buffer from memmory
-		glDrawPixels
-		(
-			_tv->TV_FRAME_WIDTH,
-			_tv->TV_FRAME_HEIGHT,
-			GL_STENCIL_INDEX,
-			GL_UNSIGNED_BYTE,
-			_stencil
-		);
-	};
-
 	// draw fields/frame
 	for(int field = 0; field<=_fields;field++)
 	{
@@ -332,6 +258,16 @@ void vzScene::display(long frame)
 			rised bit 1. Two bits of stencil buffer is used to perform interlaced 
 			drawing. For "masking" function its possible to use 6 other bits.
 		*/
+		glStencilMask(0xFF);
+		// set stencil buffer from memmory
+		glDrawPixels
+		(
+			_tv->TV_FRAME_WIDTH,
+			_tv->TV_FRAME_HEIGHT,
+			GL_STENCIL_INDEX,
+			GL_UNSIGNED_BYTE,
+			_stencil
+		);
 		glStencilFunc(GL_EQUAL, 1<<field, 1<<field);
 		glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
 
