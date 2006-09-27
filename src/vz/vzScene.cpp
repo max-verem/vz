@@ -244,6 +244,23 @@ void vzScene::display(long frame)
 	// load gl/wgl EXTensions
 	load_GL_EXT();
 
+	// setup base stencil buffer
+	if(_stencil)
+	{
+		glStencilMask(0xFF);
+		// set stencil buffer from memmory
+		glDrawPixels
+		(
+			_tv->TV_FRAME_WIDTH,
+			_tv->TV_FRAME_HEIGHT,
+			GL_STENCIL_INDEX,
+			GL_UNSIGNED_BYTE,
+			_stencil
+		);
+		free(_stencil);
+		_stencil = NULL;
+	};
+
 	// draw fields/frame
 	for(int field = 0; field<=_fields;field++)
 	{
@@ -258,16 +275,10 @@ void vzScene::display(long frame)
 			rised bit 1. Two bits of stencil buffer is used to perform interlaced 
 			drawing. For "masking" function its possible to use 6 other bits.
 		*/
-		glStencilMask(0xFF);
+		glStencilMask(0xFF - 3);
+		glClearStencil( 0x0 );
+		glClear(GL_STENCIL_BUFFER_BIT);
 		// set stencil buffer from memmory
-		glDrawPixels
-		(
-			_tv->TV_FRAME_WIDTH,
-			_tv->TV_FRAME_HEIGHT,
-			GL_STENCIL_INDEX,
-			GL_UNSIGNED_BYTE,
-			_stencil
-		);
 		glStencilFunc(GL_EQUAL, 1<<field, 1<<field);
 		glStencilOp(GL_REPLACE,GL_KEEP,GL_KEEP);
 
