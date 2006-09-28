@@ -82,6 +82,7 @@ char* vzFunction::load(void* config, char* filename)
 	proc_postrender		= (plugin_proc_postrender)	GetProcAddress(_lib,"postrender");
 	proc_prerender		= (plugin_proc_prerender)	GetProcAddress(_lib,"prerender");
 	proc_notify			= (plugin_proc_notify)		GetProcAddress(_lib,"notify");
+	proc_datasource		= (plugin_proc_datasource)	GetProcAddress(_lib,"datasource");
 	proc_configure		= (plugin_proc_configure)	GetProcAddress(_lib,"configure");
 
 	// configure module
@@ -198,9 +199,17 @@ void vzFunction::notify(void* data)
 	if (proc_notify) proc_notify(data);
 };
 
+long vzFunction::datasource(void* data,vzRenderSession* render_session, long index, char** name, char** value)
+{ 
+	if (proc_datasource) 
+		return proc_datasource(data,render_session, index, name, value); 
+		else return 0;
+};
+
 vzPluginInfo* vzFunction::info(void)
 {
 	return _info;
 };
+
 
 #endif

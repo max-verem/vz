@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-09-28:
+		*datasource interface added.
+
     2005-06-08: Code cleanup
 
 */
@@ -74,7 +77,8 @@ public:
 	inline int set_data_param_fromtext(char* param_name, char* param_value)
 	{ return (_function)?::set_data_param_fromtext(param_name,param_value, _data , _function, this):0; };
 		
-	
+	inline long datasource(vzRenderSession* render_session, long index, char** name, char** value)
+	{ if(_function) return _function->datasource(_data,render_session, index, name, value) ; else return 0;};
 };
 
 #endif

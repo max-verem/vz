@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-09-27:
+		*New stencil control.
+
 	2006-05-01: 
 		*_stencil always allocates - one alloc for all tree.
 
@@ -100,15 +103,15 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 	_lock_for_command = CreateMutex(NULL,FALSE,NULL);
 	_GL_AUX_BUFFERS = -1;
 
-	 // parameters from config
-	 _enable_glBlendFuncSeparateEXT = (_config->param("vzMain","enable_glBlendFuncSeparateEXT"))?1:0;
-	 _blend_dst_alpha = (_config->param("vzMain","blend_dst_alpha"))?1:0;
-	 _fields = (_config->param("vzMain","fields"))?1:0;
+	// parameters from config
+	_enable_glBlendFuncSeparateEXT = (_config->param("vzMain","enable_glBlendFuncSeparateEXT"))?1:0;
+	_blend_dst_alpha = (_config->param("vzMain","blend_dst_alpha"))?1:0;
+	_fields = (_config->param("vzMain","fields"))?1:0;
 	_stencil = malloc(_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
 
-	 // build 8-bit stencil buffers
-	 if(_fields)
-	 {
+	// build 8-bit stencil buffers
+	if(_fields)
+	{
 		// prepare interlaced 8-bit stencil buffer
 		for(int i=0,f=1 - _tv->TV_FRAME_1ST;i<_tv->TV_FRAME_HEIGHT;i++,f=1-f)
 			memset
@@ -117,12 +120,12 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 				1<<f,
 				_tv->TV_FRAME_WIDTH
 			);
-	 }	 
-	 else
-	 {
+	}	 
+	else
+	{
 		// prepare non interlaces
 		memset(_stencil,1 ,_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
-	 };
+	};
 };
 
 
@@ -150,11 +153,20 @@ int vzScene::load(char* file_name)
 	DOMDocument* doc = parser->getDocument();
 	if(!doc)
 	{
-		printf("Failed (NO doc)!\n");
+		fprintf(stderr, "Failed load scene (NO Document)!\n");
+		delete parser;
 		return 0;
 	};
 
 	DOMElement* scene = doc->getDocumentElement();
+
+	/* check if scene properly loaded */
+	if(!(scene))
+	{
+		fprintf(stderr, "Failed load scene (NO Element)!\n");
+		delete parser;
+		return 0;
+	};
 
 	DOMNodeList* scene_components = scene->getChildNodes();
 
@@ -380,9 +392,46 @@ void vzScene::draw(long frame,long field,long fill,long key,long order)
 		order
 	};
 	
-	// if container is initializes - start draw method
-	if (_tree)
+	if(_tree)
+	{
+		/* datasource deals */
+		for(unsigned int d = 0; d <_id_datasources.count(); d++)
+		{
+			int i = 0; 
+			char *name;
+			char *value;
+			char* target_id = _id_datasources.key(d);
+			vzContainerFunction* source = _id_datasources.value(d);
+			vzContainerFunction* target = _id_functions.find(target_id);
+
+			/* check if target,source is ok */
+			if((target)&&(source))
+			{
+
+				/* try to retrive params */
+				while
+				(
+					source->datasource
+					(
+						&_render_session,
+						i,
+						&name,
+						&value
+					)
+				)
+				{
+					i++;
+					target->set_data_param_fromtext(name, value);
+				};
+
+				/* notify */
+				if(i) target->notify();
+			};
+		};
+
+		// if container is initializes - start draw method
 		_tree->draw(&_render_session);
+	};
 };
 
 #ifdef _DEBUG

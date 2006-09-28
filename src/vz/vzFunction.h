@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-09-28:
+		*datasource interface extension
+
     2005-06-08: Code cleanup
 
 */
@@ -42,6 +45,7 @@ typedef void (*plugin_proc_prerender)(void* data,vzRenderSession* render_session
 typedef void (*plugin_proc_render)(void* data,vzRenderSession* render_session);
 typedef void (*plugin_proc_notify)(void* data);
 typedef void (*plugin_proc_configure)(void* config);
+typedef long (*plugin_proc_datasource)(void* data,vzRenderSession* render_session, long index, char** name, char** value);
 
 class vzFunction: public vzHash<vzPluginParameter*>
 {
@@ -59,6 +63,7 @@ class vzFunction: public vzHash<vzPluginParameter*>
 	plugin_proc_prerender	proc_prerender;
 	plugin_proc_notify		proc_notify;
 	plugin_proc_configure	proc_configure;
+	plugin_proc_datasource	proc_datasource;
 
 	// config
 	void* _config;
@@ -85,6 +90,9 @@ public:
 
 	inline void notify(void* data){ if (proc_notify) proc_notify(data);};
 
+	inline long datasource(void* data,vzRenderSession* render_session, long index, char** name, char** value)
+		{ if (proc_datasource) return proc_datasource(data,render_session, index, name, value); else return 0;};
+
 	inline vzPluginInfo* info(void){return _info;};
 #else
 	void* constructor();
@@ -93,6 +101,7 @@ public:
 	void prerender(void* data,vzRenderSession* render_session);
 	void postrender(void* data,vzRenderSession* render_session);
 	void notify(void* data);
+	long datasource(void* data,vzRenderSession* render_session, long index, char** name, char** value);
 	vzPluginInfo* info(void);
 #endif
 	

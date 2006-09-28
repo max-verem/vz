@@ -55,6 +55,7 @@ class vzScene
 	vzFunctions* _functions;
 
 	vzHash<vzContainerFunction*> _id_functions;
+	vzHash<vzContainerFunction*> _id_datasources;
 	vzHash<vzContainer*> _id_containers;
 	vzHash<vzMotionDirector*> _id_directors;
 	vzHash<vzMotionTimeline*> _id_timelines;
@@ -89,6 +90,7 @@ public:
 	// register 'identified' objects
 	inline void register_container(char* id,vzContainer* container){_id_containers.push(id,container);};
 	inline void register_function(char* id,vzContainerFunction* function){_id_functions.push(id,function);};
+	inline void register_datasource(char* id,vzContainerFunction* function){_id_datasources.push(id,function);};
 	inline void register_timeline(char* id,vzMotionTimeline* timeline){_id_timelines.push(id,timeline);};
 	inline void register_director(char* id,vzMotionDirector* director){_id_directors.push(id,director);};
 	inline void register_controlkey(char* id,vzMotionControlKey* control){_id_controlkeys.push(id,control);};

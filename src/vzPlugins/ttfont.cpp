@@ -51,6 +51,8 @@ HANDLE _dump_counter_lock;
 long _dump_counter = 0;
 #endif
 
+#define WAIT_TIMEOUT_VALUE 2000
+
 BOOL APIENTRY DllMain( HANDLE hModule, 
                        DWORD  ul_reason_for_call, 
                        LPVOID lpReserved
@@ -90,19 +92,37 @@ PLUGIN_EXPORT vzPluginInfo info =
 	"rc6"
 };
 
-// internal structure of plugin
-typedef struct
+/* text param description struct */
+struct text_params
 {
-	// public
 	char* s_text;
 	char* s_font;
-	long L_center;
 	long l_height;
 	long h_colour;
 	float f_line_space;
 	float f_limit_width;
 	float f_limit_height;
 	long l_wrap_word;
+};
+
+#define default_text_params \
+{			\
+	NULL,	\
+	NULL,	\
+	0,		\
+	0,		\
+	1.0f,	\
+	-1.0f,	\
+	-1.0f,	\
+	0		\
+}
+
+// internal structure of plugin
+typedef struct
+{
+	// public
+	long L_center;
+	struct text_params params;
 
 	// internal
 	unsigned int _ready;
@@ -119,29 +139,21 @@ typedef struct
 	vzImage* _image;	// image is FLAG!!!!
 
 	// state change detection
-	char* _s_font;
-	char* _s_text;
-	long _l_height;
-	long _h_colour;
-
-	HANDLE _async_text_loader;
+	struct text_params _params;
+	HANDLE _async_renderer_handle;
+	HANDLE _async_renderer_lock;
+	struct text_params **_async_renderer_queue;
+	long _exit_flag;
 
 } vzPluginData;
 
 // default value of structore
-vzPluginData default_value = 
+static vzPluginData default_value = 
 {
 	// public
-	NULL,
-	NULL,
 	GEOM_CENTER_CM,
-	0,
-	0,
-	1.0f,
-	-1.0f,
-	-1.0f,
-	0,
-	
+	default_text_params,
+
 	// internal
 	0,
 	NULL,
@@ -152,27 +164,138 @@ vzPluginData default_value =
 	NULL,
 
 	// state change detection
+	default_text_params,
+	INVALID_HANDLE_VALUE,
+	INVALID_HANDLE_VALUE,
 	NULL,
-	NULL,
-	0,
-	0,
-	INVALID_HANDLE_VALUE
+	0
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
 {
-	{"s_text", "Text content", PLUGIN_PARAMETER_OFFSET(default_value,s_text)},
-	{"s_font", "Font name", PLUGIN_PARAMETER_OFFSET(default_value,s_font)},
+	{"s_font", "Font name", PLUGIN_PARAMETER_OFFSET(default_value,params.s_font)},
+	{"s_text", "Text content", PLUGIN_PARAMETER_OFFSET(default_value,params.s_text)},
 	{"L_center", "Center of image", PLUGIN_PARAMETER_OFFSET(default_value,L_center)},
-	{"l_height", "Font height", PLUGIN_PARAMETER_OFFSET(default_value,l_height)},
-	{"h_colour", "Text's colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value,h_colour)},
-
-	{"f_line_space", "Line space multiplier", PLUGIN_PARAMETER_OFFSET(default_value,f_line_space)},
-	{"f_limit_width", "Limit width of text to expected", PLUGIN_PARAMETER_OFFSET(default_value,f_limit_width)},
-	{"f_limit_height", "Limit height of text", PLUGIN_PARAMETER_OFFSET(default_value,f_limit_height)},
-	{"l_wrap_word", "Break words during wrapping (flag)", PLUGIN_PARAMETER_OFFSET(default_value,l_wrap_word)},
+	{"l_height", "Font height", PLUGIN_PARAMETER_OFFSET(default_value,params.l_height)},
+	{"h_colour", "Text's colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value,params.h_colour)},
+	{"f_line_space", "Line space multiplier", PLUGIN_PARAMETER_OFFSET(default_value,params.f_line_space)},
+	{"f_limit_width", "Limit width of text to expected", PLUGIN_PARAMETER_OFFSET(default_value,params.f_limit_width)},
+	{"f_limit_height", "Limit height of text", PLUGIN_PARAMETER_OFFSET(default_value,params.f_limit_height)},
+	{"l_wrap_word", "Break words during wrapping (flag)", PLUGIN_PARAMETER_OFFSET(default_value,params.l_wrap_word)},
 	{NULL,NULL,0}
 };
+
+//#define _DUMP_TEXT_PARAMS
+
+#ifdef _DUMP_TEXT_PARAMS
+#define dump_text_params(___p)	\
+{								\
+	fprintf						\
+	(							\
+		stderr,					\
+		DEBUG_LINE_ARG  " text_params: s_text=%.8X, s_font=%.8X, l_height=%d, h_colour=%.8X\n", DEBUG_LINE_PARAM, \
+		(___p)->s_text, (___p)->s_font, (___p)->l_height, (___p)->h_colour	\
+	);							\
+};
+#else
+#define dump_text_params(p)
+#endif
+
+
+
+static void free_text_params(struct text_params *p)
+{
+	if (p->s_text) free(p->s_text);
+	if (p->s_font) free(p->s_font);
+	free(p);
+}
+
+static unsigned long WINAPI _async_renderer(void* data)
+{
+	vzTTFont* font;
+	vzImage* image;
+	int do_not_sleep = 0;
+
+#ifdef _DEBUG
+	fprintf(stderr, DEBUG_LINE_ARG  "_async_renderer started\n", DEBUG_LINE_PARAM);
+#endif /* _DEBUG */
+
+	while(!(_DATA->_exit_flag))
+	{
+		WaitForSingleObject(_DATA->_async_renderer_lock, WAIT_TIMEOUT_VALUE);
+		if(_DATA->_async_renderer_queue[0])
+		{
+			// element present
+			ReleaseMutex(_DATA->_async_renderer_lock);
+
+			// load font
+			if
+			(
+				(_DATA->_async_renderer_queue[0]->s_font)
+				&&
+				(_DATA->_async_renderer_queue[0]->s_text)
+				&&
+				(
+					font = get_font
+					(
+						_DATA->_async_renderer_queue[0]->s_font,
+						_DATA->_async_renderer_queue[0]->l_height
+					)
+				)
+			)
+			{
+				// font load successfull
+
+
+				// its was able to load font
+				image = font->render
+				(
+					_DATA->_async_renderer_queue[0]->s_text,
+					_DATA->_async_renderer_queue[0]->h_colour,
+					_DATA->_async_renderer_queue[0]->f_line_space,
+					_DATA->_async_renderer_queue[0]->l_wrap_word,
+					_DATA->_async_renderer_queue[0]->f_limit_width,
+					_DATA->_async_renderer_queue[0]->f_limit_height
+				);
+
+				// make its 2^X
+				vzImageExpand2X(image);
+
+				// sync value
+				// lock main struct
+				WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE);				
+				if(_DATA->_image)
+				// free image
+					vzImageFree(_DATA->_image);
+				_DATA->_image = image;
+				// release mutex
+				ReleaseMutex(_DATA->_lock_update);
+			};
+
+			// free fist element and shift queue
+			free_text_params(_DATA->_async_renderer_queue[0]);
+			WaitForSingleObject(_DATA->_async_renderer_lock, WAIT_TIMEOUT_VALUE);
+			_DATA->_async_renderer_queue[0] = _DATA->_async_renderer_queue[1];
+			_DATA->_async_renderer_queue[1] = NULL;
+			ReleaseMutex(_DATA->_async_renderer_lock);
+			do_not_sleep = 1;
+		}
+		else
+			ReleaseMutex(_DATA->_async_renderer_lock);
+
+		if(!(do_not_sleep))
+			Sleep(10);
+		do_not_sleep = 0;
+	};
+
+#ifdef _DEBUG
+	fprintf(stderr, DEBUG_LINE_ARG  "_async_renderer finished\n", DEBUG_LINE_PARAM);
+#endif /* _DEBUG */
+
+	ExitThread(0);
+	return 0;
+};
+
 
 PLUGIN_EXPORT void* constructor(void)
 {
@@ -188,22 +311,43 @@ PLUGIN_EXPORT void* constructor(void)
 	// init space for internal text buffer
 	_DATA->_s_text_buf = (char*)malloc(0);
 
+	// async renderer
+	unsigned long thread;
+	_DATA->_async_renderer_queue = (struct text_params **)malloc(2*sizeof(struct text_params *));
+	_DATA->_async_renderer_queue[0] = NULL;
+	_DATA->_async_renderer_queue[1] = NULL;
+	_DATA->_async_renderer_lock = CreateMutex(NULL,FALSE,NULL);
+	_DATA->_async_renderer_handle = CreateThread(0, 0, _async_renderer, data, 0, &thread);
+
+	dump_text_params(&_DATA->params);
+
 	// return pointer
 	return data;
 };
 
 PLUGIN_EXPORT void destructor(void* data)
 {
+	int r;
+
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
 		glDeleteTextures (1, &(_DATA->_texture));
 
-	// wait and dispose handle
-	if (INVALID_HANDLE_VALUE != _DATA->_async_text_loader)
-		CloseHandle(_DATA->_async_text_loader);
+	// async renderer
+	_DATA->_exit_flag = 1;
+	WaitForSingleObject(_DATA->_async_renderer_handle, WAIT_TIMEOUT_VALUE);
+	CloseHandle(_DATA->_async_renderer_handle);
+	CloseHandle(_DATA->_async_renderer_lock);
+	free(_DATA->_async_renderer_queue);
 
 	// try to lock struct
-	WaitForSingleObject(_DATA->_lock_update,INFINITE);
+	if(WAIT_OBJECT_0 != WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE))
+	{
+#ifdef _DEBUG
+		fprintf(stderr, DEBUG_LINE_ARG  "unable to lock: %s\n", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
+#endif /* _DEBUG */
+		return;
+	};
 
 	// free image data if it's not released
 	if(_DATA->_image)
@@ -275,13 +419,6 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		vzImageFree(_DATA->_image);
 		_DATA->_image = NULL;
 
-
-		// sync values
-		_DATA->_s_text = _DATA->s_text;
-		_DATA->_s_font = _DATA->s_font;
-		_DATA->_l_height = _DATA->l_height;
-		_DATA->_h_colour = _DATA->h_colour;
-
 		// check if need to release old texture
 		if(_DATA->_texture_initialized)
 		{
@@ -348,131 +485,62 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	};
 };
 
-unsigned long WINAPI _text_loader(void* data)
-{
-	WaitForSingleObject(_DATA->_lock_update,INFINITE);
-	char* error_log;
-
-	vzTTFont* font = get_font(_DATA->s_font,_DATA->l_height);
-
-	if(font)
-	{
-#ifdef _DEBUG
-	printf(__FILE__ "::_text_loaded Rendering image (colour=%X",_DATA->h_colour);
-#endif
-
-#ifdef _DUMP_IMAGES
-		WaitForSingleObject(_dump_counter_lock,INFINITE);
-		long i = _dump_counter++;
-		ReleaseMutex(_dump_counter_lock);
-		char name1[100],name2[100],namet[100];;
-		sprintf(name1,"d:/temp/ttfonts/%da.tga",i);
-		sprintf(name2,"d:/temp/ttfonts/%db.tga",i);
-		sprintf(namet,"d:/temp/ttfonts/%d.txt",i);
-
-		FILE* f = fopen(namet,"wb");
-		fwrite(_DATA->s_text,1,strlen(_DATA->_s_text_buf),f);
-		fclose(f);
-#endif
-	
-		// its was able to load font
-		vzImage* image = font->render
-		(
-//			_DATA->s_text,
-			_DATA->_s_text_buf,
-			_DATA->h_colour,
-			_DATA->f_line_space,
-			_DATA->l_wrap_word,
-			_DATA->f_limit_width,
-			_DATA->f_limit_height
-		);
-#ifdef _DUMP_IMAGES
-		// dump image from renderer
-		vzImageSaveTGA(name1,image,NULL,0);
-#endif
-
-
-#ifdef _DEBUG
-	printf(" width='%d' height='%d' base_x='%d' base_y='%d'\n",image->width,image->height,image->base_x,image->base_y);
-#endif
-		// make its 2^X
-#ifdef _DEBUG
-try
-{
-#endif
-		vzImageExpand2X(image);
-
-#ifdef _DUMP_IMAGES
-		// dump image from renderer
-		vzImageSaveTGA(name2,image,NULL,0);
-#endif
-
-
-
-#ifdef _DEBUG
-}
-catch (char* hard_error)
-{
-	printf("ERRROR!!!!!!!!!!!\n width='%d' height='%d' base_x='%d' base_y='%d'\n",image->width,image->height,image->base_x,image->base_y);
-	exit(-1);
-}
-#endif
-
-		// save image
-		image->surface_type = GL_BGRA_EXT;
-		_DATA->_image = image;
-
-
-	}
-	else
-	{
-#ifdef _DEBUG
-	printf(__FILE__ "::_text_loaded Unable to load font\n");
-#endif
-	};
-
-	// release mutex
-	ReleaseMutex(_DATA->_lock_update);
-	
-	// and thread
-	ExitThread(0);
-	return 0;
-};
-
 PLUGIN_EXPORT void notify(void* data)
 {
-#ifdef _DEBUG
-	printf(__FILE__ "::notified\n");
-#endif
-
-#ifdef _DEBUG
-	printf(__FILE__ "::notify() s_text=\"%s\",%X\n",_DATA->s_text,_DATA->s_text);
-#endif
+	int r;
 
 	//wait for mutext free
-	WaitForSingleObject(_DATA->_lock_update,INFINITE);
+	if(WAIT_OBJECT_0 != WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE))
+	{
+#ifdef _DEBUG
+		fprintf(stderr, DEBUG_LINE_ARG  "unable to lock: %s\n", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
+#endif /* _DEBUG */
+		return;
+	};
 
 	// check if data changed
-	if ((_DATA->s_text != _DATA->_s_text) || (_DATA->s_font != _DATA->_s_font) || (_DATA->l_height != _DATA->_l_height) || (_DATA->h_colour != _DATA->_h_colour))
+	if(memcmp(&_DATA->params, &_DATA->_params, sizeof(struct text_params)) != 0)
 	{
-		// check if image not synced
-		if (_DATA->_image)
+		char* tmp2;
+
+		dump_text_params(&_DATA->params);
+
+		/* copy data */
+		struct text_params* tmp = (struct text_params*)malloc(sizeof(struct text_params));
+		*tmp = _DATA->params;
+		_DATA->_params = _DATA->params;
+		dump_text_params(tmp);
+
+		/* reallocate data for font name and text */
+		if(tmp->s_font)
 		{
-			vzImageFree(_DATA->_image);
-			_DATA->_image = NULL;
+			strcpy(tmp2 = (char*)malloc(strlen(tmp->s_font) + 1) , tmp->s_font); tmp->s_font = tmp2;
+		};
+		if(tmp->s_text)
+		{
+			strcpy(tmp2 = (char*)malloc(strlen(tmp->s_text) + 1) , tmp->s_text); tmp->s_text = tmp2;
 		};
 
-		_DATA->_s_text_buf = (char*)realloc(_DATA->_s_text_buf,strlen(_DATA->s_text) + 1);
-		memcpy(_DATA->_s_text_buf,_DATA->s_text,strlen(_DATA->s_text)+1);
+		/* release struct lock */
+		dump_text_params(tmp);
+		ReleaseMutex(_DATA->_lock_update);
 
-		// wait until previous start finish
-		if (INVALID_HANDLE_VALUE != _DATA->_async_text_loader)
-			CloseHandle(_DATA->_async_text_loader);
-		//start thread for texture loading
-		unsigned long thread;
-		_DATA->_async_text_loader = CreateThread(0, 0, _text_loader, data, 0, &thread);
+		/* lock queue */
+		WaitForSingleObject(_DATA->_async_renderer_lock, WAIT_TIMEOUT_VALUE);
+		if(_DATA->_async_renderer_queue[0])
+		{
+			// first element busy 
+			if(_DATA->_async_renderer_queue[1])
+				// second element is busy too - replace 
+				free_text_params(_DATA->_async_renderer_queue[1]);
+			// setup element
+			_DATA->_async_renderer_queue[1] = tmp;
+		}
+		else
+			// firts element is free - setup
+			_DATA->_async_renderer_queue[0] = tmp;
+		ReleaseMutex(_DATA->_async_renderer_lock);
 	}
-
-	ReleaseMutex(_DATA->_lock_update);
-
+	else
+		ReleaseMutex(_DATA->_lock_update);
 };

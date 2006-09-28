@@ -1,0 +1,96 @@
+﻿<?xml version="1.0"?>
+
+<!--
+TEST CASE:
+
+[verem@elbrus ~]$ telnet dev-1 8001
+Trying 10.1.5.64...
+Connected to dev-1.internal.m1stereo.tv (10.1.5.64).
+Escape character is '^]'.
+ViZualizator (vz-1.00-rc6) [tcpserver]
+
+vz in$> renderman.load(./projects/demo5.xml)
+vz out$> OK!Load
+
+-->
+
+<scene>
+
+<!-- objects tree -->
+<tree visible="1">
+
+	<container visible="1">
+
+		<function name="alpha">
+			<param name="f_value" value="1.0"/>
+		</function>
+
+		<function name="translate">
+			<param name="f_x" value="360"/>
+			<param name="f_y" value="100"/>
+		</function>
+
+		<container visible="1">
+
+			<!-- text header block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="0"/>
+					<param name="f_y" value="20"/>
+				</function>
+				<function name="ttfont" id="text_header">
+					<param name="s_text" value="TEST MESSAGE #1"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="24"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+			</container>
+
+			<!-- text header block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="0"/>
+					<param name="f_y" value="-10"/>
+				</function>
+				<function name="ttfont" id="text_timer">
+					<param name="s_text" value="00:00:00"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="20"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+
+				<function name="systime" datatarget="text_timer" id="timer1">
+					<param name="s_format" value="%H:%M:%S"/>
+				</function> 
+
+			</container>
+
+			<!-- background -->
+			<container visible="1">
+ 				<function name="translate">
+					<param name="f_x" value="0"/>
+					<param name="f_y" value="0"/>
+				</function>
+				<function name="rectangle">
+					<param name="f_width" value="700"/>
+					<param name="f_height" value="60"/>
+					<param name="f_colour_R" value="0.5"/>
+					<param name="f_colour_G" value="0.5"/>
+					<param name="f_colour_B" value="1.0"/>
+					<param name="f_colour_A" value="1.0"/>
+					<param name="L_center" value="_CM_"/>
+				</function>
+			</container>
+
+
+		</container>
+
+	</container>
+
+</tree>
+
+<motion></motion>
+
+</scene>

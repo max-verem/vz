@@ -329,6 +329,7 @@ void vz_glut_start(int argc, char** argv)
 	printf("Main Loop starting...\n");
 
 	glutMainLoop();
+	printf("Main loop finished");
 };
 
 

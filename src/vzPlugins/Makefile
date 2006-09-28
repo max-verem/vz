@@ -50,7 +50,7 @@ LINKER		= /incremental:no $(LINKER_FLAGS)
 #LINKER		= /NODEFAULTLIB:LIBCMT.LIB /incremental:no $(LINKER_FLAGS)
 
 # created modules
-TARGET = "$(OBJS_DIR)" "$(INSTALL_DIR)" ttfont_hcrawl.dll avifile.dll mask.dll ttfont.dll image.dll translate.dll rotate.dll alpha.dll rectangle.dll scale.dll
+TARGET = "$(OBJS_DIR)" "$(INSTALL_DIR)" systime.dll ttfont.dll  timer.dll ttfont_hcrawl.dll avifile.dll mask.dll image.dll translate.dll rotate.dll alpha.dll rectangle.dll scale.dll
 
 all: $(TARGET)
 
