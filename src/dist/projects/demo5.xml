@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0"?>
 
 <!--
+
 TEST CASE:
 
 [verem@elbrus ~]$ telnet dev-1 8001
@@ -9,8 +10,50 @@ Connected to dev-1.internal.m1stereo.tv (10.1.5.64).
 Escape character is '^]'.
 ViZualizator (vz-1.00-rc6) [tcpserver]
 
-vz in$> renderman.load(./projects/demo4.xml)
+vz in$> renderman.load(./projects/demo5.xml)
 vz out$> OK!Load
+vz in$> scene.tree.function.timer1.l_trig_start=1
+vz out$> OK
+vz in$> scene.tree.function.timer1.s_format=MM:SS.DDD
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_stop=1
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_cont=1
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_reset=1
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_start_value=10000
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_stop_value=20000
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_reset=1
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_start=1
+vz out$> OK
+vz in$>
+
+[verem@elbrus ~]$ telnet dev-1 8001
+Trying 10.1.5.64...
+Connected to dev-1.internal.m1stereo.tv (10.1.5.64).
+Escape character is '^]'.
+ViZualizator (vz-1.00-rc6) [tcpserver]
+
+vz in$> renderman.load(./projects/demo5.xml)
+vz out$> OK!Load
+vz in$> scene.tree.function.timer1.l_start_value=10000
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_stop_value=0
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_reset=1
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_start=1
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_reset=1
+vz out$> OK
+vz in$> scene.tree.function.timer1.l_trig_start=1
+vz out$> OK
+vz in$>
+
 
 -->
 
@@ -61,8 +104,8 @@ vz out$> OK!Load
 					<param name="L_center" value="_LM_"/>
 				</function>
 
-				<function name="systime" datatarget="text_timer" id="timer1">
-					<param name="s_format" value="%H:%M:%S"/>
+				<function name="timer" datatarget="text_timer" id="timer1">
+					<param name="s_format" value="HH:MM:SS:FF"/>
 				</function> 
 
 			</container>

@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-09-28:
+		*new async render method.
+
 	2006-04-22:
 		*cleanup handle of asynk text loader
 
@@ -341,7 +344,7 @@ PLUGIN_EXPORT void destructor(void* data)
 	free(_DATA->_async_renderer_queue);
 
 	// try to lock struct
-	if(WAIT_OBJECT_0 != WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE))
+	if(WAIT_OBJECT_0 != (r = WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE)))
 	{
 #ifdef _DEBUG
 		fprintf(stderr, DEBUG_LINE_ARG  "unable to lock: %s\n", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
@@ -490,7 +493,7 @@ PLUGIN_EXPORT void notify(void* data)
 	int r;
 
 	//wait for mutext free
-	if(WAIT_OBJECT_0 != WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE))
+	if(WAIT_OBJECT_0 != (r = WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE)))
 	{
 #ifdef _DEBUG
 		fprintf(stderr, DEBUG_LINE_ARG  "unable to lock: %s\n", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");

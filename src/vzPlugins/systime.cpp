@@ -21,7 +21,11 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangleLog:
-	2005-06-08: Code Cleanup. 
+		*additional lock
+		*tzset() to setup timezone info
+
+	2005-09-28:
+		*new version.
 
 */
 
@@ -51,6 +55,7 @@ typedef struct
 	char* s_format;
 	time_t _prev;
 	char* _buffer;
+	HANDLE _lock_update;
 } vzPluginData;
 
 // default value of structore
@@ -61,7 +66,8 @@ static vzPluginData default_value =
 	0,
 	NULL,
 	0,
-	NULL
+	NULL,
+	INVALID_HANDLE_VALUE
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
@@ -82,6 +88,12 @@ PLUGIN_EXPORT void* constructor(void)
 	// copy default value
 	*data = default_value;
 
+	/* setup timezone */
+	tzset();
+
+	// create mutexes
+	_DATA->_lock_update = CreateMutex(NULL,FALSE,NULL);
+
 	// return pointer
 	return data;
 };
@@ -89,6 +101,7 @@ PLUGIN_EXPORT void* constructor(void)
 PLUGIN_EXPORT void destructor(void* data)
 {
 	if (_DATA->_buffer) free(_DATA->_buffer);
+	CloseHandle(_DATA->_lock_update);
 	free(data);
 };
 
@@ -144,7 +157,9 @@ PLUGIN_EXPORT long datasource(void* data,vzRenderSession* render_session, long i
 		rtime = localtime( &ltime );
 
 	/* expand in text */
+	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 	strftime( _DATA->_buffer , MAX_BUFFER_SIZE - 5, (_DATA->s_format)?_DATA->s_format:default_str_format , rtime );
+	ReleaseMutex(_DATA->_lock_update);
 
 	/* append text */
 	if (_DATA->l_PM)
