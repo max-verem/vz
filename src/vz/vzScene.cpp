@@ -321,7 +321,7 @@ void vzScene::display(long frame)
 				(
 					GL_ONE_MINUS_DST_ALPHA,
 					GL_DST_ALPHA,
-					GL_ONE, /* GL_SRC_ALPHA_SATURATE, */
+					GL_SRC_ALPHA_SATURATE,
 					GL_ONE
 				);
 			};
