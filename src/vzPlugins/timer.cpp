@@ -29,6 +29,7 @@ ChangleLog:
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 
+#include <stdio.h>
 #pragma comment(lib, "winmm.lib")
 
 #define _ABS(V) ( (V<0)?(-(V)):V )

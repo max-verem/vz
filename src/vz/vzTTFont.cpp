@@ -670,8 +670,10 @@ inline void blit_glyph(unsigned long* dst, long dst_width, unsigned char* src, l
 VZTTFONT_API void vzTTFont::render_to(vzImage* image, long x , long y, long text_id, long colour)
 {
 	/* get symbol */
+	WaitForSingleObject((HANDLE)_symbols_lock,INFINITE);
 	vzTTFontSymbols *symbols = ((vzTTFontSymbols **)_symbols)[text_id];
-	
+	ReleaseMutex((HANDLE)_symbols_lock);	
+
 	if (symbols == NULL) return;
 
 #ifdef _DEBUG
@@ -756,7 +758,9 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 		return NULL;
 
 	/* get symbol */
+	WaitForSingleObject((HANDLE)_symbols_lock,INFINITE);
 	vzTTFontSymbols *symbols = ((vzTTFontSymbols **)_symbols)[text_id];
+	ReleaseMutex((HANDLE)_symbols_lock);	
 
 	// create a surface
 	vzImage* temp = vzImageNew			

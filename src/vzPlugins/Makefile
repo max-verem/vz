@@ -22,11 +22,11 @@ GLUT_DIR="C:/SDK/glut/"
 
 
 !IF  "$(CFG)" == "Debug"
-DEBUGFLAGS	= -D_DEBUG /Z7 /Yd /GZ /GX
+DEBUGFLAGS	= -D_DEBUG /Yd /GZ /GX /Zi /ZI
 INSTALL_DIR	= ../../install/Debug/plugins/
 OBJS_DIR	= ../../tmp/Debug/plugins/
 LIB_PATH	= /LIBPATH:"../../tmp/Debug/" /LIBPATH:"$(GLUT_DIR)"
-LINKER_OPT	= /LDd
+LINKER_OPT	= /LDd /nologo 
 LINKER_FLAGS	= $(LIB_PATH)
 CPPFLAGS	= $(CPPFLAGS) /MDd
 !ENDIF
@@ -38,7 +38,7 @@ DEBUGFLAGS	=
 INSTALL_DIR	= ../../install/Release/plugins/
 OBJS_DIR	= ../../tmp/Release/plugins/
 LIB_PATH	= /LIBPATH:"../../tmp/Release/" /LIBPATH:"$(GLUT_DIR)"
-LINKER_OPT	= /LD
+LINKER_OPT	= /LD /nologo 
 LINKER_FLAGS	= $(LIB_PATH)
 CPPFLAGS	= $(CPPFLAGS) /MD
 !ENDIF
@@ -64,7 +64,7 @@ all: $(TARGET)
 
 .cpp.dll:
 	@echo Compiling:$< ... $(<:.cpp=.obj)
-	$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) -Fo$(OBJS_DIR)$(<:.cpp=.obj) $<
+	$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) -Fo$(OBJS_DIR)$(<:.cpp=.obj) -Fd$(INSTALL_DIR)$(<:.cpp=.pdb) $<
 	@echo Linking:$(<:.cpp=.obj) ... $@
 	$(CPP) $(LINKER_OPT) -Fe$(INSTALL_DIR)$@ $(OBJS_DIR)$(<:.cpp=.obj) /link $(LINKER) /implib:$(OBJS_DIR)$(<:.cpp=.lib)
 
