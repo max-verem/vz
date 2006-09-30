@@ -21,6 +21,11 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-09-30:
+		*Some fixes in blending function. Added posibility to define use
+		of GL_ONE_MINUS_DST_ALPHA or GL_SRC_ALPHA_SATURATE in function
+		'glBlendFuncSeparateEXT' for destination bases rendering.
+
 	2006-09-27:
 		*New stencil control.
 
@@ -105,6 +110,7 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 
 	// parameters from config
 	_enable_glBlendFuncSeparateEXT = (_config->param("vzMain","enable_glBlendFuncSeparateEXT"))?1:0;
+	_enable_GL_SRC_ALPHA_SATURATE = (_config->param("vzMain","enable_GL_SRC_ALPHA_SATURATE"))?1:0;
 	_blend_dst_alpha = (_config->param("vzMain","blend_dst_alpha"))?1:0;
 	_fields = (_config->param("vzMain","fields"))?1:0;
 	_stencil = malloc(_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
@@ -251,7 +257,7 @@ void vzScene::display(long frame)
 
 	// alpha function always works
 	glEnable(GL_ALPHA_TEST);
-	glAlphaFunc(GL_LEQUAL,1);
+	glAlphaFunc(GL_NOTEQUAL,0);//glAlphaFunc(GL_LEQUAL,1);
 
 	// load gl/wgl EXTensions
 	load_GL_EXT();
@@ -317,13 +323,28 @@ void vzScene::display(long frame)
 			}
 			else
 			{
-				glBlendFuncSeparateEXT
-				(
-					GL_ONE_MINUS_DST_ALPHA,
-					GL_DST_ALPHA,
-					GL_SRC_ALPHA_SATURATE,
-					GL_ONE
-				);
+				if(!(_enable_GL_SRC_ALPHA_SATURATE))
+				{
+					/*	BEST #1 */
+					glBlendFuncSeparateEXT
+					(
+						GL_ONE_MINUS_DST_ALPHA,
+						GL_DST_ALPHA,
+						GL_ONE_MINUS_DST_ALPHA,
+						GL_ONE
+					);
+				}
+				else
+				{
+					/* BEST #2 */
+					glBlendFuncSeparateEXT
+					(
+						GL_ONE_MINUS_DST_ALPHA,
+						GL_DST_ALPHA,
+						GL_SRC_ALPHA_SATURATE,
+						GL_ONE
+					);
+				};
 			};
 			// draw
 			draw(frame,field,1,1,(_blend_dst_alpha)?0:1);

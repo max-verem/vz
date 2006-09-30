@@ -70,6 +70,7 @@ class vzScene
 	// OpenGL render specifics
 	long _blend_dst_alpha;
 	long _enable_glBlendFuncSeparateEXT;
+	long _enable_GL_SRC_ALPHA_SATURATE;
 
 	// use fields based
 	long _fields;
