@@ -63,7 +63,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 				XMLPlatformUtils::Terminate();
 				return FALSE;
 		    }
-			printf("Loading vzMain-1.0-rc6\n");
+			printf("Loading vzMain-1.0-rc7\n");
 			break;
 		case DLL_THREAD_ATTACH:
 			break;

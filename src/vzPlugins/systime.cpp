@@ -39,7 +39,7 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"systime",
 	1.0,
-	"rc6"
+	"rc7"
 };
 
 static char* working_param = "s_text";

@@ -58,7 +58,7 @@ ChangeLog:
 */
 const char* VZ_TITLE = "ViZualizator";
 float VZ_VERSION_NUMBER = 1.0f;
-const char* VZ_VERSION_SUFFIX = "rc6";
+const char* VZ_VERSION_SUFFIX = "rc7";
 vzTVSpec tv;
 
 /*

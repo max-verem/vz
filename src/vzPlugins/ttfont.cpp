@@ -92,7 +92,7 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"ttfont",
 	1.0,
-	"rc6"
+	"rc7"
 };
 
 /* text param description struct */

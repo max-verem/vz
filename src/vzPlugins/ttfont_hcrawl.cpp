@@ -100,7 +100,7 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"ttfont_hcrawl",
 	1.0,
-	"rc6"
+	"rc7"
 };
 
 // internal structure of plugin
