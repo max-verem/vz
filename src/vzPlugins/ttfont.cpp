@@ -217,7 +217,8 @@ static unsigned long WINAPI _async_renderer(void* data)
 {
 	vzTTFont* font;
 	vzImage* image;
-	int do_not_sleep = 0;
+
+	timeBeginPeriod(1);
 
 #ifdef _DEBUG
 	fprintf(stderr, DEBUG_LINE_ARG  "_async_renderer started\n", DEBUG_LINE_PARAM);
@@ -281,19 +282,19 @@ static unsigned long WINAPI _async_renderer(void* data)
 			_DATA->_async_renderer_queue[0] = _DATA->_async_renderer_queue[1];
 			_DATA->_async_renderer_queue[1] = NULL;
 			ReleaseMutex(_DATA->_async_renderer_lock);
-			do_not_sleep = 1;
 		}
 		else
+		{
 			ReleaseMutex(_DATA->_async_renderer_lock);
-
-		if(!(do_not_sleep))
-			Sleep(10);
-		do_not_sleep = 0;
+			Sleep(5);
+		};
 	};
 
 #ifdef _DEBUG
 	fprintf(stderr, DEBUG_LINE_ARG  "_async_renderer finished\n", DEBUG_LINE_PARAM);
 #endif /* _DEBUG */
+
+	timeEndPeriod(1);
 
 	ExitThread(0);
 	return 0;

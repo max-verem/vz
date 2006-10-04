@@ -1,0 +1,308 @@
+﻿<?xml version="1.0"?>
+
+<!--
+
+TESTCASE:
+
+[verem@elbrus ~]$ telnet dev-1 8001
+Trying 10.1.5.64...
+Connected to dev-1.internal.m1stereo.tv (10.1.5.64).
+Escape character is '^]'.
+ViZualizator (vz-1.00-rc7) [tcpserver]
+
+vz in$> renderman.load(./projects/equipe_timer.xml)
+vz out$> OK!Load
+vz in$> scene.tree.function.timer_x.l_timer_id=0
+vz out$> OK
+vz in$> scene.tree.function.timer_x.l_timer_id=1
+vz out$> OK
+vz in$> scene.tree.function.timer_x.l_timer_id=2
+vz out$> OK
+vz in$> scene.tree.function.timer_x.l_timer_id=3
+vz out$> OK
+vz in$> quit
+vz out$> Bye!
+Connection closed by foreign host.
+[verem@elbrus ~]$
+
+
+
+-->
+
+<scene>
+
+<!-- objects tree -->
+<tree visible="1">
+
+	<container visible="1">
+
+		<function name="alpha">
+			<param name="f_value" value="1.0"/>
+		</function>
+
+		<!-- TIMER #1 -->
+		<container visible="1">
+
+			<function name="translate">
+				<param name="f_x" value="0"/>
+				<param name="f_y" value="100"/>
+			</function>
+
+
+			<!-- text header block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="20"/>
+				</function>
+				<function name="ttfont" id="text_header">
+					<param name="s_text" value="TIMER #1"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="24"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+			</container>
+
+			<!-- timer block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="-10"/>
+				</function>
+				<function name="ttfont" id="text_timer_1">
+					<param name="s_text" value="00:00:00"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="20"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+
+				<function name="equipe_timer" datatarget="text_timer_1" id="timer_1">
+					<param name="s_format_running" value="sss:DDD"/>
+					<param name="s_format_stale" value="sss:DDD"/>
+					<param name="l_timer_id" value="0"/>
+				</function> 
+
+			</container>
+		</container>
+
+
+		<!-- TIMER #2 -->
+		<container visible="1">
+
+			<function name="translate">
+				<param name="f_x" value="150"/>
+				<param name="f_y" value="100"/>
+			</function>
+
+
+			<!-- text header block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="20"/>
+				</function>
+				<function name="ttfont" id="text_header">
+					<param name="s_text" value="TIMER #2"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="24"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+			</container>
+
+			<!-- timer block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="-10"/>
+				</function>
+				<function name="ttfont" id="text_timer_2">
+					<param name="s_text" value="00:00:00"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="20"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+
+				<function name="equipe_timer" datatarget="text_timer_2" id="timer_2">
+					<param name="s_format_running" value="sss:DDD"/>
+					<param name="s_format_stale" value="sss:D"/>
+					<param name="l_timer_id" value="1"/>
+				</function> 
+
+			</container>
+		</container>
+
+
+		<!-- TIMER #3 -->
+		<container visible="1">
+
+			<function name="translate">
+				<param name="f_x" value="300"/>
+				<param name="f_y" value="100"/>
+			</function>
+
+
+			<!-- text header block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="20"/>
+				</function>
+				<function name="ttfont" id="text_header">
+					<param name="s_text" value="TIMER #3"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="24"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+			</container>
+
+			<!-- timer block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="-10"/>
+				</function>
+				<function name="ttfont" id="text_timer_3">
+					<param name="s_text" value="00:00:00"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="20"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+
+				<function name="equipe_timer" datatarget="text_timer_3" id="timer_3">
+					<param name="s_format_running" value="sss:DDD"/>
+					<param name="s_format_stale" value="sss:D"/>
+					<param name="l_timer_id" value="2"/>
+				</function> 
+
+			</container>
+		</container>
+
+
+
+		<!-- TIMER #4 -->
+		<container visible="1">
+
+			<function name="translate">
+				<param name="f_x" value="450"/>
+				<param name="f_y" value="100"/>
+			</function>
+
+
+			<!-- text header block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="20"/>
+				</function>
+				<function name="ttfont" id="text_header">
+					<param name="s_text" value="TIMER #4"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="24"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+			</container>
+
+			<!-- timer block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="-10"/>
+				</function>
+				<function name="ttfont" id="text_timer_4">
+					<param name="s_text" value="00:00:00"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="20"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+
+				<function name="equipe_timer" datatarget="text_timer_4" id="timer_4">
+					<param name="s_format_running" value="sss:DDD"/>
+					<param name="s_format_stale" value="sss:D"/>
+					<param name="l_timer_id" value="3"/>
+				</function> 
+
+			</container>
+		</container>
+
+
+		<!-- TIMER #X -->
+		<container visible="1">
+
+			<function name="translate">
+				<param name="f_x" value="600"/>
+				<param name="f_y" value="100"/>
+			</function>
+
+
+			<!-- text header block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="20"/>
+				</function>
+				<function name="ttfont" id="text_header">
+					<param name="s_text" value="T#X"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="24"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+			</container>
+
+			<!-- timer block -->
+			<container visible="1">
+				<function name="translate">
+					<param name="f_x" value="20"/>
+					<param name="f_y" value="-10"/>
+				</function>
+				<function name="ttfont" id="text_timer_x">
+					<param name="s_text" value="00:00:00"/>
+					<param name="s_font" value="m1-hb"/>
+					<param name="l_height" value="20"/>
+					<param name="h_colour" value="0xFFDCDCDC"/>
+					<param name="L_center" value="_LM_"/>
+				</function>
+
+				<function name="equipe_timer" datatarget="text_timer_x" id="timer_x">
+					<param name="s_format_running" value="sss:DDD"/>
+					<param name="s_format_stale" value="sss:D"/>
+					<param name="l_timer_id" value="1"/>
+				</function> 
+
+			</container>
+		</container>
+
+
+
+		<!-- background -->
+		<container visible="1">
+			<function name="translate">
+				<param name="f_x" value="360"/>
+				<param name="f_y" value="100"/>
+			</function>
+			<function name="rectangle">
+				<param name="f_width" value="700"/>
+				<param name="f_height" value="60"/>
+				<param name="f_colour_R" value="0.5"/>
+				<param name="f_colour_G" value="0.5"/>
+				<param name="f_colour_B" value="1.0"/>
+				<param name="f_colour_A" value="1.0"/>
+				<param name="L_center" value="_CM_"/>
+			</function>
+		</container>
+
+	</container>
+
+</tree>
+
+<motion></motion>
+
+</scene>

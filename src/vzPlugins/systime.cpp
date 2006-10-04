@@ -73,7 +73,7 @@ static vzPluginData default_value =
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
 {
 	{"s_format", "Time format (see 'strftime' manual for details)", PLUGIN_PARAMETER_OFFSET(default_value,s_format)},
-	{"l_offset", "Time format (see 'strftime' manual for details)", PLUGIN_PARAMETER_OFFSET(default_value,l_offset)},
+	{"l_offset", "Offset in seconds from current time", PLUGIN_PARAMETER_OFFSET(default_value,l_offset)},
 	{"l_PM", "Flag to append 'PM' or 'AM' suffixes", PLUGIN_PARAMETER_OFFSET(default_value,l_PM)},
 	{"l_UTC", "Use UTC time", PLUGIN_PARAMETER_OFFSET(default_value,l_UTC)},
 	{NULL,NULL,0}
