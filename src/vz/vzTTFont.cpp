@@ -447,7 +447,29 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 		};
 */
 		// fix position of symbol
-		symbols->data[i_text].x += symbols->data[i_text].bmp->left;
+		if(layout_conf.fixed_kerning)
+		{
+			switch(layout_conf.fixed_kerning_align)
+			{
+				/* left */
+				case 0:
+					symbols->data[i_text].x += symbols->data[i_text].bmp->left;
+					break;
+
+				/* center */
+				case 1:
+					symbols->data[i_text].x += (layout_conf.fixed_kerning - symbols->data[i_text].bmp->bitmap.width) /2 ;
+					break;
+
+				/* right */
+				case 2:
+					symbols->data[i_text].x += (layout_conf.fixed_kerning - symbols->data[i_text].bmp->bitmap.width);
+					break;
+			};
+		}
+		else
+			symbols->data[i_text].x += symbols->data[i_text].bmp->left;
+
 		symbols->data[i_text].y += _baseline - symbols->data[i_text].bmp->top;
 
 		// increment position of pointer
@@ -458,7 +480,10 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 		}
 		else
 		{
-			posX += symbols->data[i_text].bmp->left + symbols->data[i_text].bmp->bitmap.width;
+			if(layout_conf.fixed_kerning)
+				posX += layout_conf.fixed_kerning;
+			else
+				posX += symbols->data[i_text].bmp->left + symbols->data[i_text].bmp->bitmap.width;
 		};
 	};
 
