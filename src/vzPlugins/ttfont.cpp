@@ -102,10 +102,7 @@ struct text_params
 	char* s_font;
 	long l_height;
 	long h_colour;
-	float f_line_space;
-	float f_limit_width;
-	float f_limit_height;
-	long l_wrap_word;
+	struct vzTTFontLayoutConf layout;
 };
 
 #define default_text_params \
@@ -114,10 +111,7 @@ struct text_params
 	NULL,	\
 	0,		\
 	0,		\
-	1.0f,	\
-	-1.0f,	\
-	-1.0f,	\
-	0		\
+	vzTTFontLayoutConfDefaultData	\
 }
 
 // internal structure of plugin
@@ -181,10 +175,11 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"L_center", "Center of image", PLUGIN_PARAMETER_OFFSET(default_value,L_center)},
 	{"l_height", "Font height", PLUGIN_PARAMETER_OFFSET(default_value,params.l_height)},
 	{"h_colour", "Text's colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value,params.h_colour)},
-	{"f_line_space", "Line space multiplier", PLUGIN_PARAMETER_OFFSET(default_value,params.f_line_space)},
-	{"f_limit_width", "Limit width of text to expected", PLUGIN_PARAMETER_OFFSET(default_value,params.f_limit_width)},
-	{"f_limit_height", "Limit height of text", PLUGIN_PARAMETER_OFFSET(default_value,params.f_limit_height)},
-	{"l_wrap_word", "Break words during wrapping (flag)", PLUGIN_PARAMETER_OFFSET(default_value,params.l_wrap_word)},
+	{"f_line_space", "Line space multiplier", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.line_space)},
+	{"l_limit_width", "Limit width of text to expected", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.limit_width)},
+	{"l_limit_height", "Limit height of text", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.limit_height)},
+	{"l_break_word", "Break words during wrapping (flag)", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.break_word)},
+	{"l_fixed_kerning", "Fixed kerning width (0 if not used)", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.fixed_kerning)},
 	{NULL,NULL,0}
 };
 
@@ -256,10 +251,7 @@ static unsigned long WINAPI _async_renderer(void* data)
 				(
 					_DATA->_async_renderer_queue[0]->s_text,
 					_DATA->_async_renderer_queue[0]->h_colour,
-					_DATA->_async_renderer_queue[0]->f_line_space,
-					_DATA->_async_renderer_queue[0]->l_wrap_word,
-					_DATA->_async_renderer_queue[0]->f_limit_width,
-					_DATA->_async_renderer_queue[0]->f_limit_height
+					&_DATA->_async_renderer_queue[0]->layout
 				);
 
 				// make its 2^X

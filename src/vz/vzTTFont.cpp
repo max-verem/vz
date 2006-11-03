@@ -345,14 +345,19 @@ VZTTFONT_API long vzTTFont::insert_symbols(void *new_sym)
 	return i;
 };
 
-VZTTFONT_API long vzTTFont::compose(char* string_utf8, float line_space, long break_word, long limit_width,long limit_height)
+VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf* l)
 {
+	struct vzTTFontLayoutConf layout_conf;
+
 	/* check if font inited */
 	if(!(_ready))
 		return -1;
 
+	/* layout conf */
+	layout_conf = (l)?(*l):vzTTFontLayoutConfDefault();
+
 	// line space
-	long __height = (long) (line_space*_height);
+	long __height = (long) (layout_conf.line_space*_height);
 
 
 	// possibly incorrectly counting baseline cause problem
@@ -461,7 +466,7 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, float line_space, long br
 
 	// WRAP IT
 	// lets wrap it!!!!!!!!!!
-	if(limit_width != (-1))
+	if(layout_conf.limit_width != (-1))
 	{
 
 		int i_line_begin = 0;
@@ -497,7 +502,7 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, float line_space, long br
 					symbols->data[i_text].bmp->bitmap.width
 				)
 				>= 
-				limit_width
+				layout_conf.limit_width
 			)
 			{
 				// symbol that comes out of limit found
@@ -505,7 +510,7 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, float line_space, long br
 				// there are two methods:
 				//		1. break words and move letters to newline
 				//		2. look for white-space character back
-				if(break_word)
+				if(layout_conf.break_word)
 				{
 					// look back to line start and found first 
 					// symbol that is left then that
@@ -602,9 +607,9 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, float line_space, long br
 		// vertical limit check
 		if
 		(
-			(limit_height <= symbols->data[i_text].y + symbols->data[i_text].bmp->bitmap.rows)
+			(layout_conf.limit_height <= symbols->data[i_text].y + symbols->data[i_text].bmp->bitmap.rows)
 			&& 
-			(limit_height != (-1)) 
+			(layout_conf.limit_height != (-1)) 
 		)
 			continue;
 
@@ -747,13 +752,19 @@ catch(char *error_string)
 //	vzImageSaveTGA("d:\\temp\\test_vzTTFont_0.tga",temp,NULL,0);
 }
 
-VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space, long break_word, long limit_width,long limit_height)
+VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, struct vzTTFontLayoutConf* l)
 {
+	struct vzTTFontLayoutConf layout_conf;
+
 	if(!(_ready))
 		return NULL;
 
+	/* layout conf */
+	layout_conf = (l)?(*l):vzTTFontLayoutConfDefault();
+
+
 	/* compose text layout */
-	long text_id = compose(text, line_space, break_word, limit_width, limit_height);
+	long text_id = compose(text, &layout_conf);
 	if(text_id == (-1))
 		return NULL;
 
@@ -776,4 +787,10 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long colour, float line_space
 	delete_symbols(text_id);
 
 	return temp;
+};
+
+struct vzTTFontLayoutConf vzTTFontLayoutConfDefault(void) 
+{ 
+	struct vzTTFontLayoutConf d = vzTTFontLayoutConfDefaultData;
+	return d;
 };
