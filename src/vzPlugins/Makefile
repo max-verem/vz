@@ -28,7 +28,7 @@ OBJS_DIR	= ../../tmp/Debug/plugins/
 LIB_PATH	= /LIBPATH:"../../tmp/Debug/" /LIBPATH:"$(GLUT_DIR)"
 LINKER_OPT	= /LDd /nologo 
 LINKER_FLAGS	= $(LIB_PATH)
-CPPFLAGS	= $(CPPFLAGS) /MDd
+CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
 !ENDIF
 
 
@@ -40,7 +40,7 @@ OBJS_DIR	= ../../tmp/Release/plugins/
 LIB_PATH	= /LIBPATH:"../../tmp/Release/" /LIBPATH:"$(GLUT_DIR)"
 LINKER_OPT	= /LD /nologo 
 LINKER_FLAGS	= $(LIB_PATH)
-CPPFLAGS	= $(CPPFLAGS) /MD
+CPPFLAGS	= $(CPPFLAGS) /MD /Zp16
 !ENDIF
 
 # compiler setting

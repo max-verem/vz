@@ -251,6 +251,11 @@ void vzOutput::init_buffers()
 	// load gl/wgl EXTensions
 	load_GL_EXT();
 
+	/* check if appropriate exts is loaded */
+	if(_use_offscreen_buffer)
+		if(!(glGenBuffers)) 
+			_use_offscreen_buffer = 0;
+	
 	// create framebuffers
 	if(_use_offscreen_buffer)
 	{

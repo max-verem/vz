@@ -59,6 +59,7 @@ vz out$> OK!Load
 					<param name="l_height" value="20"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
+					<param name="l_fixed_kerning" value="13"/>
 				</function>
 
 				<function name="systime" datatarget="text_timer" id="timer1">

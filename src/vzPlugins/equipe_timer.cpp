@@ -231,8 +231,11 @@ BOOL APIENTRY DllMain
 			timers_reader_exit = 1;
 
 			/* wait for 'timers_reader_proc' finish */
-			WaitForSingleObject(timers_reader, INFINITE);
-			CloseHandle(timers_reader);
+			if(INVALID_HANDLE_VALUE != timers_reader)
+			{
+				WaitForSingleObject(timers_reader, INFINITE);
+				CloseHandle(timers_reader);
+			};
 
 			// close mutex
 			CloseHandle(timers_lock);

@@ -43,7 +43,7 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"timer",
 	1.0,
-	"rc7"
+	"rc8"
 };
 
 static char* working_param = "s_text";
