@@ -266,8 +266,8 @@ static vzPluginData default_value =
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
 {
-	{"s_format_stale", "Time format for stale timer", PLUGIN_PARAMETER_OFFSET(default_value,s_format_running)},
-	{"s_format_running", "Time format for running timer", PLUGIN_PARAMETER_OFFSET(default_value,s_format_stale)},
+	{"s_format_running", "Time format for stale timer", PLUGIN_PARAMETER_OFFSET(default_value,s_format_running)},
+	{"s_format_stale", "Time format for running timer", PLUGIN_PARAMETER_OFFSET(default_value,s_format_stale)},
 	{"l_offset", "Timer offset (miliseconds)", PLUGIN_PARAMETER_OFFSET(default_value,l_offset)},
 	{"l_timer_id", "Timer identificator (0..3)", PLUGIN_PARAMETER_OFFSET(default_value,l_timer_id)},
 	{NULL,NULL,0}
