@@ -21,7 +21,13 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
-	2005-06-30:	Draft Version
+	2006-11-16:
+		*Compleatly rewriting code with asyncronous reader.
+		*'CoInitializeEx' usage to avoid COM uninitilizes answer from AVI* 
+		functions (CO_E_NOTINITIALIZED returns) in multithreaded inviroment.
+
+	2005-06-30:
+		*Draft Version
 
 */
 
@@ -32,6 +38,21 @@ ChangeLog:
 #include <stdio.h>
 #include <windows.h>
 #include <vfw.h>
+
+#define RING_BUFFER_LENGTH 10
+#define MAX_AVI_LOADERS 5
+
+#define VERBOSE
+
+/*#define _WIN32_DCOM
+#define _WIN32_WINNT 0x0400
+#include <objbase.h>
+*/
+#define COINIT_MULTITHREADED 0
+WINOLEAPI  CoInitializeEx(LPVOID pvReserved, DWORD dwCoInit);
+#pragma comment(lib, "ole32.LIB")
+
+
 #pragma comment(lib, "VFW32.LIB")
 #pragma comment(lib, "winmm.lib")
 
@@ -46,10 +67,10 @@ BOOL APIENTRY DllMain
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-			// init avi lib !
-			AVIFileInit();
 			break;
 		case DLL_THREAD_ATTACH:
+			// init avi lib !
+			AVIFileInit();
 			break;
 		case DLL_THREAD_DETACH:
 			break;
@@ -73,83 +94,358 @@ PLUGIN_EXPORT vzPluginInfo info =
 #define CMD_PAUSE		FOURCC_TO_LONG('_','P','S','E')
 #define CMD_CONTINUE	FOURCC_TO_LONG('_','C','N','T')
 
+/* ------------------------------------------------------------------------- */
+
+#define GL_BGR                            0x80E0
+struct aviloader_desc
+{
+	int flag_ready;
+	int flag_exit;
+	int flag_gone;
+
+	char filename[128];					/* file name */
+
+	long frames_count;
+	long width;
+	long height;
+	long bpp;
+
+	HANDLE lock;						/* struct update lock */
+	HANDLE task;						/* thread id */
+	HANDLE wakeup;						/* wakeup signal */
+
+	void* buf_data[RING_BUFFER_LENGTH];	/* buffers */
+	int buf_frame[RING_BUFFER_LENGTH];
+	int buf_clear[RING_BUFFER_LENGTH];
+	int buf_fill[RING_BUFFER_LENGTH];
+	int buf_filled[RING_BUFFER_LENGTH];
+	long cursor;
+};
+
+
+static unsigned long WINAPI aviloader_proc(void* p)
+{
+	HRESULT hr;
+	AVISTREAMINFO *strhdr;		/* AVI stream definition structs */
+	PGETFRAME pgf;
+	PAVISTREAM avi_stream;
+	void* frame_head;
+	void* frame_data;
+	int frame_size = 0;
+	LPBITMAPINFOHEADER frame_info;
+	int i,l;
+
+#ifdef VERBOSE
+	printf("avifile: aviloader_proc started\n");
+#endif /* VERBOSE */
+
+	/* cast struct */
+	struct aviloader_desc* desc = (struct aviloader_desc*)p;
+
+	/* init AVI for this thread */
+	CoInitializeEx( NULL, COINIT_MULTITHREADED );
+	AVIFileInit();
+
+	/* open avi file stream */
+	if
+	(
+		0
+		==
+		(hr = AVIStreamOpenFromFile
+			(
+				&avi_stream,			//	PAVISTREAM * ppavi,    
+				desc->filename,			//	LPCTSTR szFile,        
+				streamtypeVIDEO,		//	DWORD fccType,         
+				0,						//	LONG lParam,           
+				OF_READ,				//	UINT mode,             
+				NULL					//	CLSID * pclsidHandler  
+			)
+		)
+	)
+	{
+		/* prepare struct for stream header */
+		strhdr = (AVISTREAMINFO*)malloc(sizeof(AVISTREAMINFO));
+		memset(strhdr, 0, sizeof(AVISTREAMINFO));
+
+		/* request frames count */
+		if((desc->frames_count = AVIStreamLength(avi_stream)) < 0)
+			desc->frames_count = 0;
+		
+		/* request stream info */
+		if
+		(
+			0
+			==
+			(hr = AVIStreamInfo
+				(
+					avi_stream,				// PAVISTREAM pavi,
+					strhdr,					// AVISTREAMINFO * psi,
+					sizeof(AVISTREAMINFO)	// LONG lSize
+				)
+			)
+		)
+		{
+			if
+			(
+				NULL
+				!=
+				(pgf = AVIStreamGetFrameOpen
+					(
+						avi_stream,			// PAVISTREAM pavi,
+						NULL				// LPBITMAPINFOHEADER lpbiWanted  
+					)
+				)
+			)
+			{
+				/* test load  */
+				frame_head = AVIStreamGetFrame(pgf, 0);
+				frame_info = (LPBITMAPINFOHEADER)frame_head;
+				frame_data = ((unsigned char*)frame_head) + frame_info->biSize;
+
+				/* check */
+				if(NULL != frame_head)
+				{
+					/* setup width, height, buffer type */
+					desc->width = frame_info->biWidth;
+					desc->height = frame_info->biHeight;
+					switch(frame_info->biBitCount)
+					{
+						case 32: desc->bpp = GL_BGRA_EXT; break;
+						case 24: desc->bpp = GL_BGR; break;
+					};
+
+					/* allocate space for buffers */
+					for(i = 0; i<RING_BUFFER_LENGTH; i++)
+					{
+						/* init buffer */
+						frame_size = frame_info->biSize + 
+							(frame_info->biWidth + 4)* frame_info->biHeight * (frame_info->biBitCount / 8);
+						desc->buf_data[i] = malloc( frame_size );
+						memset(desc->buf_data[i], 0, frame_size);
+		
+						/* setup start plan */
+						if(i < desc->frames_count)
+						{
+							desc->buf_frame[i] = i;
+							desc->buf_fill[i] = 1;
+							desc->buf_clear[i] = 1;
+						};
+					};
+
+					/* "endless" loop */
+					while(!(desc->flag_exit))
+					{
+						/* reset jobs counter */
+						l = 0;
+
+						/* check if frames should be loaded */
+						for(i = 0; (i<RING_BUFFER_LENGTH) && (!(desc->flag_exit)); i++)
+							if
+							(
+								(1 == desc->buf_clear[i])		/* frame is clear */
+								&&								/* and */
+								(1 == desc->buf_fill[i])		/* should be loaded */
+							)
+							{
+								int f = desc->buf_frame[i];
+								if(f < desc->frames_count) /* frame in range */
+								{
+									if(NULL != (frame_head = AVIStreamGetFrame(pgf, f)))
+									{
+										l++;						/* increment jobs counter */
+										Sleep(0);					/* allow context switch */
+										frame_info = (LPBITMAPINFOHEADER)frame_head;
+										memcpy
+										(
+											desc->buf_data[i], 
+											((unsigned char*)frame_head) + frame_info->biSize, 
+											frame_size - frame_info->biSize
+										);							/* copy frame */
+										Sleep(0);					/* allow context switch */
+										/* setup flags */
+										desc->buf_fill[i] = 0;
+										desc->buf_clear[i] = 0;
+										desc->buf_filled[i] = f + 1;
+#ifdef VERBOSE
+										printf("avifile: loaded frame %d into slot %d\n", f, i);
+#endif /* VERBOSE */
+									}
+									else
+									{
+										/* setup flags */
+										desc->buf_fill[i] = 0;
+										printf("avifile: WARNING! AVIStreamGetFrame('%d') == NULL\n", desc->buf_frame[i]);
+									}
+								}
+								else
+								{
+									/* setup flags */
+									desc->buf_fill[i] = 0;
+									printf("avifile: WARNING! desc->buf_frame[%d] >= %d\n", desc->buf_frame[i], i, desc->frames_count);
+								};
+							};
+
+						/* rise flag about ready */
+						desc->flag_ready = 1;
+
+						/* wait for signal if no jobs done */
+						if( 0 == l) WaitForSingleObject(desc->wakeup, 40);
+						ResetEvent(desc->wakeup);
+					};
+
+
+					/* free buffers */
+					for(i = 0; i<RING_BUFFER_LENGTH; i++)
+						free(desc->buf_data[i]);
+				}
+				else
+				{
+					printf("avifile: ERROR! probe AVIStreamGetFrame(0) == NULL\n");
+				};
+
+				/* close frame pointer */
+				AVIStreamGetFrameClose(pgf);
+			}
+			else
+			{
+				printf("avifile: ERROR! AVIStreamGetFrameOpen() == NULL\n");
+			};
+		}
+		else
+		{
+			printf("avifile: ERROR! AVIStreamInfo() == 0x%.8X\n", hr);
+		};
+
+		/* close avi stream */
+		AVIStreamClose(avi_stream);
+
+		/* free stream header info struct */
+		free(strhdr);
+	}
+	else
+	{
+		printf("avifile: ERROR! AVIStreamOpenFromFile('%s') == 0x%.8X\n", desc->filename, hr);
+	};
+
+	/* setup flag of exiting */
+	desc->flag_gone = 1;
+
+#ifdef VERBOSE
+	printf("avifile: aviloader_proc exiting\n");
+#endif /* VERBOSE */
+
+
+	/* exit thread */
+	return 0;
+};
+
+static struct aviloader_desc* aviloader_init(char* filename)
+{
+	unsigned long thread_id;
+
+	/* allocate and clear struct */
+	struct aviloader_desc* desc = (struct aviloader_desc*)malloc(sizeof(struct aviloader_desc));
+	memset(desc, 0, sizeof(struct aviloader_desc));
+
+	/* copy argument */
+	strcpy(desc->filename, filename);
+
+	/* init events */
+	desc->wakeup = CreateEvent(NULL, TRUE, FALSE, NULL);
+	ResetEvent(desc->wakeup);
+
+	/* init mutexes */
+	desc->lock = CreateMutex(NULL,FALSE,NULL);
+
+	/* run thread */
+	desc->task = CreateThread(0, 0, aviloader_proc, desc, 0, &thread_id);
+
+	return desc;
+};
+
+
+static void aviloader_destroy(struct aviloader_desc* desc)
+{
+	/* check if struct is not dead */
+	if(NULL == desc) return;
+
+	/* rise flag */
+	desc->flag_exit = 1;
+
+	/* wait for thread finish */
+	WaitForSingleObject(desc->task, INFINITE);
+
+	/* close all */
+	CloseHandle(desc->task);
+	CloseHandle(desc->lock);
+	CloseHandle(desc->wakeup);
+
+	/* free mem */
+	free(desc);
+};
+
+
+/* ------------------------------------------------------------------------- */
+
 
 // internal structure of plugin
 typedef struct
 {
 // public data
-	char* s_filename;	// avi file name
-	long L_center;		// centering of image
-	long l_width;		// _DEFined width of image
-	long l_height;		// _DEFined height of image
-	float f_speed;		// speed of playing
-	long l_loop;		// flag indicated that loop playing is active
-	float f_position;	// current frame (0.0 is first)
-	long l_play;		// indicate autoplay state
+	char* s_filename;		// avi file name
+	long L_center;			// centering of image
+	long l_loop;			// flag indicated that loop playing is active
+	long l_field_mode;		// field incrementator
+	long l_start_frame;		// start frame
+	long l_auto_play;		// indicate autoplay state
 
 // trigger events for online control
-	long l_trigger_cmd;	// _PLY - start PLAying from begining
-						// _STP - SToP and rewind to begin
-						// _PSE - PauSE playing
-						// _CNT - CoNTinue playing
+	long l_trig_play;		/* play from beginning */
+	long l_trig_cont;		/* continie play from current position */
+	long l_trig_stop;		/* stop/pause playing */
+	long l_trig_jump;		/* jump to desired position */
 
 // internal datas
 	char* _filename;		// mirror pointer to filename
 	HANDLE _lock_update;	// update struct mutex
-	AVISTREAMINFO *_strhdr;	// stream definition struct
-	PGETFRAME _pgf;
-	PAVISTREAM _avi_stream;
-
-	unsigned long _current_frame;	// pointer on AVI frame
-	unsigned long _global_frame;	// global frame no
-
+	long _playing;			/* flags indicate PLAY state */
+	long _current_frame;	// pointer on AVI frame
+	long _cursor_loaded;	/* previous cursor - detect to upload texture */
+	struct aviloader_desc** _loaders;
 	unsigned int _texture;
-	unsigned int _texture_generated;
 	unsigned int _texture_initialized;
-
 	long _width;
 	long _height;
-	long _base_width;
-	long _base_height;
 
 } vzPluginData;
 
 // default value of structore
 vzPluginData default_value = 
 {
-	NULL,			// char* s_filename;	// avi file name
-	GEOM_CENTER_CM,	// long L_center;		// centering of image
-	0,				// long l_width;		// _DEFined width of image
-	0,				// long l_height;		// _DEFined height of image
-	1.0f,			// float f_speed;		// speed of playing
-	0,				// long l_loop;		// flag indicated that loop playing is active
-	0.0f,			// float f_position;	// current frame (0 is first)
-	0,				// long l_play;		// indicate autoplay state
+	NULL,					// char* s_filename;		// avi file name
+	GEOM_CENTER_CM,			// long L_center;			// centering of image
+	0,						// long l_loop;				// flag indicated that loop playing is active
+	0,						// long l_field_mode;		// field incrementator
+	0,						// long l_start_frame;		// start frame
+	0,						// long l_auto_play;		// indicate autoplay state
 
 // trigger events for online control
-	0,				// long l_trigger_cmd:	
-						// _PLY - start PLAying from begining
-						// _STP - SToP and rewind to begin
-						// _PSE - PauSE playing
-						// _CNT - CoNTinue playing
+	0,						// long l_trig_play;		/* play from beginning */
+	0,						// long l_trig_cont;		/* continie play from current position */
+	0,						// long l_trig_stop;		/* stop/pause playing */
+	0xFFFFFFF,				// long l_trig_jump;		/* jump to desired position */
 
 // internal datas
-	NULL,			// char* _filename;		// mirror pointer to filename
-	NULL,			// HANDLE _lock_update;	// update struct mutex
-	NULL,			// AVISTREAMINFO *_strhdr;	// stream definition struct
-	NULL,			// PGETFRAME _pgf;
-	NULL,			// PAVISTREAM _avi_stream;
-	0,				// unsigned long _current_frame;
-	0,				// unsigned long _global_frame;	// global frame no
-
-	0,				// unsigned int _texture;
-	0,				// unsigned int _texture_generated;
-	0,				// unsigned int _texture_initialized;
-
-	0,				// long _width;
-	0,				// long _height;
-	0,				// long _pot_width;
-	0				// long _pot_height;
+	NULL,					// char* _filename;		// mirror pointer to filename
+	INVALID_HANDLE_VALUE,	// HANDLE _lock_update;	// update struct mutex
+	0,						// long _playing;			/* flags indicate PLAY state */
+	0,						// long _current_frame;	// pointer on AVI frame
+	0,						// long _cursor_loaded;	/* previous cursor - detect to upload texture */
+	NULL,					// struct aviloader_desc** _loaders;
+	0,						// unsigned int _texture;
+	0,						// unsigned int _texture_initialized;
+	0,						// long _width;
+	0						// long _height;
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
@@ -160,20 +456,30 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"L_center",		"centering of image",
 						PLUGIN_PARAMETER_OFFSET(default_value,L_center)},
 
-	{"f_speed",			"speed of playing",
-						PLUGIN_PARAMETER_OFFSET(default_value,f_speed)},
-
 	{"l_loop",			"flag indicated that loop playing is active",
 						PLUGIN_PARAMETER_OFFSET(default_value,l_loop)},
 
-	{"f_position",		"current frame (0.0 is first)",
-						PLUGIN_PARAMETER_OFFSET(default_value,f_position)},
+	{"l_field_mode",	"field mode frame counter",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_field_mode)},
 
-	{"l_play",			"indicate autoplay state",
-						PLUGIN_PARAMETER_OFFSET(default_value,l_play)},
+	{"l_start_frame",	"start frame number",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_start_frame)},
 
-	{"l_trigger_cmd",	"trigger events for online control: _PLY - start PLAying from begining,	_STP - SToP and rewind to begin, _PSE - PauSE playing, _CNT - CoNTinue playing",
-						PLUGIN_PARAMETER_OFFSET(default_value,l_trigger_cmd)},
+	{"l_auto_play",		"indicate autoplay state",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_auto_play)},
+
+	{"l_trig_play",		"start playing (from beginning) trigger",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_trig_play)},
+
+	{"l_trig_cont",		"continue playing from current position",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_trig_cont)},
+
+	{"l_trig_stop",		"stop/pause playing",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_trig_stop)},
+
+	{"l_trig_jump",		"jump to specified frame position",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_trig_jump)},
+
 	{NULL,NULL,0}
 };
 
@@ -189,29 +495,36 @@ PLUGIN_EXPORT void* constructor(void)
 	_DATA->_lock_update = CreateMutex(NULL,FALSE,NULL);
 	ReleaseMutex(_DATA->_lock_update);
 
+	/* create loaders array */
+	_DATA->_loaders = (struct aviloader_desc**)malloc(MAX_AVI_LOADERS * sizeof(struct aviloader_desc*));
+	memset(_DATA->_loaders, 0, MAX_AVI_LOADERS * sizeof(struct aviloader_desc*));
+
 	// return pointer
 	return data;
 };
 
 PLUGIN_EXPORT void destructor(void* data)
 {
+	int i;
+
 	// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 
 	// check if texture initialized
-	if(_DATA->_texture_generated)
+	if(_DATA->_texture_initialized)
 		glDeleteTextures (1, &(_DATA->_texture));
 
-	// delete avi info block
-	if(_DATA->_strhdr)
-		free(_DATA->_strhdr);
-
-	if(_DATA->_pgf)
-		AVIStreamGetFrameClose(_DATA->_pgf);
+	/* destroy loaders */
+	for(i = 0; i<MAX_AVI_LOADERS; i++)
+		if(_DATA->_loaders[i])
+		{
+			aviloader_destroy(_DATA->_loaders[i]);
+			_DATA->_loaders[i] = NULL;
+		};
+	free(_DATA->_loaders);
 
 	// unlock
 	ReleaseMutex(_DATA->_lock_update);
-
 
 	// close mutexes
 	CloseHandle(_DATA->_lock_update);
@@ -225,82 +538,39 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 	unsigned long r;
 
 	// try to lock struct
-	if((r = WaitForSingleObject(_DATA->_lock_update,0)) != WAIT_OBJECT_0)
-	{
-		// was unable to lock 
-		// do not wait - return
-		ERROR_LOG("unable to lock due to:",(r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT")
-		return;
-	};
+	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 
-
-	// check if avi opened
-	if(!(_DATA->_pgf))
-	{
-		// release mutex
-		ReleaseMutex(_DATA->_lock_update);
-		return;
-	};
-
-	// test if texture is generated
-	if (_DATA->_texture_generated == 0)
-	{
-		glGenTextures(1, &_DATA->_texture);
-		_DATA->_texture_generated = 1;
-	};
-
-
-	// calculate frame to load
-	if(_DATA->l_play)
-	{
-		// avi in auto play state
-
-		// fix previous global frame number at first run
-		if(_DATA->_global_frame == 0xffffffff)
-			_DATA->_global_frame = session->frame;
-//fprintf(stderr,"AUTOPLAY\n\t_DATA->f_speed=%f\n\tsession->frame=%ld\t\nsession->field=%ld\t\n_DATA->_global_frame=%ld \n",_DATA->f_speed,session->frame,session->field,_DATA->_global_frame);
-		// find delta frame from prev to current
-		float delta = _DATA->f_speed * (session->frame - _DATA->_global_frame  + 0.5f*session->field);
-		_DATA->f_position += delta;
-
-//fprintf(stderr,"delta=%f\n",delta);
-	};
-
-//	_DATA->f_position = (long)(_DATA->f_position) % _DATA->_strhdr->dwLength;
-
-	long frame = (long)_DATA->f_position;
-
-//fprintf(stderr,"_DATA->f_position=%f, frame=%ld\n",_DATA->f_position, frame);
-
-
-	// load frame
+	/* check if we need to init/reinit texture */
 	if
 	(
-		(_DATA->_current_frame == 0xffffffff)
-		||
-		(_DATA->_current_frame != frame)
+		(_DATA->_loaders[0])									/* current loader is defined */
+		&&														/* and */
+		(_DATA->_loaders[0]->flag_ready)						/* pipeline theoreticaly ready */
 	)
 	{
-		void* frame_head = AVIStreamGetFrame(_DATA->_pgf, frame); 
-		LPBITMAPINFOHEADER frame_info = (LPBITMAPINFOHEADER)frame_head;
-		void* frame_data = ((unsigned char*)frame_head) + frame_info->biSize;
-//ERROR_LOG("prerender","AVIStreamGetFrame OK");
-		// test if texture initilized!	
-		if(!(_DATA->_texture_initialized))
+		/* pipeline ready - check texture */
+		if
+		(
+			(_DATA->_width != POT(_DATA->_loaders[0]->width))
+			||
+			(_DATA->_height != POT(_DATA->_loaders[0]->height))
+		)
 		{
-			// determinate used width and height
-			_DATA->_base_height = frame_info->biHeight;
-			_DATA->_base_width = frame_info->biWidth;
+			/* texture should be (re)initialized */
 
-			// calculate PowerOfTwo dimensions of image
-			_DATA->_height = POT(_DATA->_base_height);
-			_DATA->_width = POT(_DATA->_base_width);
+			if(_DATA->_texture_initialized)
+				glDeleteTextures (1, &(_DATA->_texture));
 
-			// generate fake surface
+			/* set flags */
+			_DATA->_width = POT(_DATA->_loaders[0]->width);
+			_DATA->_height = POT(_DATA->_loaders[0]->height);
+			_DATA->_texture_initialized = 1;
+
+			/* generate fake surface */
 			void* fake_frame = malloc(4*_DATA->_width*_DATA->_height);
 			memset(fake_frame,0,4*_DATA->_width*_DATA->_height);
 
-			// create texture (init texture memory)
+			/* create texture (init texture memory) */
 			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
 			glTexImage2D
 			(
@@ -316,31 +586,49 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			);
 			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-			// free memory of fake image
-			free(fake_frame);
 
-			// mark flag
-			_DATA->_texture_initialized = 1;
+			/* free memory of fake image */
+			free(fake_frame);
+#ifdef VERBOSE
+			printf("avifile: reinitialized texture %dx%d\n", _DATA->_width, _DATA->_height);
+#endif /* VERBOSE */
+
 		};
 
-
-		// load subimage into texture
-#define GL_BGR                            0x80E0
-		glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
-		glTexSubImage2D
+		/* load new texture , if it ready*/
+		if
 		(
-			GL_TEXTURE_2D,			// GLenum target,
-			0,						// GLint level,
-			(_DATA->_width - _DATA->_base_width)/2, // GLint xoffset,
-			(_DATA->_height - _DATA->_base_height)/2,	// GLint yoffset,
-			_DATA->_base_width,		// GLsizei width,
-			_DATA->_base_height,	// GLsizei height,
-			(frame_info->biBitCount == 32)?GL_BGRA_EXT:GL_BGR,	// GLenum format,
-			GL_UNSIGNED_BYTE,		// GLenum type,
-			frame_data				// const GLvoid *pixels 
-		);
-		_DATA->_current_frame = frame;
-		_DATA->_global_frame = session->frame;
+			(_DATA->_cursor_loaded != _DATA->_loaders[0]->cursor)
+			&&
+			(_DATA->_loaders[0]->buf_filled[ _DATA->_loaders[0]->cursor ] )
+		)
+		{
+			/* load */
+			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+			glTexSubImage2D
+			(
+				GL_TEXTURE_2D,									// GLenum target,
+				0,												// GLint level,
+				(_DATA->_width - _DATA->_loaders[0]->width)/2,	// GLint xoffset,
+				(_DATA->_height - _DATA->_loaders[0]->height)/2,// GLint yoffset,
+				_DATA->_loaders[0]->width,						// GLsizei width,
+				_DATA->_loaders[0]->height,						// GLsizei height,
+				_DATA->_loaders[0]->bpp,						// GLenum format,
+				GL_UNSIGNED_BYTE,								// GLenum type,
+				_DATA->_loaders[0]->buf_data[ _DATA->_loaders[0]->cursor ]	// const GLvoid *pixels 
+			);
+
+			/* sync cursor value */
+			_DATA->_cursor_loaded = _DATA->_loaders[0]->cursor;
+
+			/* setup flag is clear for current frame */
+			_DATA->_loaders[0]->buf_clear[ _DATA->_loaders[0]->cursor ] = 1;
+
+#ifdef VERBOSE
+			printf("avifile: loaded texture frame %d from slot %d\n", _DATA->_loaders[0]->buf_filled[ _DATA->_loaders[0]->cursor ], _DATA->_loaders[0]->cursor);
+#endif /* VERBOSE */
+		};
+
 	};
 
 	// release mutex
@@ -349,22 +637,155 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 
 PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 {
+	int i, t, c, f;
+	// try to lock struct
+	WaitForSingleObject(_DATA->_lock_update,INFINITE);
+
+	/* check mode */
+	if
+	(
+		/* we increment number diff in frame and field mode */
+		(
+			(_DATA->l_field_mode)								/* if we are rendering by field */
+			||													/* or */
+			(
+				(!(_DATA->l_field_mode))						/* if we are rendering by frame */
+				&&												/* and */
+				(0 == session->field)							/* current field is upper */
+			)
+		)
+		&&														/* and */
+		/* async pipeline is ready */
+		(
+			(_DATA->_loaders[0])								/* current loader is defined */
+			&&													/* and */
+			(_DATA->_loaders[0]->flag_ready)					/* pipeline theoreticaly ready */
+		)
+	)
+	{
+		/* plan frames order in pipeline */
+		for(i = 0, t = 0; i<((RING_BUFFER_LENGTH*3)/4) ; i++)
+		{
+			/* calc cursor and frame number */
+			c = (_DATA->_loaders[0]->cursor + i) % RING_BUFFER_LENGTH;
+			f = (_DATA->_current_frame + i) % _DATA->_loaders[0]->frames_count;
+
+			/* check if position planned */
+			if(_DATA->_loaders[0]->buf_frame[c] != f)
+			{
+				t++;
+				_DATA->_loaders[0]->buf_frame[c] = f;
+				_DATA->_loaders[0]->buf_fill[c] = 1;
+				_DATA->_loaders[0]->buf_filled[c] = 0;
+				_DATA->_loaders[0]->buf_clear[c] = 1;
+			};
+		};
+		if(t) PulseEvent(_DATA->_loaders[0]->wakeup);
+
+
+		
+		/* try shift cursor */
+		c = (_DATA->_loaders[0]->cursor + 1 + RING_BUFFER_LENGTH) % RING_BUFFER_LENGTH;
+		if
+		(
+			(_DATA->_cursor_loaded == _DATA->_loaders[0]->cursor) /* current frame loaded */
+			&&													/* and */
+			(_DATA->_playing)									/* we are in playing mode */
+			&&													/* and */
+			(0 != _DATA->_loaders[0]->buf_filled[c])			/* frame is loaded */
+		)
+		{
+#ifdef VERBOSE
+			printf("avifile: trying to shift cursor\n");
+#endif /* VERBOSE */
+
+			/* determinate how shift frame position and cursor */
+			if((_DATA->_current_frame + 1)< _DATA->_loaders[0]->frames_count)
+			{
+				_DATA->_current_frame++;
+				_DATA->_loaders[0]->cursor = c;
+#ifdef VERBOSE
+				printf("avifile: shifted to current_frame=%d, _DATA->_loaders[0]->cursor=%d\n", _DATA->_current_frame, _DATA->_loaders[0]->cursor);
+#endif /* VERBOSE */
+			}
+			else
+			{
+				if(_DATA->l_loop)
+				{
+					/* jump to first frame */
+					_DATA->_current_frame = 0;
+					_DATA->_loaders[0]->cursor = c;
+#ifdef VERBOSE
+					printf("avifile: loop condition detected\n");
+#endif /* VERBOSE */
+
+				}
+				else
+				{
+					/* stop playing */
+					_DATA->_playing = 0;
+#ifdef VERBOSE
+					printf("avifile: end of file detected\n");
+#endif /* VERBOSE */
+				};
+			};
+		}
+		else
+		{
+#ifdef VERBOSE2
+			printf("avifile: no condition to shift cursor\n");
+#endif /* VERBOSE */
+
+#ifdef VERBOSE2
+		if(!(0 != _DATA->_loaders[0]->buf_filled[c]))
+			printf("avifile: _DATA->_loaders[0]->buf_filled[%d] == %d\n", c, _DATA->_loaders[0]->buf_filled[c]);
+#endif /* VERBOSE */
+
+		};
+
+	};
+
+	// release mutex
+	ReleaseMutex(_DATA->_lock_update);
+
 };
 
 PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 {
 	// check if texture initialized
-	if((_DATA->_texture_initialized)&&(_DATA->_width != 0)&&(_DATA->_height != 0))
+	if
+	(
+		(_DATA->_texture_initialized)
+		&&
+		(_DATA->_loaders[0])
+		&&
+		(_DATA->_loaders[0]->flag_ready)
+	)
 	{
 		// determine center offset 
 		float co_X = 0.0f, co_Y = 0.0f, co_Z = 0.0f;
 
 		// translate coordinates accoring to base image
-		center_vector(_DATA->L_center,_DATA->_base_width,_DATA->_base_height,co_X,co_Y);
+		center_vector(_DATA->L_center, _DATA->_loaders[0]->width, _DATA->_loaders[0]->height, co_X, co_Y);
+
+#ifdef VERBOSE2
+		printf("avifile: center_vector: co_X = %f, co_Y = %f\n", co_X, co_Y);
+#endif /* VERBOSE */
 
 		// translate coordinate according to real image
-		co_Y -= (_DATA->_height - _DATA->_base_height)/2;
-		co_X -= (_DATA->_width - _DATA->_base_width)/2;
+		co_Y -= (_DATA->_height - _DATA->_loaders[0]->height)/2;
+		co_X -= (_DATA->_width - _DATA->_loaders[0]->width)/2;
+
+#ifdef VERBOSE2
+		if(_DATA->_playing)
+			printf
+			(
+				"avifile: translate: co_X = %f, co_Y = %f "
+				"(_DATA->_loaders[0]->width=%d, _DATA->_loaders[0]->height=%d\n", 
+				co_X, co_Y,
+				_DATA->_loaders[0]->width, _DATA->_loaders[0]->height
+			); 
+#endif /* VERBOSE */
 
 		// begin drawing
 		glEnable(GL_TEXTURE_2D);
@@ -393,6 +814,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	};
 };
 
+/*
 char* _avi_err(long err)
 {
 	switch(err)
@@ -406,104 +828,73 @@ char* _avi_err(long err)
 		default:					return "[unknown?]"; break;
 	};
 };
+*/
 
 PLUGIN_EXPORT void notify(void* data)
 {
+	//wait for mutext free
+	WaitForSingleObject(_DATA->_lock_update,INFINITE);
+
 	// check if pointer to filenames is different?
 	if(_DATA->s_filename != _DATA->_filename)
 	{
-		//wait for mutext free
-		WaitForSingleObject(_DATA->_lock_update,INFINITE);
+		/* change current frame position*/
+		_DATA->_current_frame = _DATA->l_start_frame;
+		_DATA->_cursor_loaded = 0xFFFFFFFF;
+		_DATA->_playing = _DATA->l_auto_play;
 
-		//  check if privious opened
-
-		// delete avi info block
-		if(_DATA->_strhdr)
-			free(_DATA->_strhdr);
-		_DATA->_strhdr = NULL;
-
-		// close frame
-		if(_DATA->_pgf)
-			AVIStreamGetFrameClose(_DATA->_pgf);
-		_DATA->_pgf = NULL;
-
-		// sync name
+		/* create loader */
+		struct aviloader_desc* loader = aviloader_init(_DATA->s_filename);
 		_DATA->_filename = _DATA->s_filename;
 
-		// result of operations
-		HRESULT hr;
-	
-		// open stream
-		hr = AVIStreamOpenFromFile
-		(
-			&_DATA->_avi_stream,	//	PAVISTREAM * ppavi,    
-			_DATA->_filename,		//	LPCTSTR szFile,        
-			streamtypeVIDEO,		//	DWORD fccType,         
-			0,						//	LONG lParam,           
-			OF_READ,				//	UINT mode,             
-			NULL					//	CLSID * pclsidHandler  
-		);
-
-fprintf(stderr,"AVIStreamOpenFromFile = %ld, _DATA->_avi_stream = %ld\n",hr,_DATA->_avi_stream);
-
-		// check if was error for opening stream from file
-		if(hr != 0)
+		/* check second slot */
+		if(_DATA->_loaders[1])
 		{
-			printf("Error! 	'AVIStreamOpenFromFile': %s\n",_avi_err(hr));
-			_DATA->_avi_stream = NULL;
-			return;
+			aviloader_destroy(_DATA->_loaders[1]);
+			_DATA->_loaders[1] = NULL;
 		};
 
-		_DATA->_strhdr = (AVISTREAMINFO*)malloc(sizeof(AVISTREAMINFO));
-		memset(_DATA->_strhdr, 0, sizeof(AVISTREAMINFO));
-		
-		// request stream info
-		hr = AVIStreamInfo
-		(
-			_DATA->_avi_stream,			// PAVISTREAM pavi,
-			_DATA->_strhdr,				// AVISTREAMINFO * psi,
-			sizeof(AVISTREAMINFO)		// LONG lSize
-		);				
+		/* shift loaders */
+		_DATA->_loaders[1] = _DATA->_loaders[0];
+		_DATA->_loaders[0] = loader;
 
-fprintf(stderr,"AVIStreamInfo = %ld, _strhdr = %ld\n",hr,_DATA->_strhdr);
-
-		// check if was error happen
-		if(hr != 0)
-		{
-			printf("Error! 	'AVIStreamInfo': %s\n",_avi_err(hr));
-			free(_DATA->_strhdr);
-			_DATA->_strhdr = NULL;
-			_DATA->_avi_stream = NULL;
-			return;
-		};
-
-		// frame open pointer
-		// choose NULL for format
-		_DATA->_pgf = AVIStreamGetFrameOpen
-		(
-			_DATA->_avi_stream,			// PAVISTREAM pavi,
-			NULL						// LPBITMAPINFOHEADER lpbiWanted  
-		);
-
-		if (_DATA->_pgf == NULL)
-		{
-			printf("Error! 	'AVIStreamGetFrameOpen'\n",_avi_err(hr));
-			free(_DATA->_strhdr);
-			_DATA->_strhdr = NULL;
-			_DATA->_avi_stream = NULL;
-			return;
-		};
-
-		// seems avi file opens fine!
-
-		// set flag to force 'glTexImage2D'
-		_DATA->_texture_initialized = 0;
-
-		// mark frame counter not loaded
-		_DATA->_current_frame = 0xFFFFFFFF;
-
-		
-		// release mutex -  let created tread work
-		ReleaseMutex(_DATA->_lock_update);
+		/* notify old loader to die */
+		if(_DATA->_loaders[1])
+			_DATA->_loaders[1]->flag_exit = 1;
 	};
+
+	/* control triggers */
+	if(_DATA->l_trig_play)
+	{
+		_DATA->_current_frame = _DATA->l_start_frame;
+		_DATA->_cursor_loaded = 0xFFFFFFFF;
+		_DATA->_playing = 1;
+
+		/* reset trigger */
+		_DATA->l_trig_play = 0;
+	};
+	if(_DATA->l_trig_cont)
+	{
+		_DATA->_playing = 1;
+
+		/* reset trigger */
+		_DATA->l_trig_cont = 0;
+	};
+	if(_DATA->l_trig_stop)
+	{
+		_DATA->_playing = 0;
+
+		/* reset trigger */
+		_DATA->l_trig_stop = 0;
+	};
+	if(0xFFFFFFFF != _DATA->l_trig_jump)
+	{
+
+		/* reset trigger */
+		_DATA->l_trig_jump = 0xFFFFFFFF;
+	};
+
+	// release mutex -  let created tread work
+	ReleaseMutex(_DATA->_lock_update);
+
 };
