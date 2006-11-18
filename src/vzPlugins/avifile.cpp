@@ -22,6 +22,7 @@
 
 ChangeLog:
 	2006-11-18:
+		*memory preloading clips
 		*texture flipping flags
 
 	2006-11-16:
@@ -45,7 +46,7 @@ ChangeLog:
 #define RING_BUFFER_LENGTH 10
 #define MAX_AVI_LOADERS 5
 
-#define VERBOSE
+//#define VERBOSE
 
 /*#define _WIN32_DCOM
 #define _WIN32_WINNT 0x0400
@@ -105,6 +106,7 @@ struct aviloader_desc
 	int flag_ready;
 	int flag_exit;
 	int flag_gone;
+	int flag_mem_preload;
 
 	char filename[128];					/* file name */
 
@@ -117,11 +119,11 @@ struct aviloader_desc
 	HANDLE task;						/* thread id */
 	HANDLE wakeup;						/* wakeup signal */
 
-	void* buf_data[RING_BUFFER_LENGTH];	/* buffers */
-	int buf_frame[RING_BUFFER_LENGTH];
-	int buf_clear[RING_BUFFER_LENGTH];
-	int buf_fill[RING_BUFFER_LENGTH];
-	int buf_filled[RING_BUFFER_LENGTH];
+	void** buf_data;					/* buffers */
+	int* buf_frame;
+	int* buf_clear;
+	int* buf_fill;
+	int* buf_filled;
 	long cursor;
 };
 
@@ -218,7 +220,12 @@ static unsigned long WINAPI aviloader_proc(void* p)
 					};
 
 					/* allocate space for buffers */
-					for(i = 0; i<RING_BUFFER_LENGTH; i++)
+					desc->buf_data = (void**)malloc(sizeof(void*) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
+					desc->buf_frame = (int*)malloc(sizeof(int) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
+					desc->buf_clear = (int*)malloc(sizeof(int) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
+					desc->buf_fill = (int*)malloc(sizeof(int) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
+					desc->buf_filled = (int*)malloc(sizeof(int) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
+					for(i = 0; i<((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH); i++)
 					{
 						/* init buffer */
 						frame_size = frame_info->biSize + 
@@ -242,7 +249,14 @@ static unsigned long WINAPI aviloader_proc(void* p)
 						l = 0;
 
 						/* check if frames should be loaded */
-						for(i = 0; (i<RING_BUFFER_LENGTH) && (!(desc->flag_exit)); i++)
+						for
+						(
+							i = 0; 
+							(i<((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH))
+							&& 
+							(!(desc->flag_exit)); 
+							i++
+						)
 							if
 							(
 								(1 == desc->buf_clear[i])		/* frame is clear */
@@ -291,15 +305,46 @@ static unsigned long WINAPI aviloader_proc(void* p)
 						/* rise flag about ready */
 						desc->flag_ready = 1;
 
+						/* no more in mem proload mode */
+						if((desc->flag_mem_preload)&&(0 == desc->flag_exit))
+						{
+							l = 0;
+							desc->flag_exit = 2;
+						};
+
 						/* wait for signal if no jobs done */
 						if( 0 == l) WaitForSingleObject(desc->wakeup, 40);
 						ResetEvent(desc->wakeup);
 					};
 
+					/* wait here until read exit flag came */
+					if
+					(
+						(desc->flag_mem_preload)
+						&&
+						(2 == desc->flag_exit)
+					)
+					{
+#ifdef VERBOSE
+						printf("avifile: aviloader_proc waiting for real f_exit\n");
+#endif /* VERBOSE */
+
+						desc->flag_exit = 0;
+						while(!(desc->flag_exit))
+						{
+							WaitForSingleObject(desc->wakeup, 40);
+							ResetEvent(desc->wakeup);
+						};
+					};
 
 					/* free buffers */
-					for(i = 0; i<RING_BUFFER_LENGTH; i++)
+					for(i = 0; i<((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH); i++)
 						free(desc->buf_data[i]);
+					free(desc->buf_data);
+					free(desc->buf_frame);
+					free(desc->buf_clear);
+					free(desc->buf_fill);
+					free(desc->buf_filled);
 				}
 				else
 				{
@@ -342,7 +387,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 	return 0;
 };
 
-static struct aviloader_desc* aviloader_init(char* filename)
+static struct aviloader_desc* aviloader_init(char* filename, int mem_preload)
 {
 	unsigned long thread_id;
 
@@ -352,6 +397,7 @@ static struct aviloader_desc* aviloader_init(char* filename)
 
 	/* copy argument */
 	strcpy(desc->filename, filename);
+	desc->flag_mem_preload = mem_preload;
 
 	/* init events */
 	desc->wakeup = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -403,6 +449,7 @@ typedef struct
 	long l_auto_play;		// indicate autoplay state
 	long l_flip_v;			/* flip vertical flag */
 	long l_flip_h;			/* flip vertical flag */
+	long l_mem_preload;		/* preload whole clip in memmory */
 
 // trigger events for online control
 	long l_trig_play;		/* play from beginning */
@@ -435,6 +482,7 @@ vzPluginData default_value =
 	0,						// long l_auto_play;		// indicate autoplay state
 	0,						// long l_flip_v;			/* flip vertical flag */
 	0,						// long l_flip_h;			/* flip vertical flag */
+	0,						// long l_mem_preload;		/* preload whole clip in memmory */
 
 // trigger events for online control
 	0,						// long l_trig_play;		/* play from beginning */
@@ -490,8 +538,11 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"l_flip_v",		"flag to vertical flip",
 						PLUGIN_PARAMETER_OFFSET(default_value,l_flip_v)},
 
-	{"l_flip_h",		"flag to vertical flip",
+	{"l_flip_h",		"flag to horozontal flip",
 						PLUGIN_PARAMETER_OFFSET(default_value,l_flip_h)},
+
+	{"l_mem_preload",	"flag to vertical flip",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_mem_preload)},
 
 	{NULL,NULL,0}
 };
@@ -676,86 +727,116 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 		)
 	)
 	{
-		/* plan frames order in pipeline */
-		for(i = 0, t = 0; i<((RING_BUFFER_LENGTH*3)/4) ; i++)
+
+		if(_DATA->l_mem_preload)
 		{
-			/* calc cursor and frame number */
-			c = (_DATA->_loaders[0]->cursor + i) % RING_BUFFER_LENGTH;
-			f = (_DATA->_current_frame + i) % _DATA->_loaders[0]->frames_count;
+			/* we are in memory preload mode */
 
-			/* check if position planned */
-			if(_DATA->_loaders[0]->buf_frame[c] != f)
-			{
-				t++;
-				_DATA->_loaders[0]->buf_frame[c] = f;
-				_DATA->_loaders[0]->buf_fill[c] = 1;
-				_DATA->_loaders[0]->buf_filled[c] = 0;
-				_DATA->_loaders[0]->buf_clear[c] = 1;
-			};
-		};
-		if(t) PulseEvent(_DATA->_loaders[0]->wakeup);
-
-
-		
-		/* try shift cursor */
-		c = (_DATA->_loaders[0]->cursor + 1 + RING_BUFFER_LENGTH) % RING_BUFFER_LENGTH;
-		if
-		(
-			(_DATA->_cursor_loaded == _DATA->_loaders[0]->cursor) /* current frame loaded */
-			&&													/* and */
-			(_DATA->_playing)									/* we are in playing mode */
-			&&													/* and */
-			(0 != _DATA->_loaders[0]->buf_filled[c])			/* frame is loaded */
-		)
-		{
-#ifdef VERBOSE
-			printf("avifile: trying to shift cursor\n");
-#endif /* VERBOSE */
-
-			/* determinate how shift frame position and cursor */
-			if((_DATA->_current_frame + 1)< _DATA->_loaders[0]->frames_count)
-			{
+			/* increment current frame if we are in playing mode */
+			if(_DATA->_playing)
 				_DATA->_current_frame++;
-				_DATA->_loaders[0]->cursor = c;
-#ifdef VERBOSE
-				printf("avifile: shifted to current_frame=%d, _DATA->_loaders[0]->cursor=%d\n", _DATA->_current_frame, _DATA->_loaders[0]->cursor);
-#endif /* VERBOSE */
-			}
-			else
-			{
-				if(_DATA->l_loop)
-				{
-					/* jump to first frame */
-					_DATA->_current_frame = 0;
-					_DATA->_loaders[0]->cursor = c;
-#ifdef VERBOSE
-					printf("avifile: loop condition detected\n");
-#endif /* VERBOSE */
 
-				}
+			/* check range */
+			if(_DATA->_current_frame >= _DATA->_loaders[0]->frames_count)
+			{
+				/* check loop mode */
+				if(_DATA->l_loop)
+					_DATA->_current_frame = 0;
 				else
 				{
-					/* stop playing */
+					/* set to last frame */
+					_DATA->_current_frame = _DATA->_loaders[0]->frames_count - 1;
+
+					/* exit play mode */
 					_DATA->_playing = 0;
-#ifdef VERBOSE
-					printf("avifile: end of file detected\n");
-#endif /* VERBOSE */
 				};
 			};
+
+			/* sync cursor to frame number */
+			_DATA->_loaders[0]->cursor = _DATA->_current_frame;
 		}
 		else
 		{
+			/* we are in async load mode */
+
+			/* plan frames order in pipeline */
+			for(i = 0, t = 0; i<((RING_BUFFER_LENGTH*3)/4) ; i++)
+			{
+				/* calc cursor and frame number */
+				c = (_DATA->_loaders[0]->cursor + i) % RING_BUFFER_LENGTH;
+				f = (_DATA->_current_frame + i) % _DATA->_loaders[0]->frames_count;
+
+				/* check if position planned */
+				if(_DATA->_loaders[0]->buf_frame[c] != f)
+				{
+					t++;
+					_DATA->_loaders[0]->buf_frame[c] = f;
+					_DATA->_loaders[0]->buf_fill[c] = 1;
+					_DATA->_loaders[0]->buf_filled[c] = 0;
+					_DATA->_loaders[0]->buf_clear[c] = 1;
+				};
+			};
+			if(t) PulseEvent(_DATA->_loaders[0]->wakeup);
+		
+			/* try shift cursor */
+			c = (_DATA->_loaders[0]->cursor + 1 + RING_BUFFER_LENGTH) % RING_BUFFER_LENGTH;
+			if
+			(
+				(_DATA->_cursor_loaded == _DATA->_loaders[0]->cursor) /* current frame loaded */
+				&&													/* and */
+				(_DATA->_playing)									/* we are in playing mode */
+				&&													/* and */
+				(0 != _DATA->_loaders[0]->buf_filled[c])			/* frame is loaded */
+			)
+			{
+#ifdef VERBOSE
+				printf("avifile: trying to shift cursor\n");
+#endif /* VERBOSE */
+
+				/* determinate how shift frame position and cursor */
+				if((_DATA->_current_frame + 1)< _DATA->_loaders[0]->frames_count)
+				{
+					_DATA->_current_frame++;
+					_DATA->_loaders[0]->cursor = c;
+#ifdef VERBOSE
+					printf("avifile: shifted to current_frame=%d, _DATA->_loaders[0]->cursor=%d\n", _DATA->_current_frame, _DATA->_loaders[0]->cursor);
+#endif /* VERBOSE */
+				}
+				else
+				{
+					if(_DATA->l_loop)
+					{
+						/* jump to first frame */
+						_DATA->_current_frame = 0;
+						_DATA->_loaders[0]->cursor = c;
+#ifdef VERBOSE
+						printf("avifile: loop condition detected\n");
+#endif /* VERBOSE */
+
+					}
+					else
+					{
+						/* stop playing */
+						_DATA->_playing = 0;
+#ifdef VERBOSE
+						printf("avifile: end of file detected\n");
+#endif /* VERBOSE */
+					};
+				};
+			}
+			else
+			{
 #ifdef VERBOSE2
-			printf("avifile: no condition to shift cursor\n");
+				printf("avifile: no condition to shift cursor\n");
 #endif /* VERBOSE */
 
 #ifdef VERBOSE2
-		if(!(0 != _DATA->_loaders[0]->buf_filled[c]))
-			printf("avifile: _DATA->_loaders[0]->buf_filled[%d] == %d\n", c, _DATA->_loaders[0]->buf_filled[c]);
+			if(!(0 != _DATA->_loaders[0]->buf_filled[c]))
+				printf("avifile: _DATA->_loaders[0]->buf_filled[%d] == %d\n", c, _DATA->_loaders[0]->buf_filled[c]);
 #endif /* VERBOSE */
 
+			};
 		};
-
 	};
 
 	// release mutex
@@ -873,7 +954,7 @@ PLUGIN_EXPORT void notify(void* data)
 		_DATA->_playing = _DATA->l_auto_play;
 
 		/* create loader */
-		struct aviloader_desc* loader = aviloader_init(_DATA->s_filename);
+		struct aviloader_desc* loader = aviloader_init(_DATA->s_filename, _DATA->l_mem_preload);
 		_DATA->_filename = _DATA->s_filename;
 
 		/* check second slot */
@@ -899,6 +980,9 @@ PLUGIN_EXPORT void notify(void* data)
 		_DATA->_cursor_loaded = 0xFFFFFFFF;
 		_DATA->_playing = 1;
 
+		if(_DATA->l_mem_preload)
+			_DATA->_loaders[0]->cursor = _DATA->_current_frame;
+
 		/* reset trigger */
 		_DATA->l_trig_play = 0;
 	};
@@ -918,7 +1002,28 @@ PLUGIN_EXPORT void notify(void* data)
 	};
 	if(0xFFFFFFFF != _DATA->l_trig_jump)
 	{
+		if
+		(
+			(_DATA->_loaders[0])
+			&&
+			(_DATA->_loaders[0]->flag_ready)
+		)
+		{
+			/* loader ready */
 
+			/* check range */
+			if(_DATA->l_trig_jump < 0)
+				_DATA->_current_frame = 0;
+			else if (_DATA->l_trig_jump >= _DATA->_loaders[0]->frames_count)
+				_DATA->_current_frame = _DATA->_loaders[0]->frames_count - 1;
+			else
+				_DATA->_current_frame = _DATA->l_trig_jump;
+
+			/* sync cursor */
+			if(_DATA->l_mem_preload)
+				_DATA->_loaders[0]->cursor = _DATA->_current_frame;
+		};
+		
 		/* reset trigger */
 		_DATA->l_trig_jump = 0xFFFFFFFF;
 	};
