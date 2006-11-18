@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-18:
+		*texture flipping flags
+
 	2006-11-16:
 		*Compleatly rewriting code with asyncronous reader.
 		*'CoInitializeEx' usage to avoid COM uninitilizes answer from AVI* 
@@ -398,6 +401,8 @@ typedef struct
 	long l_field_mode;		// field incrementator
 	long l_start_frame;		// start frame
 	long l_auto_play;		// indicate autoplay state
+	long l_flip_v;			/* flip vertical flag */
+	long l_flip_h;			/* flip vertical flag */
 
 // trigger events for online control
 	long l_trig_play;		/* play from beginning */
@@ -428,6 +433,8 @@ vzPluginData default_value =
 	0,						// long l_field_mode;		// field incrementator
 	0,						// long l_start_frame;		// start frame
 	0,						// long l_auto_play;		// indicate autoplay state
+	0,						// long l_flip_v;			/* flip vertical flag */
+	0,						// long l_flip_h;			/* flip vertical flag */
 
 // trigger events for online control
 	0,						// long l_trig_play;		/* play from beginning */
@@ -479,6 +486,12 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 
 	{"l_trig_jump",		"jump to specified frame position",
 						PLUGIN_PARAMETER_OFFSET(default_value,l_trig_jump)},
+
+	{"l_flip_v",		"flag to vertical flip",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_flip_v)},
+
+	{"l_flip_h",		"flag to vertical flip",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_flip_h)},
 
 	{NULL,NULL,0}
 };
@@ -796,16 +809,32 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 
 		glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
 
-		glTexCoord2f(0.0f, 1.0f);
+		glTexCoord2f
+		(
+			(_DATA->l_flip_h)?1.0f:0.0f, 
+			(_DATA->l_flip_v)?0.0f:1.0f
+		);
 		glVertex3f(co_X + 0.0f, co_Y + 0.0f, co_Z + 0.0f);
 
-		glTexCoord2f(0.0f, 0.0f);
+		glTexCoord2f
+		(
+			(_DATA->l_flip_h)?1.0f:0.0f,
+			(_DATA->l_flip_v)?1.0f:0.0f
+		);
 		glVertex3f(co_X + 0.0f, co_Y + _DATA->_height, co_Z + 0.0f);
 
-		glTexCoord2f(1.0f, 0.0f);
+		glTexCoord2f
+		(
+			(_DATA->l_flip_h)?0.0f:1.0f,
+			(_DATA->l_flip_v)?1.0f:0.0f
+		);
 		glVertex3f(co_X + _DATA->_width, co_Y + _DATA->_height, co_Z + 0.0f);
 
-		glTexCoord2f(1.0f, 1.0f);
+		glTexCoord2f
+		(
+			(_DATA->l_flip_h)?0.0f:1.0f,
+			(_DATA->l_flip_v)?0.0f:1.0f
+		);
 		glVertex3f(co_X + _DATA->_width, co_Y + 0.0f, co_Z + 0.0f);
 
 		glEnd(); // Stop drawing QUADS
