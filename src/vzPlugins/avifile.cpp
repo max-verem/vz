@@ -127,6 +127,20 @@ struct aviloader_desc
 	long cursor;
 };
 
+static char* avi_err(long err)
+{
+	switch(err)
+	{
+		case AVIERR_BADFORMAT:		return "The file couldn't be read, indicating a corrupt file or an unrecognized format.";
+		case AVIERR_MEMORY:			return "The file could not be opened because of insufficient memory.";
+		case AVIERR_FILEREAD:		return "A disk error occurred while reading the file.";
+		case AVIERR_FILEOPEN:		return "A disk error occurred while opening the file.";
+		case REGDB_E_CLASSNOTREG:	return "According to the registry, the type of file specified in AVIFileOpen does not have a handler to process it.";
+		case AVIERR_NODATA:			return "The file does not contain a stream corresponding to the values of fccType and lParam";
+		case CO_E_NOTINITIALIZED:	return "CO_E_NOTINITIALIZED";
+		default:					return "not known error";
+	};
+};
 
 static unsigned long WINAPI aviloader_proc(void* p)
 {
@@ -308,7 +322,6 @@ static unsigned long WINAPI aviloader_proc(void* p)
 						/* no more in mem proload mode */
 						if((desc->flag_mem_preload)&&(0 == desc->flag_exit))
 						{
-							l = 0;
 							desc->flag_exit = 2;
 						};
 
@@ -361,7 +374,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 		}
 		else
 		{
-			printf("avifile: ERROR! AVIStreamInfo() == 0x%.8X\n", hr);
+			printf("avifile: ERROR! AVIStreamInfo() == 0x%.8X [%s]\n", hr, avi_err(hr));
 		};
 
 		/* close avi stream */
@@ -372,7 +385,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 	}
 	else
 	{
-		printf("avifile: ERROR! AVIStreamOpenFromFile('%s') == 0x%.8X\n", desc->filename, hr);
+		printf("avifile: ERROR! AVIStreamOpenFromFile('%s') == 0x%.8X [%s]\n", desc->filename, hr, avi_err(hr));
 	};
 
 	/* setup flag of exiting */
@@ -923,22 +936,6 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		glDisable(GL_TEXTURE_2D);
 	};
 };
-
-/*
-char* _avi_err(long err)
-{
-	switch(err)
-	{
-		case AVIERR_BADFORMAT:		return "The file couldn't be read, indicating a corrupt file or an unrecognized format.";break;
-		case AVIERR_MEMORY:			return "The file could not be opened because of insufficient memory.";break;
-		case AVIERR_FILEREAD:		return "A disk error occurred while reading the file.";break;
-		case AVIERR_FILEOPEN:		return "A disk error occurred while opening the file.";break;
-		case REGDB_E_CLASSNOTREG:	return "According to the registry, the type of file specified in AVIFileOpen does not have a handler to process it.";break;
-		case AVIERR_NODATA:			return "The file does not contain a stream corresponding to the values of fccType and lParam";break;
-		default:					return "[unknown?]"; break;
-	};
-};
-*/
 
 PLUGIN_EXPORT void notify(void* data)
 {
