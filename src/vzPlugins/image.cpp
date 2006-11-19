@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-19:
+		*texture flip support
+		*refactoryng async loader.
+
 	2006-04-23:
 		*cleanup handle of asynk image loader
 
@@ -47,18 +51,21 @@ PLUGIN_EXPORT vzPluginInfo info =
 // internal structure of plugin
 typedef struct
 {
-	char* s_filename;
-	long L_center;
-	char* _filename;
+// public parameters
+	char* s_filename;		/* file with image */
+	long L_center;			/* align type */
+	long l_flip_v;			/* flip vertical flag */
+	long l_flip_h;			/* flip vertical flag */
 
+// internal data
+	char* _filename;
+	void* _surface;
 	HANDLE _lock_update;
 
-	float _width;
-	float _height;
-	float _offset_x;
-	float _offset_y;
-	float _base_width;
-	float _base_height;
+	long _width;
+	long _height;
+	long _base_width;
+	long _base_height;
 	unsigned int _texture;
 	unsigned int _texture_initialized;
 	vzImage* _image;
@@ -68,25 +75,33 @@ typedef struct
 // default value of structore
 vzPluginData default_value = 
 {
-	NULL,
-	GEOM_CENTER_CM,
-	NULL,
+// public parameters
+	NULL,					// char* s_filename;		/* file with image */
+	GEOM_CENTER_CM,			// long L_center;			/* align type */
+	0,						// long l_flip_v;			/* flip vertical flag */
+	0,						// long l_flip_h;			/* flip vertical flag */
 
-	NULL,
+// internal data
+	NULL,					// char* _filename;
+	NULL,					// void* _surface;
+	INVALID_HANDLE_VALUE,	// HANDLE _lock_update;
 
-	0.0f,0.0f,
-	0.0f,0.0f,
-	0.0f,0.0f,
-	0,
-	0,
-	NULL,
-	INVALID_HANDLE_VALUE
+	0,						// long _width;
+	0,						// long _height;
+	0,						// long _base_width;
+	0,						// long _base_height;
+	0,						// unsigned int _texture;
+	0,						// unsigned int _texture_initialized;
+	NULL,					// vzImage* _image;
+	INVALID_HANDLE_VALUE	// HANDLE _async_image_loader;
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
 {
-	{"s_filename", "Name of filename to load", PLUGIN_PARAMETER_OFFSET(default_value,s_filename)},
+	{"s_filename", "Name of image filename to load", PLUGIN_PARAMETER_OFFSET(default_value,s_filename)},
 	{"L_center", "Center of image", PLUGIN_PARAMETER_OFFSET(default_value,L_center)},
+	{"l_flip_v", "flag to vertical flip", PLUGIN_PARAMETER_OFFSET(default_value,l_flip_v)},
+	{"l_flip_h", "flag to horozontal flip", PLUGIN_PARAMETER_OFFSET(default_value,l_flip_h)},
 	{NULL,NULL,0}
 };
 
@@ -111,6 +126,10 @@ PLUGIN_EXPORT void destructor(void* data)
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
 		glDeleteTextures (1, &(_DATA->_texture));
+
+	// Wait until previous thread finish
+	if (INVALID_HANDLE_VALUE != _DATA->_async_image_loader)
+		CloseHandle(_DATA->_async_image_loader);
 
 	// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
@@ -137,83 +156,97 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 {
 	unsigned long r;
 
-	// try to lock struct
-	if((r = WaitForSingleObject(_DATA->_lock_update,0)) != WAIT_OBJECT_0)
-	{
-		// was unable to lock 
-		// do not wait - return
-		ERROR_LOG("unable to lock due to:",(r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT")
-		return;
-	};
+	// lock struct
+	WaitForSingleObject(_DATA->_lock_update, INFINITE);
 
-	// struct is locked
 	// check if image is submitted
-	if (_DATA->_image)
+	if
+	(
+		(_DATA->_image)
+		&&
+		(_DATA->_image->width)
+		&&
+		(_DATA->_image->height)
+	)
 	{
 		// image submitted!!!
-		
-		// sync file name
-		_DATA->_filename = _DATA->s_filename;
-
-		unsigned int texture,prev_texture;
-		
-		// generate new texture id
-		glGenTextures(1, &texture);
-
-		// load texture
-		glBindTexture(GL_TEXTURE_2D, texture);
-/*
-		gluBuild2DMipmaps
+		if
 		(
-			GL_TEXTURE_2D, 4, 
-			_DATA->_image->width,
-			_DATA->_image->height,
-			GL_BGRA_EXT, //_DATA->_image->surface_type, //GL_BGRA_EXT,
-			GL_UNSIGNED_BYTE, 
-			_DATA->_image->surface
-		);
-*/
-glTexImage2D
-(
-	GL_TEXTURE_2D,			// GLenum target,
-	0,						// GLint level,
-	4,						// GLint components,
-	_DATA->_image->width,	// GLsizei width, 
-	_DATA->_image->height,	// GLsizei height, 
-	0,						// GLint border,
-	GL_BGRA_EXT,			// GLenum format,
-	GL_UNSIGNED_BYTE,		// GLenum type,
-	_DATA->_image->surface	// const GLvoid *pixels
-);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-		
-		// subtiture texture
-		prev_texture = _DATA->_texture;
-		_DATA->_texture = texture;
-		texture = prev_texture;
-
-		// assign dimensions
-		_DATA->_width = _DATA->_image->width;
-		_DATA->_height = _DATA->_image->height;
-		_DATA->_base_width = _DATA->_image->base_width;
-		_DATA->_base_height = _DATA->_image->base_height;
-		_DATA->_offset_x = _DATA->_image->base_x;
-		_DATA->_offset_y = _DATA->_image->base_y;
-
-		// free image
-		vzImageFree(_DATA->_image);
-		_DATA->_image = NULL;
-
-		// check if need to release old texture
-		if(_DATA->_texture_initialized)
+			(_DATA->_width != POT(_DATA->_image->width))
+			||
+			(_DATA->_height != POT(_DATA->_image->height))
+		)
 		{
-			// release previous texture
-			glDeleteTextures (1, &texture);	
+			/* texture should be (re)initialized */
+
+			/* delete old texture in some case */
+			if(_DATA->_texture_initialized)
+				glDeleteTextures (1, &(_DATA->_texture));
+
+			/* generate new texture */
+			glGenTextures(1, &_DATA->_texture);
+
+			/* set flags */
+			_DATA->_width = POT(_DATA->_image->width);
+			_DATA->_height = POT(_DATA->_image->height);
+			_DATA->_base_width = _DATA->_image->width;
+			_DATA->_base_height = _DATA->_image->height;
+			_DATA->_texture_initialized = 1;
+
+			/* generate fake surface */
+			void* fake_frame = malloc(4*_DATA->_width*_DATA->_height);
+			memset(fake_frame,0,4*_DATA->_width*_DATA->_height);
+
+			/* create texture (init texture memory) */
+			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+			glTexImage2D
+			(
+				GL_TEXTURE_2D,			// GLenum target,
+				0,						// GLint level,
+				4,						// GLint components,
+				_DATA->_width,			// GLsizei width, 
+				_DATA->_height,			// GLsizei height, 
+				0,						// GLint border,
+				GL_BGRA_EXT,			// GLenum format,
+				GL_UNSIGNED_BYTE,		// GLenum type,
+				fake_frame				// const GLvoid *pixels
+			);
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+
+			/* free memory of fake image */
+			free(fake_frame);
+
+			/* for safe condition reset surface trigger */
+			_DATA->_surface = NULL;
 		};
 
-		// set flag about new texture initialized
-		_DATA->_texture_initialized = 1;
+
+		/* load image if it new */
+		if(_DATA->_surface != _DATA->_image->surface)
+		{
+			/* load */
+			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+			glTexSubImage2D
+			(
+				GL_TEXTURE_2D,									// GLenum target,
+				0,												// GLint level,
+				(_DATA->_width - _DATA->_image->width)/2,		// GLint xoffset,
+				(_DATA->_height - _DATA->_image->height)/2,		// GLint yoffset,
+				_DATA->_image->width,							// GLsizei width,
+				_DATA->_image->height,							// GLsizei height,
+				GL_BGRA_EXT,									// GLenum format,
+				GL_UNSIGNED_BYTE,								// GLenum type,
+				_DATA->_image->surface							// const GLvoid *pixels 
+			);
+
+			/* sync */
+			_DATA->_surface = _DATA->_image->surface;
+
+			/* free image */
+			vzImageFree(_DATA->_image);
+			_DATA->_image = NULL;
+		};
 	};
 
 	// release mutex
@@ -227,7 +260,10 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 {
 	// check if texture initialized
-	if(_DATA->_texture_initialized)
+	if
+	(
+		(_DATA->_texture_initialized)
+	)
 	{
 		// determine center offset 
 		float co_X = 0.0f, co_Y = 0.0f, co_Z = 0.0f;
@@ -236,8 +272,8 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		center_vector(_DATA->L_center,_DATA->_base_width,_DATA->_base_height,co_X,co_Y);
 
 		// translate coordinate according to real image
-		co_Y += _DATA->_offset_y + _DATA->_base_height - _DATA->_height;
-		co_X += (-1.0f) * _DATA->_offset_x;
+		co_Y -= (_DATA->_height - _DATA->_base_height)/2;
+		co_X -= (_DATA->_width - _DATA->_base_width)/2;
 
 		// begin drawing
 		glEnable(GL_TEXTURE_2D);
@@ -261,58 +297,85 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 
 	*/
 
-		glTexCoord2f(0.0f, 1.0f);
+		glTexCoord2f
+		(
+			(_DATA->l_flip_h)?1.0f:0.0f, 
+			(_DATA->l_flip_v)?0.0f:1.0f
+		);
 		glVertex3f(co_X + 0.0f, co_Y + 0.0f, co_Z + 0.0f);
 
-		glTexCoord2f(0.0f, 0.0f);
+		glTexCoord2f
+		(
+			(_DATA->l_flip_h)?1.0f:0.0f,
+			(_DATA->l_flip_v)?1.0f:0.0f
+		);
 		glVertex3f(co_X + 0.0f, co_Y + _DATA->_height, co_Z + 0.0f);
 
-		glTexCoord2f(1.0f, 0.0f);
+		glTexCoord2f
+		(
+			(_DATA->l_flip_h)?0.0f:1.0f,
+			(_DATA->l_flip_v)?1.0f:0.0f
+		);
 		glVertex3f(co_X + _DATA->_width, co_Y + _DATA->_height, co_Z + 0.0f);
 
-		glTexCoord2f(1.0f, 1.0f);
+		glTexCoord2f
+		(
+			(_DATA->l_flip_h)?0.0f:1.0f,
+			(_DATA->l_flip_v)?0.0f:1.0f
+		);
 		glVertex3f(co_X + _DATA->_width, co_Y + 0.0f, co_Z + 0.0f);
 
 		glEnd(); // Stop drawing QUADS
 
 		glDisable(GL_TEXTURE_2D);
-/*
-printf("image: '%s', width='%f',height='%f',base_width='%f',base_height='%f',"
-	   "offset_x='%f',offset_y='%f',co_X='%f',co_Y='%f'\n",
-	   _DATA->_filename,_DATA->_width,_DATA->_height,_DATA->_base_width,_DATA->_base_height,
-	   _DATA->_offset_x,_DATA->_offset_y,co_X,co_Y);
-*/
-	}
-	else
-	{
-//ERROR_LOG("NOT INIT","");
 	};
 };
 
-unsigned long WINAPI _image_loader(void* data)
+struct imageloader_desc
 {
-	WaitForSingleObject(_DATA->_lock_update,INFINITE);
+	char filename[1024];
+	void* data;
+};
+
+static unsigned long WINAPI imageloader_proc(void* d)
+{
 	char* error_log;
 	vzImage* image;
 
+	struct imageloader_desc* desc = (struct imageloader_desc*)d;
+	void* data = desc->data;
+
+	/* notify */
+	printf("image: imageloader_proc('%s')\n", desc->filename);
+
 	// load image
-	if(image = vzImageLoadTGA(_DATA->s_filename,&error_log))
+	if(image = vzImageLoadTGA(desc->filename, &error_log))
 	{
-		// image  loaded !!!!
-		_DATA->_image = vzImageExpand2X(image);
+		/* image  loaded -  assign new image */
+
+		/* lock */
+		WaitForSingleObject(_DATA->_lock_update,INFINITE);
+		
+		/* free image if its exists */
+		if(_DATA->_image)
+			vzImageFree(_DATA->_image);
+
+		/* assign new */
+		_DATA->_image = image;
+
+		/* reset surface flag */
+		_DATA->_surface = NULL;
+
+		/* unlock */
+		ReleaseMutex(_DATA->_lock_update);
 	}
 	else
-	{
 		// unable to load file
-		ERROR_LOG("Unable to load file", error_log);
-	};
+		ERROR_LOG("Unable to load TGA file", error_log);
 
-	// release mutex
-	if(ReleaseMutex(_DATA->_lock_update) == 0)
-	{
-		printf("Error! Unable to release mutex: code %ld\n",GetLastError());
-	};
-	
+	/* free data */
+	free(d);
+
 	// and thread
 	ExitThread(0);
 	return 0;
@@ -320,27 +383,33 @@ unsigned long WINAPI _image_loader(void* data)
 
 PLUGIN_EXPORT void notify(void* data)
 {
+	struct imageloader_desc* desc;
+
+	//wait for mutext free
+	WaitForSingleObject(_DATA->_lock_update, INFINITE);
+
 	// check if pointer to filenames is different?
-	if(_DATA->s_filename != _DATA->_filename)
+	if(_DATA->_filename != _DATA->s_filename)
 	{
-		//wait for mutext free
-		WaitForSingleObject(_DATA->_lock_update,INFINITE);
-
-		// check if image not synced
-		// but new arrived - lets delete them!!!
-		if (_DATA->_image)
-		{
-			vzImageFree(_DATA->_image);
-			_DATA->_image = NULL;
-		};
-
-		//start thread for texture loading
+		// Wait until previous thread finish
 		if (INVALID_HANDLE_VALUE != _DATA->_async_image_loader)
 			CloseHandle(_DATA->_async_image_loader);
-		//start thread for texture loading
-		_DATA->_async_image_loader = CreateThread(0, 0, _image_loader, data, 0, NULL);
 
-		// release mutex -  let created tread work
-		ReleaseMutex(_DATA->_lock_update);
+		/* allocate desc info */
+		desc = (struct imageloader_desc*)malloc(sizeof(struct imageloader_desc));
+		memset(desc, 0, sizeof(struct imageloader_desc));
+
+		/* setup arguments */
+		desc->data = data;
+		strcpy(desc->filename, _DATA->s_filename);
+
+		//start thread for texture loading
+		_DATA->_async_image_loader = CreateThread(0, 0, imageloader_proc, desc, 0, NULL);
+
+		/* sunc filename */
+		_DATA->_filename = _DATA->s_filename;
 	};
+
+	// release mutex -  let created tread work
+	ReleaseMutex(_DATA->_lock_update);
 };

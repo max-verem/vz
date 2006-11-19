@@ -638,6 +638,9 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			if(_DATA->_texture_initialized)
 				glDeleteTextures (1, &(_DATA->_texture));
 
+			/* generate new texture */
+			glGenTextures(1, &_DATA->_texture);
+
 			/* set flags */
 			_DATA->_width = POT(_DATA->_loaders[0]->width);
 			_DATA->_height = POT(_DATA->_loaders[0]->height);
