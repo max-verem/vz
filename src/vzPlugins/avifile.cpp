@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-19:
+		*free transform feature added
+
 	2006-11-18:
 		*memory preloading clips
 		*texture flipping flags
@@ -43,12 +46,15 @@ ChangeLog:
 #include <windows.h>
 #include <vfw.h>
 
+#include "free_transform.h"
+
 #define RING_BUFFER_LENGTH 10
 #define MAX_AVI_LOADERS 5
 
 //#define VERBOSE
 
-/*#define _WIN32_DCOM
+/*
+#define _WIN32_DCOM
 #define _WIN32_WINNT 0x0400
 #include <objbase.h>
 */
@@ -338,6 +344,8 @@ static unsigned long WINAPI aviloader_proc(void* p)
 						(2 == desc->flag_exit)
 					)
 					{
+						/* notify to console */
+						printf("avifile: aviloader_proc loaded '%s'\n", desc->filename);
 #ifdef VERBOSE
 						printf("avifile: aviloader_proc waiting for real f_exit\n");
 #endif /* VERBOSE */
@@ -463,6 +471,20 @@ typedef struct
 	long l_flip_v;			/* flip vertical flag */
 	long l_flip_h;			/* flip vertical flag */
 	long l_mem_preload;		/* preload whole clip in memmory */
+// free transform coords
+	float f_x1;				/* left bottom coner */
+	float f_y1;
+	float f_z1;
+	float f_x2;				/* left upper coner */
+	float f_y2;
+	float f_z2;
+	float f_x3;				/* right upper coner */
+	float f_y3;
+	float f_z3;
+	float f_x4;				/* right bottom coner */
+	float f_y4;
+	float f_z4;
+	long  l_tr_lod;			/* number of breaks */
 
 // trigger events for online control
 	long l_trig_play;		/* play from beginning */
@@ -482,11 +504,15 @@ typedef struct
 	long _width;
 	long _height;
 
+	float* _ft_vertices;
+	float* _ft_texels;
+
 } vzPluginData;
 
 // default value of structore
 vzPluginData default_value = 
 {
+// public data
 	NULL,					// char* s_filename;		// avi file name
 	GEOM_CENTER_CM,			// long L_center;			// centering of image
 	0,						// long l_loop;				// flag indicated that loop playing is active
@@ -496,6 +522,21 @@ vzPluginData default_value =
 	0,						// long l_flip_v;			/* flip vertical flag */
 	0,						// long l_flip_h;			/* flip vertical flag */
 	0,						// long l_mem_preload;		/* preload whole clip in memmory */
+// free transform coords
+	0.0,					// float f_x1;				/* left bottom coner */
+	0.0,					// float f_y1;
+	0.0,					// float f_z1;
+	0.0,					// float f_x2;				/* left upper coner */
+	0.0,					// float f_y2;
+	0.0,					// float f_z2;
+	0.0,					// float f_x3;				/* right upper coner */
+	0.0,					// float f_y3;
+	0.0,					// float f_z3;
+	0.0,					// float f_x4;				/* right bottom coner */
+	0.0,					// float f_y4;
+	0.0,					// float f_z4;
+	30,						// long  l_tr_lod;			/* number of breaks */
+
 
 // trigger events for online control
 	0,						// long l_trig_play;		/* play from beginning */
@@ -513,7 +554,9 @@ vzPluginData default_value =
 	0,						// unsigned int _texture;
 	0,						// unsigned int _texture_initialized;
 	0,						// long _width;
-	0						// long _height;
+	0,						// long _height;
+	NULL,					// float* _ft_vertices;
+	NULL					// float* _ft_texels;
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
@@ -557,6 +600,37 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"l_mem_preload",	"flag to vertical flip",
 						PLUGIN_PARAMETER_OFFSET(default_value,l_mem_preload)},
 
+	{"f_x1",			"X of left bottom corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_x1)},
+	{"f_y1",			"Y of left bottom corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_y1)},
+	{"f_z1",			"Z of left bottom corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_z1)},
+
+	{"f_x2",			"X of left upper corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_x2)},
+	{"f_y2",			"Y of left upper corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_y2)},
+	{"f_z2",			"Z of left upper corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_z2)},
+
+	{"f_x3",			"X of right upper corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_x3)},
+	{"f_y3",			"Y of right upper corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_y3)},
+	{"f_z3",			"Z of right upper corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_z3)},
+
+	{"f_x4",			"X of right bottom corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_x4)},
+	{"f_y4",			"Y of right bottom corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_y4)},
+	{"f_z4",			"Z of right bottom corner (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, f_z4)},
+
+	{"l_tr_lod",		"Level of triangulation (free transorm mode)", 
+						PLUGIN_PARAMETER_OFFSET(default_value, l_tr_lod)},
+
 	{NULL,NULL,0}
 };
 
@@ -599,6 +673,10 @@ PLUGIN_EXPORT void destructor(void* data)
 			_DATA->_loaders[i] = NULL;
 		};
 	free(_DATA->_loaders);
+
+	/* free arrays coords */
+	if(_DATA->_ft_vertices) free(_DATA->_ft_vertices);
+	if(_DATA->_ft_texels) free(_DATA->_ft_texels);
 
 	// unlock
 	ReleaseMutex(_DATA->_lock_update);
@@ -872,71 +950,170 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		(_DATA->_loaders[0]->flag_ready)
 	)
 	{
-		// determine center offset 
-		float co_X = 0.0f, co_Y = 0.0f, co_Z = 0.0f;
+		if (FOURCC_TO_LONG('_','F','T','_') == _DATA->L_center)
+		{
+			int i;
+			double p;
 
-		// translate coordinates accoring to base image
-		center_vector(_DATA->L_center, _DATA->_loaders[0]->width, _DATA->_loaders[0]->height, co_X, co_Y);
+			/* free transform mode */
+			float X1,X2,X3,X4, Y1,Y2,Y3,Y4, Z1,Z2,Z3,Z4, XC,YC,ZC;
 
-#ifdef VERBOSE2
-		printf("avifile: center_vector: co_X = %f, co_Y = %f\n", co_X, co_Y);
-#endif /* VERBOSE */
+			/* reset Z */
+			ZC = (Z1 = (Z2 = (Z3 = (Z4 = 0.0f))));
 
-		// translate coordinate according to real image
-		co_Y -= (_DATA->_height - _DATA->_loaders[0]->height)/2;
-		co_X -= (_DATA->_width - _DATA->_loaders[0]->width)/2;
-
-#ifdef VERBOSE2
-		if(_DATA->_playing)
-			printf
+			/* calc coordiantes of image */
+			calc_free_transform
 			(
-				"avifile: translate: co_X = %f, co_Y = %f "
-				"(_DATA->_loaders[0]->width=%d, _DATA->_loaders[0]->height=%d\n", 
-				co_X, co_Y,
-				_DATA->_loaders[0]->width, _DATA->_loaders[0]->height
-			); 
+				/* dimentsions */
+				_DATA->_width, _DATA->_height,
+				_DATA->_loaders[0]->width, _DATA->_loaders[0]->height,
+
+				/* source coordinates */
+				_DATA->f_x1, _DATA->f_y1,
+				_DATA->f_x2, _DATA->f_y2,
+				_DATA->f_x3, _DATA->f_y3,
+				_DATA->f_x4, _DATA->f_y4,
+
+				/* destination coordinates */
+				&X1, &Y1,
+				&X2, &Y2,
+				&X3, &Y3,
+				&X4, &Y4
+			);
+
+			/* begin drawing */
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+
+			/* setup colour & alpha */
+			glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
+
+			/* reinit arrays */
+			if(_DATA->_ft_vertices) free(_DATA->_ft_vertices);
+			if(_DATA->_ft_texels) free(_DATA->_ft_texels);
+			_DATA->_ft_vertices = (float*)malloc(sizeof(float) * 3 * (2*_DATA->l_tr_lod + 2));
+			_DATA->_ft_texels = (float*)malloc(sizeof(float) * 2 * (2*_DATA->l_tr_lod + 2));
+
+			/* fill array */
+			for(i = 0; i<= (2*_DATA->l_tr_lod + 1); i++)
+			{
+				p = ((double)(i/2))/_DATA->l_tr_lod;
+
+				if(i & 1)
+				{
+					/* 'right' line */
+
+					/* setup texture coords */
+					_DATA->_ft_texels[i * 2 + 0] = 1.0f;
+					_DATA->_ft_texels[i * 2 + 1] = p;
+
+					/* calc vector coord */
+					calc_ft_vec_part(X3,Y3, X4,Y4, p, &XC,&YC);
+				}
+				else
+				{
+					/* left line */
+
+					/* setup texture coords */
+					_DATA->_ft_texels[i * 2 + 0] = 0.0f;
+					_DATA->_ft_texels[i * 2 + 1] = p;
+
+					/* calc vector coord */
+					calc_ft_vec_part(X2,Y2, X1,Y1, p, &XC,&YC);
+				};
+
+				_DATA->_ft_vertices[i * 3 + 0] = XC;
+				_DATA->_ft_vertices[i * 3 + 1] = YC;
+				_DATA->_ft_vertices[i * 3 + 2] = ZC;
+			};
+
+			/* enable vertex and texture coors array */
+			glEnableClientState(GL_VERTEX_ARRAY);
+			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+			/* init vertext and texel array pointers */
+			glVertexPointer(3, GL_FLOAT, 0, _DATA->_ft_vertices);
+			glTexCoordPointer(2, GL_FLOAT, 0, _DATA->_ft_texels);
+
+			/* draw array */
+			glDrawArrays(GL_TRIANGLE_STRIP, 0,  (2*_DATA->l_tr_lod + 2) );
+
+			/* enable vertex and texture coors array */
+			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+			glDisableClientState(GL_VERTEX_ARRAY);
+
+			glDisable(GL_TEXTURE_2D);
+		}
+		else
+		{
+			/* no transform mode */
+		
+			// determine center offset 
+			float co_X = 0.0f, co_Y = 0.0f, co_Z = 0.0f;
+
+			// translate coordinates accoring to base image
+			center_vector(_DATA->L_center, _DATA->_loaders[0]->width, _DATA->_loaders[0]->height, co_X, co_Y);
+
+#ifdef VERBOSE2
+			printf("avifile: center_vector: co_X = %f, co_Y = %f\n", co_X, co_Y);
 #endif /* VERBOSE */
 
-		// begin drawing
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+			// translate coordinate according to real image
+			co_Y -= (_DATA->_height - _DATA->_loaders[0]->height)/2;
+			co_X -= (_DATA->_width - _DATA->_loaders[0]->width)/2;
 
-		// Draw a quad (ie a square)
-		glBegin(GL_QUADS);
+#ifdef VERBOSE2
+			if(_DATA->_playing)
+				printf
+				(
+					"avifile: translate: co_X = %f, co_Y = %f "
+					"(_DATA->_loaders[0]->width=%d, _DATA->_loaders[0]->height=%d\n", 
+					co_X, co_Y,
+					_DATA->_loaders[0]->width, _DATA->_loaders[0]->height
+				); 
+#endif /* VERBOSE */
 
-		glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
+			// begin drawing
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
 
-		glTexCoord2f
-		(
-			(_DATA->l_flip_h)?1.0f:0.0f, 
-			(_DATA->l_flip_v)?0.0f:1.0f
-		);
-		glVertex3f(co_X + 0.0f, co_Y + 0.0f, co_Z + 0.0f);
+			// Draw a quad (ie a square)
+			glBegin(GL_QUADS);
 
-		glTexCoord2f
-		(
-			(_DATA->l_flip_h)?1.0f:0.0f,
-			(_DATA->l_flip_v)?1.0f:0.0f
-		);
-		glVertex3f(co_X + 0.0f, co_Y + _DATA->_height, co_Z + 0.0f);
+			glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
 
-		glTexCoord2f
-		(
-			(_DATA->l_flip_h)?0.0f:1.0f,
-			(_DATA->l_flip_v)?1.0f:0.0f
-		);
-		glVertex3f(co_X + _DATA->_width, co_Y + _DATA->_height, co_Z + 0.0f);
+			glTexCoord2f
+			(
+				(_DATA->l_flip_h)?1.0f:0.0f, 
+				(_DATA->l_flip_v)?0.0f:1.0f
+			);
+			glVertex3f(co_X + 0.0f, co_Y + 0.0f, co_Z + 0.0f);
 
-		glTexCoord2f
-		(
-			(_DATA->l_flip_h)?0.0f:1.0f,
-			(_DATA->l_flip_v)?0.0f:1.0f
-		);
-		glVertex3f(co_X + _DATA->_width, co_Y + 0.0f, co_Z + 0.0f);
+			glTexCoord2f
+			(
+				(_DATA->l_flip_h)?1.0f:0.0f,
+				(_DATA->l_flip_v)?1.0f:0.0f
+			);
+			glVertex3f(co_X + 0.0f, co_Y + _DATA->_height, co_Z + 0.0f);
 
-		glEnd(); // Stop drawing QUADS
+			glTexCoord2f
+			(
+				(_DATA->l_flip_h)?0.0f:1.0f,
+				(_DATA->l_flip_v)?1.0f:0.0f
+			);
+			glVertex3f(co_X + _DATA->_width, co_Y + _DATA->_height, co_Z + 0.0f);
 
-		glDisable(GL_TEXTURE_2D);
+			glTexCoord2f
+			(
+				(_DATA->l_flip_h)?0.0f:1.0f,
+				(_DATA->l_flip_v)?0.0f:1.0f
+			);
+			glVertex3f(co_X + _DATA->_width, co_Y + 0.0f, co_Z + 0.0f);
+
+			glEnd(); // Stop drawing QUADS
+
+			glDisable(GL_TEXTURE_2D);
+		};
 	};
 };
 

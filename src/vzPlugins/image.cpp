@@ -64,6 +64,7 @@ typedef struct
 	long L_center;			/* align type */
 	long l_flip_v;			/* flip vertical flag */
 	long l_flip_h;			/* flip vertical flag */
+// free transform coords
 	float f_x1;				/* left bottom coner */
 	float f_y1;
 	float f_z1;
@@ -103,6 +104,7 @@ vzPluginData default_value =
 	GEOM_CENTER_CM,			// long L_center;			/* align type */
 	0,						// long l_flip_v;			/* flip vertical flag */
 	0,						// long l_flip_h;			/* flip vertical flag */
+// free transform coords
 	0.0,					// float f_x1;				/* left bottom coner */
 	0.0,					// float f_y1;
 	0.0,					// float f_z1;
@@ -206,7 +208,7 @@ PLUGIN_EXPORT void destructor(void* data)
 	// close mutexes
 	CloseHandle(_DATA->_lock_update);
 
-	/* free array coords */
+	/* free arrays coords */
 	if(_DATA->_ft_vertices) free(_DATA->_ft_vertices);
 	if(_DATA->_ft_texels) free(_DATA->_ft_texels);
 
