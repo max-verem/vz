@@ -28,6 +28,13 @@ ChangleLog:
 		*new version.
 
 */
+static char* _plugin_description = 
+""
+;
+
+static char* _plugin_notes = 
+""
+;
 
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
@@ -39,7 +46,9 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"systime",
 	1.0,
-	"rc8"
+	"rc8",
+	_plugin_description,
+	_plugin_notes
 };
 
 static char* working_param = "s_text";

@@ -63,10 +63,12 @@ int main(int argc, char** argv)
 			fprintf
 			(
 				f,
-				"FUNCTION:\n    %s\n\nVERSION:\n    %.2f-%s\n\n",
+				"FUNCTION:\n    %s\n\nVERSION:\n    %.2f-%s\n\nDESCRIPTION:\n    %s\n\nNOTES:\n    %s\n\n",
 				info->name,
 				info->version_number,
-				info->version_suffix
+				info->version_suffix,
+				info->description,
+				info->notes
 			);
 
 			/* list parameters */

@@ -53,6 +53,15 @@ BYTE #5 - control sum
 arithmetic sum of unsigned bytes #0..#4 
 */
 
+static char* _plugin_description = 
+""
+;
+
+static char* _plugin_notes = 
+""
+;
+
+
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 #include "../vz/vzMain.h"
@@ -66,7 +75,9 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"equipe_timer",
 	1.0,
-	"probe2"
+	"probe2",
+	_plugin_description,
+	_plugin_notes
 };
 
 #define MAX_TIMERS 4

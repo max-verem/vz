@@ -32,6 +32,14 @@ ChangeLog:
 
 */
 
+static char* _plugin_description = 
+""
+;
+
+static char* _plugin_notes = 
+""
+;
+
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 #include "../vz/vzImage.h"
@@ -92,7 +100,9 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"ttfont",
 	1.0,
-	"rc8"
+	"rc8",
+	_plugin_description,
+	_plugin_notes
 };
 
 /* text param description struct */

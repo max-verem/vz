@@ -37,6 +37,13 @@ ChangeLog:
 		*Draft Version
 
 */
+static char* _plugin_description = 
+"Play AVI file as texture."
+;
+
+static char* _plugin_notes = 
+"Accept 24 and 32 bpp files. Uses system decompressor."
+;
 
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
@@ -96,7 +103,9 @@ PLUGIN_EXPORT vzPluginInfo info =
 {
 	"avifile",
 	1.0,
-	"rc8"
+	"rc8",
+	_plugin_description,
+	_plugin_notes
 };
 
 #define CMD_PLAY		FOURCC_TO_LONG('_','P','L','Y')

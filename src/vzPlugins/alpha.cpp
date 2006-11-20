@@ -25,17 +25,25 @@ ChangeLog:
 
 
 */
+static char* _plugin_description = 
+""
+;
+
+static char* _plugin_notes = 
+""
+;
 
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
-
 
 // declare name and version of plugin
 PLUGIN_EXPORT vzPluginInfo info =
 {
 	"alpha",
 	1.0,
-	"rc8"
+	"rc8",
+	_plugin_description,
+	_plugin_notes
 };
 
 // internal structure of plugin

@@ -50,6 +50,8 @@ typedef struct
 	char* name;
 	float version_number;
 	char* version_suffix;
+	char* description;
+	char* notes;
 } vzPluginInfo;
 
 typedef struct
