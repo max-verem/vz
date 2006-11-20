@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+[verem@elbrus ~]$ telnet dev-1 8001
+Trying 10.1.5.64...
+Connected to dev-1.internal.m1stereo.tv (10.1.5.64).
+Escape character is '^]'.
+ViZualizator (vz-1.00-rc8) [tcpserver]
+
+vz in$> renderman.load(./projects/image_test_ft.xml)
+vz out$> OK!Load
+vz in$> scene.tree.function.image1.l_tr_lod=10
+vz out$> OK
+vz in$> scene.tree.function.image1.l_tr_lod=100
+vz out$> OK
+vz in$>
+
+
+
+-->
+<tree visible="1">
+    <container visible="1">
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+            <function name="image" id="image1">
+                <param name="s_filename" value="./projects/tests/image_test.tga"/>
+                <param name="L_center" value="_FT_"/>
+                <param name="l_tr_lod" value="30"/>
+
+                <!-- corner #1 -->
+                <param name="f_x1" value="-350.0"/>
+                <param name="f_y1" value="-278.0"/>
+
+                <!-- corner #2 -->
+                <param name="f_x2" value="-350.0"/>
+                <param name="f_y2" value="278.0"/>
+
+                <!-- corner #3 -->
+                <param name="f_x3" value="100.0"/>
+                <param name="f_y3" value="40.0"/>
+
+                <!-- corner #4 -->
+                <param name="f_x4" value="100.0"/>
+                <param name="f_y4" value="-40.0"/>
+
+            </function>
+        </container>
+    </container>
+</tree>
+<motion>
+
+    <director id="corner_moving" dur="125" loop="1" pos="0" run="1">
+        <param name="tree.function.image1.f_x4">
+            <timeline t1="0" t2="60" y1="100" y2="250.0" f="1"/>
+            <timeline t1="61" t2="124" y1="250" y2="100.0" f="1"/>
+        </param>
+        <param name="tree.function.image1.f_y4">
+            <timeline t1="0" t2="60" y1="-40" y2="-180.0" f="1"/>
+            <timeline t1="61" t2="124" y1="-180" y2="-40.0" f="1"/>
+        </param>
+
+        <param name="tree.function.image1.f_x3">
+            <timeline t1="0" t2="60" y1="100" y2="250.0" f="1"/>
+            <timeline t1="61" t2="124" y1="250" y2="100.0" f="1"/>
+        </param>
+        <param name="tree.function.image1.f_y3">
+            <timeline t1="0" t2="60" y1="40" y2="180.0" f="1"/>
+            <timeline t1="61" t2="124" y1="180" y2="40.0" f="1"/>
+        </param>
+
+
+    </director>	
+
+</motion>
+</scene>
+

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+-->
+<tree visible="1">
+    <container visible="1">
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+            <function name="image" id="image1">
+                <param name="s_filename" value="./projects/tests/image_test.tga"/>
+                <param name="L_center" value="_CM_"/>
+            </function>
+        </container>
+    </container>
+</tree>
+<motion>
+</motion>
+</scene>
+

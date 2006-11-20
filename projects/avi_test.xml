@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+[verem@elbrus ~]$ telnet dev-1 8001
+Trying 10.1.5.64...
+Connected to dev-1.internal.m1stereo.tv (10.1.5.64).
+Escape character is '^]'.
+ViZualizator (vz-1.00-rc8) [tcpserver]
+
+vz in$> renderman.load(./projects/avi_test.xml)
+vz out$> OK!Load
+vz in$> scene.tree.function.clip_anim.l_trig_stop=1
+vz out$> OK
+vz in$> scene.tree.function.clip_anim.l_trig_cont=1
+vz out$> OK
+vz in$> scene.tree.function.clip_anim.l_trig_cont=1
+vz out$> OK
+vz in$> scene.tree.function.clip_anim.l_trig_cont=1
+vz out$> OK
+vz in$> scene.tree.function.clip_anim.l_trig_play=1
+vz out$> OK
+vz in$> scene.tree.function.clip_anim.l_trig_play=1
+vz out$> OK
+vz in$>
+
+-->
+<tree visible="1">
+	<container visible="1">
+		<function name="translate">
+			<param name="f_x" value="360"/>
+			<param name="f_y" value="288"/>
+		</function>
+		<function name="avifile" id="clip_anim">
+			<param name="s_filename" value="c:/temp/main_anim.avi"/>
+			<param name="L_center" value="_CM_"/>
+			<param name="l_auto_play" value="1"/>
+			<param name="l_flip_v" value="1"/>
+			<param name="l_mem_preload" value="1"/>
+		</function> 
+	</container>
+</tree>
+<motion>
+</motion>
+</scene>
+
