@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-20:
+		*free transform implementation
+
 	2006-11-19:
 		*texture flip support
 		*refactoryng async loader.
@@ -40,6 +43,10 @@ ChangeLog:
 #include <process.h>
 #include <stdio.h>
 
+#include "free_transform.h"
+
+//#define VERBOSE2
+
 // declare name and version of plugin
 PLUGIN_EXPORT vzPluginInfo info =
 {
@@ -56,6 +63,19 @@ typedef struct
 	long L_center;			/* align type */
 	long l_flip_v;			/* flip vertical flag */
 	long l_flip_h;			/* flip vertical flag */
+	float f_x1;				/* left bottom coner */
+	float f_y1;
+	float f_z1;
+	float f_x2;				/* left upper coner */
+	float f_y2;
+	float f_z2;
+	float f_x3;				/* right upper coner */
+	float f_y3;
+	float f_z3;
+	float f_x4;				/* right bottom coner */
+	float f_y4;
+	float f_z4;
+	long  l_tr_lod;			/* number of breaks */
 
 // internal data
 	char* _filename;
@@ -80,6 +100,20 @@ vzPluginData default_value =
 	GEOM_CENTER_CM,			// long L_center;			/* align type */
 	0,						// long l_flip_v;			/* flip vertical flag */
 	0,						// long l_flip_h;			/* flip vertical flag */
+	0.0,					// float f_x1;				/* left bottom coner */
+	0.0,					// float f_y1;
+	0.0,					// float f_z1;
+	0.0,					// float f_x2;				/* left upper coner */
+	0.0,					// float f_y2;
+	0.0,					// float f_z2;
+	0.0,					// float f_x3;				/* right upper coner */
+	0.0,					// float f_y3;
+	0.0,					// float f_z3;
+	0.0,					// float f_x4;				/* right bottom coner */
+	0.0,					// float f_y4;
+	0.0,					// float f_z4;
+	30,						// long  l_tr_lod;			/* number of breaks */
+
 
 // internal data
 	NULL,					// char* _filename;
@@ -102,6 +136,25 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"L_center", "Center of image", PLUGIN_PARAMETER_OFFSET(default_value,L_center)},
 	{"l_flip_v", "flag to vertical flip", PLUGIN_PARAMETER_OFFSET(default_value,l_flip_v)},
 	{"l_flip_h", "flag to horozontal flip", PLUGIN_PARAMETER_OFFSET(default_value,l_flip_h)},
+
+	{"f_x1", "X of left bottom corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_x1)},
+	{"f_y1", "Y of left bottom corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_y1)},
+	{"f_z1", "Z of left bottom corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_z1)},
+
+	{"f_x2", "X of left upper corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_x2)},
+	{"f_y2", "Y of left upper corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_y2)},
+	{"f_z2", "Z of left upper corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_z2)},
+
+	{"f_x3", "X of right upper corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_x3)},
+	{"f_y3", "Y of right upper corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_y3)},
+	{"f_z3", "Z of right upper corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_z3)},
+
+	{"f_x4", "X of right bottom corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_x4)},
+	{"f_y4", "Y of right bottom corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_y4)},
+	{"f_z4", "Z of right bottom corner (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, f_z4)},
+
+	{"l_tr_lod", "Level of triangulation (free transorm mode)", PLUGIN_PARAMETER_OFFSET(default_value, l_tr_lod)},
+
 	{NULL,NULL,0}
 };
 
@@ -259,73 +312,243 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 
 PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 {
+	double p;
+	int i;
+
 	// check if texture initialized
+
+	/* not free transform mode */
 	if
 	(
 		(_DATA->_texture_initialized)
 	)
 	{
-		// determine center offset 
-		float co_X = 0.0f, co_Y = 0.0f, co_Z = 0.0f;
+		float X1,X2,X3,X4, Y1,Y2,Y3,Y4, Z1,Z2,Z3,Z4, XC,YC,ZC;
 
-		// translate coordinates accoring to base image
-		center_vector(_DATA->L_center,_DATA->_base_width,_DATA->_base_height,co_X,co_Y);
+		if (FOURCC_TO_LONG('_','F','T','_') == _DATA->L_center)
+		{
+			/* free transform mode */
+			
+			/* reset Z */
+			Z1 = (Z2 = (Z3 = (Z4 = 0.0f)));
 
-		// translate coordinate according to real image
-		co_Y -= (_DATA->_height - _DATA->_base_height)/2;
-		co_X -= (_DATA->_width - _DATA->_base_width)/2;
+			/* calc coordiantes of image */
+			calc_free_transform
+			(
+				/* dimentsions */
+				_DATA->_width, _DATA->_height,
+				_DATA->_base_width, _DATA->_base_height,
 
-		// begin drawing
+				/* source coordinates */
+				_DATA->f_x1, _DATA->f_y1,
+				_DATA->f_x2, _DATA->f_y2,
+				_DATA->f_x3, _DATA->f_y3,
+				_DATA->f_x4, _DATA->f_y4,
+
+				/* destination coordinates */
+				&X1, &Y1,
+				&X2, &Y2,
+				&X3, &Y3,
+				&X4, &Y4
+			);
+
+#ifdef VERBOSE1
+			printf
+			(
+				"\n"
+				"1: (%7.3f,%7.3f) -> (%7.3f,%7.3f)\n"
+				"2: (%7.3f,%7.3f) -> (%7.3f,%7.3f)\n"
+				"3: (%7.3f,%7.3f) -> (%7.3f,%7.3f)\n"
+				"4: (%7.3f,%7.3f) -> (%7.3f,%7.3f)\n",
+
+				_DATA->f_x1, _DATA->f_y1, X1, Y1,
+				_DATA->f_x2, _DATA->f_y2, X2, Y2,
+				_DATA->f_x3, _DATA->f_y3, X3, Y3,
+				_DATA->f_x4, _DATA->f_y4, X4, Y4
+			);
+#endif	/* VERBOSE1 */
+
+		}
+		else if (FOURCC_TO_LONG('_','F','C','_') == _DATA->L_center)
+		{
+			X1 = _DATA->f_x1;
+			Y1 = _DATA->f_y1;
+			Z1 = _DATA->f_z1;
+
+			X2 = _DATA->f_x2;
+			Y2 = _DATA->f_y2;
+			Z2 = _DATA->f_z2;
+			
+			X3 = _DATA->f_x3;
+			Y3 = _DATA->f_y3;
+			Z3 = _DATA->f_z3;
+
+			X4 = _DATA->f_x4;
+			Y4 = _DATA->f_y4;
+			Z4 = _DATA->f_z4;
+		}
+		else
+		{
+			/* normal mode */
+
+			// determine center offset 
+			float co_X = 0.0f, co_Y = 0.0f, co_Z = 0.0f;
+
+			// translate coordinates accoring to base image
+			center_vector(_DATA->L_center,_DATA->_base_width,_DATA->_base_height,co_X,co_Y);
+
+			// translate coordinate according to real image
+			co_Y -= (_DATA->_height - _DATA->_base_height)/2;
+			co_X -= (_DATA->_width - _DATA->_base_width)/2;
+
+			X1 = co_X + 0.0f;
+			Y1 = co_Y + 0.0f;
+			Z1 = co_Z + 0.0f;
+
+			X2 = co_X + 0.0f;
+			Y2 = co_Y + _DATA->_height;
+			Z2 = co_Z + 0.0f;
+
+			X3 = co_X + _DATA->_width;
+			Y3 = co_Y + _DATA->_height;
+			Z3 = co_Z + 0.0f;
+
+			X4 = co_X + _DATA->_width;
+			Y4 = co_Y + 0.0f;
+			Z4 = co_Z + 0.0f;
+		};
+
+
+		/* begin drawing */
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
 
-		// Draw a quad (ie a square)
-		glBegin(GL_QUADS);
+/*
+	NB!
 
-		glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
+			glTexCoord2f() takes a U and V (U,V) into our texture.  The U and V are 
+			in the range from 0 to 1.  And work like this:
 
-		// glTexCoord2f() takes a U and V (U,V) into our texture.  The U and V are 
-		// in the range from 0 to 1.  And work like this:
+			(0,1)  (1,1) 
+			+--------+
+			|        |
+			|        |
+			|        |
+			|        |   Just like Cartesian coordinates :)
+			+--------+
+			(0,0)  (1,0)
 
-	/*	  (0,1)  (1,1) 
-		    _______
-		   |	   |
-		   |	   |
-		   |	   |			Just like Cartesian coordinates :)
-		    -------
-		  (0,0)  (1,0)
-
-	*/
-
-		glTexCoord2f
+*/
+		if
 		(
-			(_DATA->l_flip_h)?1.0f:0.0f, 
-			(_DATA->l_flip_v)?0.0f:1.0f
-		);
-		glVertex3f(co_X + 0.0f, co_Y + 0.0f, co_Z + 0.0f);
+			(FOURCC_TO_LONG('_','F','T','_') == _DATA->L_center)
+			||
+			(FOURCC_TO_LONG('_','F','C','_') == _DATA->L_center)
+		)
+		{
+			ZC = 0.0f;
 
-		glTexCoord2f
-		(
-			(_DATA->l_flip_h)?1.0f:0.0f,
-			(_DATA->l_flip_v)?1.0f:0.0f
-		);
-		glVertex3f(co_X + 0.0f, co_Y + _DATA->_height, co_Z + 0.0f);
+			/* we will try to triangulate */
+			glBegin(GL_TRIANGLE_STRIP);
 
-		glTexCoord2f
-		(
-			(_DATA->l_flip_h)?0.0f:1.0f,
-			(_DATA->l_flip_v)?1.0f:0.0f
-		);
-		glVertex3f(co_X + _DATA->_width, co_Y + _DATA->_height, co_Z + 0.0f);
+			glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
 
-		glTexCoord2f
-		(
-			(_DATA->l_flip_h)?0.0f:1.0f,
-			(_DATA->l_flip_v)?0.0f:1.0f
-		);
-		glVertex3f(co_X + _DATA->_width, co_Y + 0.0f, co_Z + 0.0f);
+			for(i = 0; i<= (2*_DATA->l_tr_lod + 1); i++)
+			{
+				p = ((double)(i/2))/_DATA->l_tr_lod;
 
-		glEnd(); // Stop drawing QUADS
+				if(i & 1)
+				{
+					/* 'right' line */
+
+					/* setup texture coords */
+					glTexCoord2f(1.0f, p);
+
+					/* calc vector coord */
+					calc_ft_vec_part(X3,Y3, X4,Y4, p, &XC,&YC);
+#ifdef VERBOSE2
+					printf
+					(
+						"%d: "
+						"#3=[%7.3f,%7.3f] #4=[%7.3f, %7.3f] => #R=[%7.3f, %7.3f]"
+						" p = %7.3lf"
+						"\n",
+						i, 
+						X3,Y3, X4,Y4, XC,YC,
+						p
+					);
+#endif /* VERBOSE2 */
+				}
+				else
+				{
+					/* left line */
+
+					/* setup texture coords */
+					glTexCoord2f(0.0f, p);
+
+					/* calc vector coord */
+					calc_ft_vec_part(X2,Y2, X1,Y1, p, &XC,&YC);
+#ifdef VERBOSE2
+					printf
+					(
+						"%d: "
+						"#2=[%7.3f,%7.3f] #1=[%7.3f, %7.3f] => #R=[%7.3f, %7.3f]"
+						"p = %7.3lf"
+						"\n",
+						i, 
+						X2,Y2, X1,Y1, XC,YC,
+						p
+					);
+#endif /* VERBOSE2 */
+				};
+
+				/* put vertex */
+				glVertex3f(XC, YC, ZC);
+			};
+		}
+		else
+		{
+			// Draw a quad (ie a square)
+			glBegin(GL_QUADS);
+			glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
+
+
+			/* (0,0) */
+			glTexCoord2f
+			(
+				(_DATA->l_flip_h)?1.0f:0.0f, 
+				(_DATA->l_flip_v)?0.0f:1.0f
+			);
+			glVertex3f(X1, Y1, Z1);
+
+			/* (0,1) */
+			glTexCoord2f
+			(
+				(_DATA->l_flip_h)?1.0f:0.0f,
+				(_DATA->l_flip_v)?1.0f:0.0f
+			);
+			glVertex3f(X2, Y2, Z2);
+
+			/* (1,1) */
+			glTexCoord2f
+			(
+				(_DATA->l_flip_h)?0.0f:1.0f,
+				(_DATA->l_flip_v)?1.0f:0.0f
+			);
+			glVertex3f(X3, Y3, Z3);
+
+			/* (1,0) */
+			glTexCoord2f
+			(
+				(_DATA->l_flip_h)?0.0f:1.0f,
+				(_DATA->l_flip_v)?0.0f:1.0f
+			);
+			glVertex3f(X4, Y4, Z4);
+
+			// Stop drawing QUADS
+		};
+
+		glEnd(); // Stop drawing
 
 		glDisable(GL_TEXTURE_2D);
 	};
