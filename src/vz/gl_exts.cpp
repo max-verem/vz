@@ -17,6 +17,18 @@
 #define		GL_READ_ONLY					0x88B8
 #endif // GL_READ_ONLY
 
+#ifndef GL_MULTISAMPLE
+#define GL_MULTISAMPLE_BIT					0x20000000
+#define GL_MULTISAMPLE						0x809D
+#define GL_SAMPLE_ALPHA_TO_COVERAGE			0x809E
+#define GL_SAMPLE_ALPHA_TO_ONE				0x809F
+#define GL_SAMPLE_COVERAGE					0x80A0
+#define GL_SAMPLE_BUFFERS					0x80A8
+#define GL_SAMPLES							0x80A9
+#define GL_SAMPLE_COVERAGE_VALUE			0x80AA
+#define GL_SAMPLE_COVERAGE_INVERT			0x80AB
+#endif /* GL_MULTISAMPLE */
+
 // extensions functions types
 static int loaded_GL_EXT = 0;
 static void (WINAPI *glBlendFuncSeparateEXT)(GLenum sfactorRGB,GLenum dfactorRGB,GLenum sfactorAlpha,GLenum dfactorAlpha) = NULL;

@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-20:
+		*try to enable multisamping 
+
 	2005-06-24:
 		*Added feature 'use_offscreen_buffer' that use GL extension
 		"GL_EXT_pixel_buffer_object" for creating offscreen buffers. 
@@ -39,7 +42,7 @@ ChangeLog:
 #include <string.h>
 #include <process.h>
 #include <GL/glut.h>
-
+#include "gl_exts.cpp"
 
 #include "vzMain.h"
 #include "vzOutput.h"
@@ -287,10 +290,12 @@ void vz_glut_keyboard(unsigned char key, int x, int y)
 
 void vz_glut_start(int argc, char** argv)
 {
+	char *multisampling = vzConfigParam(config,"vzMain","multisampling");
+
 	printf("Initialization GLUT... ");
 
 	glutInit(&argc, argv);
-	glutInitDisplayMode (GLUT_RGBA | GLUT_DOUBLE | GLUT_STENCIL | GLUT_ALPHA);
+	glutInitDisplayMode (GLUT_RGBA | GLUT_DOUBLE | GLUT_STENCIL | GLUT_ALPHA | ((multisampling)?GLUT_MULTISAMPLE:0) );
 
 	glutInitWindowSize (tv.TV_FRAME_WIDTH, tv.TV_FRAME_HEIGHT); 
 	glutInitWindowPosition (10, 10);
@@ -298,7 +303,7 @@ void vz_glut_start(int argc, char** argv)
 
 	// request extensions
 	char* gl_extensions = (char*)glGetString(GL_EXTENSIONS);
-	printf("( OpenGL Extensions found: \"%s\" ) ...",gl_extensions);
+	printf("( OpenGL Extensions found: \"%s\" ) ...\n",gl_extensions);
 
 	// init OpenGL features
 	glClearColor (0.0, 0.0, 0.0, 0.0);
@@ -313,6 +318,16 @@ void vz_glut_start(int argc, char** argv)
 
 	// enable blending
 	glEnable (GL_BLEND);
+
+	/* check/show multisampling */
+	{
+		int m,s,b;
+		m = glIsEnabled(GL_MULTISAMPLE);
+		glGetIntegerv(GL_SAMPLES, &s);
+		glGetIntegerv(GL_SAMPLE_BUFFERS, &b);
+		printf("GL_MULTISAMPLE=%d GL_SAMPLES=%d, GL_SAMPLE_BUFFERS=%d\n", m, s, b);
+	};
+
 
 	// GLUT prep
 	printf("Assigning GLUT functions... ");
@@ -373,7 +388,7 @@ int main(int argc, char** argv)
 		}
 		else if (strcmp(*argv,"-f") == 0)
 		{
-			// set config file name
+			// set scene file name
 			argc -= 2;argv++;scene_file = *argv; argv++;
 		}
 		else if ( (strcmp(*argv,"-h") == 0) || (strcmp(*argv,"/?") == 0) )
