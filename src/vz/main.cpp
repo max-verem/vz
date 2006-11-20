@@ -328,6 +328,7 @@ void vz_glut_start(int argc, char** argv)
 		printf("GL_MULTISAMPLE=%d GL_SAMPLES=%d, GL_SAMPLE_BUFFERS=%d\n", m, s, b);
 	};
 
+	glShadeModel(GL_SMOOTH);
 
 	// GLUT prep
 	printf("Assigning GLUT functions... ");

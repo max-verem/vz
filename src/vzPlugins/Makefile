@@ -67,4 +67,5 @@ all: $(TARGET)
 	$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) -Fo$(OBJS_DIR)$(<:.cpp=.obj) -Fd$(INSTALL_DIR)$(<:.cpp=.pdb) $<
 	@echo Linking:$(<:.cpp=.obj) ... $@
 	$(CPP) $(LINKER_OPT) -Fe$(INSTALL_DIR)$@ $(OBJS_DIR)$(<:.cpp=.obj) /link $(LINKER) /implib:$(OBJS_DIR)$(<:.cpp=.lib)
-
+	@SET PATH=$(PATH);$(INSTALL_DIR)../
+	@vzPluginsMan.exe $(INSTALL_DIR)$(<:.cpp=.dll) $(INSTALL_DIR)$(<:.cpp=.man)

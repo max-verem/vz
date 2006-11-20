@@ -72,6 +72,18 @@ Package=<4>
 
 ###############################################################################
 
+Project: "vzPluginsMan"=.\vzPluginsMan\vzPluginsMan.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
 Project: "vzTTFont"=.\vzTTFont\vzTTFont.dsp - Package Owner=<4>
 
 Package=<5>
