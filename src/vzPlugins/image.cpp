@@ -22,6 +22,7 @@
 
 ChangeLog:
 	2006-11-20:
+		*'glDrawArrays' method usage
 		*free transform implementation
 
 	2006-11-19:
@@ -81,6 +82,8 @@ typedef struct
 	char* _filename;
 	void* _surface;
 	HANDLE _lock_update;
+	float* _ft_vertices;
+	float* _ft_texels;
 
 	long _width;
 	long _height;
@@ -119,6 +122,8 @@ vzPluginData default_value =
 	NULL,					// char* _filename;
 	NULL,					// void* _surface;
 	INVALID_HANDLE_VALUE,	// HANDLE _lock_update;
+	NULL,					// float* _ft_vertices;
+	NULL,					// float* _ft_texels;
 
 	0,						// long _width;
 	0,						// long _height;
@@ -200,6 +205,11 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// close mutexes
 	CloseHandle(_DATA->_lock_update);
+
+	/* free array coords */
+	if(_DATA->_ft_vertices) free(_DATA->_ft_vertices);
+	if(_DATA->_ft_texels) free(_DATA->_ft_texels);
+
 
 	// free data
 	free(data);
@@ -448,11 +458,16 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		{
 			ZC = 0.0f;
 
-			/* we will try to triangulate */
-			glBegin(GL_TRIANGLE_STRIP);
-
+			/* setup colour & alpha */
 			glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
 
+			/* reinit arrays */
+			if(_DATA->_ft_vertices) free(_DATA->_ft_vertices);
+			if(_DATA->_ft_texels) free(_DATA->_ft_texels);
+			_DATA->_ft_vertices = (float*)malloc(sizeof(float) * 3 * (2*_DATA->l_tr_lod + 2));
+			_DATA->_ft_texels = (float*)malloc(sizeof(float) * 2 * (2*_DATA->l_tr_lod + 2));
+
+			/* fill array */
 			for(i = 0; i<= (2*_DATA->l_tr_lod + 1); i++)
 			{
 				p = ((double)(i/2))/_DATA->l_tr_lod;
@@ -462,49 +477,43 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 					/* 'right' line */
 
 					/* setup texture coords */
-					glTexCoord2f(1.0f, p);
+					_DATA->_ft_texels[i * 2 + 0] = 1.0f;
+					_DATA->_ft_texels[i * 2 + 1] = p;
 
 					/* calc vector coord */
 					calc_ft_vec_part(X3,Y3, X4,Y4, p, &XC,&YC);
-#ifdef VERBOSE2
-					printf
-					(
-						"%d: "
-						"#3=[%7.3f,%7.3f] #4=[%7.3f, %7.3f] => #R=[%7.3f, %7.3f]"
-						" p = %7.3lf"
-						"\n",
-						i, 
-						X3,Y3, X4,Y4, XC,YC,
-						p
-					);
-#endif /* VERBOSE2 */
 				}
 				else
 				{
 					/* left line */
 
 					/* setup texture coords */
-					glTexCoord2f(0.0f, p);
+					_DATA->_ft_texels[i * 2 + 0] = 0.0f;
+					_DATA->_ft_texels[i * 2 + 1] = p;
 
 					/* calc vector coord */
 					calc_ft_vec_part(X2,Y2, X1,Y1, p, &XC,&YC);
-#ifdef VERBOSE2
-					printf
-					(
-						"%d: "
-						"#2=[%7.3f,%7.3f] #1=[%7.3f, %7.3f] => #R=[%7.3f, %7.3f]"
-						"p = %7.3lf"
-						"\n",
-						i, 
-						X2,Y2, X1,Y1, XC,YC,
-						p
-					);
-#endif /* VERBOSE2 */
 				};
 
-				/* put vertex */
-				glVertex3f(XC, YC, ZC);
+				_DATA->_ft_vertices[i * 3 + 0] = XC;
+				_DATA->_ft_vertices[i * 3 + 1] = YC;
+				_DATA->_ft_vertices[i * 3 + 2] = ZC;
 			};
+
+			/* enable vertex and texture coors array */
+			glEnableClientState(GL_VERTEX_ARRAY);
+			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+			/* init vertext and texel array pointers */
+			glVertexPointer(3, GL_FLOAT, 0, _DATA->_ft_vertices);
+			glTexCoordPointer(2, GL_FLOAT, 0, _DATA->_ft_texels);
+
+			/* draw array */
+			glDrawArrays(GL_TRIANGLE_STRIP, 0,  (2*_DATA->l_tr_lod + 2) );
+
+			/* enable vertex and texture coors array */
+			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+			glDisableClientState(GL_VERTEX_ARRAY);
 		}
 		else
 		{
@@ -546,9 +555,8 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			glVertex3f(X4, Y4, Z4);
 
 			// Stop drawing QUADS
+			glEnd(); // Stop drawing
 		};
-
-		glEnd(); // Stop drawing
 
 		glDisable(GL_TEXTURE_2D);
 	};
