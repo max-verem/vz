@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+-->
+<tree visible="1">
+
+    <container visible="1">
+        <!-- offset to center -->
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+            <!-- programmable offset  -->
+            <function name="translate" id="rect_offset">
+                <param name="f_x" value="360"/>
+                <param name="f_y" value="288"/>
+            </function>
+
+            <container visible="1">
+                <!-- visible block -->
+                <function name="rectangle" id="rect1">
+                    <param name="f_width" value="300"/>
+                    <param name="f_height" value="300"/>
+                    <param name="f_colour_R" value="0.5"/>
+                    <param name="f_colour_G" value="0.5"/>
+                    <param name="f_colour_B" value="1.0"/>
+                    <param name="f_colour_A" value="1.0"/>
+                    <param name="L_center" value="_CM_"/>
+                </function>
+
+            </container>
+
+        </container>
+
+       <function name="trajectory_table" datatarget="rect_offset" id="rect_offset_table">
+           <param name="s_filename" value="./projects/tests/datas.txt"/>
+           <param name="s_map" value="0:f_x;1:f_y"/>
+       </function>
+
+    </container>
+
+</tree>
+<motion>
+
+    <director id="corner_moving" dur="100" loop="1" pos="0" run="1">
+        <param name="tree.function.rect_offset_table.l_index">
+            <timeline t1="0" t2="99" y1="0" y2="199" f="1"/>
+        </param>
+    </director>	
+
+</motion>
+</scene>
+
