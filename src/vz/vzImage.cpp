@@ -51,6 +51,54 @@ typedef struct {
 
 //#define ERROR_LOG(MSG,LOG) printf("\n" __FILE__ ":%d: " MSG " '%s'\n",__LINE__,LOG);
 
+static void vzImageDeinterleave(vzImage* image, int factor)
+{
+/*
+	0 - 00 = non-interleaved.
+	1 - 01 = two-way (even/odd) interleaving.
+	2 - 10 = four way interleaving.
+	3 - 11 = reserved.
+*/
+	if
+	(
+		(1 == factor)
+		||
+		(2 == factor)
+	)
+	{
+		unsigned char* new_surface = (unsigned char*)malloc(4*image->height*image->width);
+		unsigned char* old_surface = (unsigned char*)image->surface;
+		long i,j;
+
+		if(1 == factor)
+		{
+			/* two-way (even/odd) interleaving */
+			for(i = 0; i<image->height; i++)
+			{
+				/* calc index */
+				j = (i>>1) + (i&1)?(image->height>>1):0;
+
+				/* copy */
+				memcpy
+				(
+					new_surface + 4*i*image->width,
+					old_surface + 4*j*image->width,
+					4*image->width
+				);
+			};
+		}
+		else
+		{
+			/* four way interleaving. */
+		};
+
+		/* swap surfaces */
+		free(old_surface);
+		image->surface = new_surface;
+	};
+};
+
+
 VZIMAGE_API void vzImageFree(vzImage* image)
 {
 ///printf("\n**vzImageFree: %dx%d @ %.8X\n",image->width,image->height,image->surface);
@@ -173,13 +221,6 @@ VZIMAGE_API vzImage* vzImageLoadTGA(char* filename, char** error_log)
 |        |        |             11 = reserved.                                 |
 */
 	TGA_HEADER_READER_1(header.imagedescriptor,"imagedescriptor")
-	if(!(header.imagedescriptor & 63))
-	{
-		// Bits 7-6 present
-		fclose(image);
-		ERR("Unsupported format: Support only non-interleaved");
-	};
-
 
 	// skip to image body header
 	fseek(image,header.idlength,SEEK_CUR);
@@ -212,6 +253,10 @@ VZIMAGE_API vzImage* vzImageLoadTGA(char* filename, char** error_log)
 
 	// cour type
 	temp->surface_type = GL_BGRA_EXT;
+
+	// de-interleaving
+	if( header.imagedescriptor & ((1<<7) | (1<<6)) )
+		vzImageDeinterleave(temp, (header.imagedescriptor&((1<<7)|(1<<6)))>>6);
 
 	// flipping 
 	if(!(header.imagedescriptor & (1<<5)))
