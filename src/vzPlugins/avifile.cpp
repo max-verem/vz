@@ -58,6 +58,7 @@ static char* _plugin_notes =
 #define RING_BUFFER_LENGTH 10
 #define MAX_AVI_LOADERS 5
 
+#define AVI_OP_LOCK
 //#define VERBOSE
 
 /*
@@ -73,6 +74,9 @@ WINOLEAPI  CoInitializeEx(LPVOID pvReserved, DWORD dwCoInit);
 #pragma comment(lib, "VFW32.LIB")
 #pragma comment(lib, "winmm.lib")
 
+#ifdef AVI_OP_LOCK
+static HANDLE _avi_op_lock;
+#endif /* AVI_OP_LOCK */
 
 BOOL APIENTRY DllMain
 (
@@ -84,14 +88,20 @@ BOOL APIENTRY DllMain
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
+#ifdef AVI_OP_LOCK
+		_avi_op_lock = CreateMutex(NULL,FALSE,NULL);
+#endif /* AVI_OP_LOCK */
 			break;
 		case DLL_THREAD_ATTACH:
 			// init avi lib !
-			AVIFileInit();
+			// AVIFileInit();
 			break;
 		case DLL_THREAD_DETACH:
 			break;
 		case DLL_PROCESS_DETACH:
+#ifdef AVI_OP_LOCK
+		CloseHandle(_avi_op_lock);
+#endif /* AVI_OP_LOCK */
 			break;
     }
     return TRUE;
@@ -177,8 +187,14 @@ static unsigned long WINAPI aviloader_proc(void* p)
 	struct aviloader_desc* desc = (struct aviloader_desc*)p;
 
 	/* init AVI for this thread */
+#ifdef AVI_OP_LOCK
+	WaitForSingleObject(_avi_op_lock,INFINITE);
+#endif /* AVI_OP_LOCK */
 	CoInitializeEx( NULL, COINIT_MULTITHREADED );
 	AVIFileInit();
+#ifdef AVI_OP_LOCK
+	ReleaseMutex(_avi_op_lock);
+#endif /* AVI_OP_LOCK */
 
 	/* open avi file stream */
 	if
