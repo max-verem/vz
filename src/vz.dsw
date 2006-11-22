@@ -87,6 +87,21 @@ Package=<4>
 
 ###############################################################################
 
+Project: "vzPointTracer"=.\vzPointTracer\vzPointTracer.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name vzImage
+    End Project Dependency
+}}}
+
+###############################################################################
+
 Project: "vzTTFont"=.\vzTTFont\vzTTFont.dsp - Package Owner=<4>
 
 Package=<5>
