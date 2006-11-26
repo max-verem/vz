@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-26:
+		OpenGL extension scheme load changes.
+
 	2006-11-20:
 		*try to enable multisamping 
 
@@ -42,7 +45,7 @@ ChangeLog:
 #include <string.h>
 #include <process.h>
 #include <GL/glut.h>
-#include "gl_exts.cpp"
+#include "vzGlExt.h"
 
 #include "vzMain.h"
 #include "vzOutput.h"
@@ -292,7 +295,7 @@ void vz_glut_start(int argc, char** argv)
 {
 	char *multisampling = vzConfigParam(config,"vzMain","multisampling");
 
-	printf("Initialization GLUT... ");
+	printf("main: Initialization GLUT...\n");
 
 	glutInit(&argc, argv);
 	glutInitDisplayMode (GLUT_RGBA | GLUT_DOUBLE | GLUT_STENCIL | GLUT_ALPHA | ((multisampling)?GLUT_MULTISAMPLE:0) );
@@ -301,9 +304,10 @@ void vz_glut_start(int argc, char** argv)
 	glutInitWindowPosition (10, 10);
 	glutCreateWindow (argv[0]);
 
+	printf("main: GLUT created window\n");
+
 	// request extensions
-	char* gl_extensions = (char*)glGetString(GL_EXTENSIONS);
-	printf("( OpenGL Extensions found: \"%s\" ) ...\n",gl_extensions);
+	vzGlExtInit();
 
 	// init OpenGL features
 	glClearColor (0.0, 0.0, 0.0, 0.0);

@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-26:
+		OpenGL extension scheme load changes.
+
 	2006-09-30:
 		*Some fixes in blending function. Added posibility to define use
 		of GL_ONE_MINUS_DST_ALPHA or GL_SRC_ALPHA_SATURATE in function
@@ -91,12 +94,11 @@ ChangeLog:
 #include <stdio.h>
 #include <windows.h>
 #include <GL/glut.h>
+#include "vzGlExt.h"
 
 static const unsigned short tag_tree[] = {'t', 'r', 'e', 'e',0};
 static const unsigned short tag_motion[] = {'m', 'o', 't', 'i', 'o', 'n',0};
 
-
-#include "gl_exts.cpp"
 
 vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 {
@@ -258,9 +260,6 @@ void vzScene::display(long frame)
 	// alpha function always works
 	glEnable(GL_ALPHA_TEST);
 	glAlphaFunc(GL_NOTEQUAL,0);//glAlphaFunc(GL_LEQUAL,1);
-
-	// load gl/wgl EXTensions
-	load_GL_EXT();
 
 	// setup base stencil buffer
 	if(_stencil)

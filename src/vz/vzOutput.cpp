@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-26:
+		OpenGL extension scheme load changes.
+
 	2005-07-07:
 		*Removed unused blocks of code
 
@@ -42,6 +45,14 @@ ChangeLog:
 
 */
 
+/*
+http://www.nvidia.com/dev_content/nvopenglspecs/GL_EXT_pixel_buffer_object.txt
+http://www.gpgpu.org/forums/viewtopic.php?t=2001&sid=4cb981dff7d9aa406cb721f7bd1072b6
+http://www.elitesecurity.org/t140671-pixel-buffer-object-PBO-extension
+http://www.gamedev.net/community/forums/topic.asp?topic_id=329957&whichpage=1&#2143668
+http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
+
+*/
 
 #include "vzOutputInternal.h"
 #include "vzOutput.h"
@@ -50,6 +61,8 @@ ChangeLog:
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
+#include <GL/glut.h>
+#include "vzGlExt.h"
 
 //vzOutput public DLL method
 VZOUTPUT_API void* vzOutputNew(void* config, char* name, void* tv)
@@ -94,8 +107,6 @@ VZOUTPUT_API void vzOuputPreRender(void* obj)
 
 
 /// --------------------------------------------------
-
-#include "gl_exts.cpp"
 
 #define _max_framebuffer_nums \
 	( (_framebuffer_nums[0]>_framebuffer_nums[1]) && (_framebuffer_nums[0]>_framebuffer_nums[2]) ) \
@@ -145,6 +156,22 @@ void vzOutput::pre_render()
 
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 		// read pixels into offscreen area
+
+#define FB_CHUNKS 4
+
+#ifdef FB_CHUNKS
+		for(int j=0,b=0; j < FB_CHUNKS ; j++ )
+			glReadPixels
+			(
+				0,
+				j * (_tv->TV_FRAME_HEIGHT / FB_CHUNKS),
+				_tv->TV_FRAME_WIDTH,
+				_tv->TV_FRAME_HEIGHT / FB_CHUNKS,
+				GL_BGRA_EXT,
+				GL_UNSIGNED_BYTE,
+				BUFFER_OFFSET( j * (_tv->TV_FRAME_HEIGHT / FB_CHUNKS)*4*_tv->TV_FRAME_WIDTH   )
+			);
+#else /* !FB_CHUNKS */
 		glReadPixels
 		(
 			0,
@@ -155,13 +182,15 @@ void vzOutput::pre_render()
 			GL_UNSIGNED_BYTE,
 			BUFFER_OFFSET(0)
 		);
+#endif /* FB_CHUNKS */
 
 		// map buffer to wait for finish read
-		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
-		glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY);
-		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
-		glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+//		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
+//		glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY);
+//		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
+//		glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
 
+		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
 	}
 	else
 	{
@@ -248,9 +277,6 @@ HANDLE vzOutput::lock_write(void** mem,int* num)
 
 void vzOutput::init_buffers()
 {
-	// load gl/wgl EXTensions
-	load_GL_EXT();
-
 	/* check if appropriate exts is loaded */
 	if(_use_offscreen_buffer)
 		if(!(glGenBuffers)) 

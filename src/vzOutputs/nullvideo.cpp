@@ -104,7 +104,7 @@ unsigned long WINAPI output_loop(void* obj)
 		HANDLE lock = tbc->lock_read(&buffer_address,&buffer_num);
 
 		// 4. transcode buffer
-		if (buffer_address)
+/*		if (buffer_address)
 			vzImageBGRA2YUAYVA
 			(
 				buffer_address,
@@ -112,7 +112,7 @@ unsigned long WINAPI output_loop(void* obj)
 				alpha_buffer,
 				_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT
 			);
-
+*/
 
 
 		// 5. unlock read buffer
