@@ -227,7 +227,7 @@ enum vzAlphaStreamOptions
 
 };
 
-unsigned int vzAlphaStreamOptions_[][2][2] = 
+static unsigned int vzAlphaStreamOptions_[][2][2] = 
 {
 	// non SDI						SDI
 	{ {1<<0,0xFFFFFFFF ^ (1<<0) },	{1<<7,0xFFFFFFFF ^ (1<<7) } },	//	MODE_BYPASS_ON,
@@ -279,7 +279,7 @@ unsigned int vzAlphaStreamOptions_[][2][2] =
 
 
 // titles
-char *_titles[4]=
+static char *_titles[4]=
 {
 	"AlphaTM",
 	"AlphaPlus v1",
@@ -292,20 +292,17 @@ static vzTVSpec* _tv = NULL;
 
 #define ALPHA_BOARD _handle,_id
 
-unsigned char _boards[4];		// array of found boards
-int _handle;					// used id - handle
-unsigned long _id;				// id
-unsigned long _count;			// count of boards
-REGISTRY_INFO _registry[4];
-HANDLE _fields_event[3];
+static unsigned char _boards[4];		// array of found boards
+static int _handle;					// used id - handle
+static unsigned long _id;				// id
+static unsigned long _count;			// count of boards
+static REGISTRY_INFO _registry[4];
+static HANDLE _fields_event[3];
 
 // smart operations....
-MEMORY_ADDRESS _addr_reg;
-MEMORY_ADDRESS _addr_mem;
-unsigned long* _reg;
-
-// framebuffer pointer
-void* image_buffer = NULL;
+static MEMORY_ADDRESS _addr_reg;
+static MEMORY_ADDRESS _addr_mem;
+static unsigned long* _reg;
 
 
 // init
@@ -348,7 +345,7 @@ VZOUTPUTS_EXPORT long vzOutput_SelectBoard(unsigned long id,char** error_log = N
 	return _id;
 };
 
-frames_counter_proc _fc = NULL;
+static frames_counter_proc _fc = NULL;
 
 VZOUTPUTS_EXPORT long vzOutput_SetSync(frames_counter_proc fc)
 {
@@ -436,11 +433,15 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 	return _count;
 };
 
-HANDLE notify_to_stop_loop, notify_loop_stopped, loop_thread;
+static HANDLE loop_thread;
+static int notify_to_stop_loop = 0;
 
 
-unsigned long WINAPI output_loop(void* obj)
+static unsigned long WINAPI output_loop(void* obj)
 {
+	// framebuffer pointer
+	void* image_buffer = NULL;
+
 	vzOutput* tbc = (vzOutput*)obj;
 
 	printf("streamalpha: Output loop started!\n");
@@ -453,26 +454,14 @@ unsigned long WINAPI output_loop(void* obj)
 		alpha_in[0] = (_addr_mem.PhysAddr + YOBUF4 );
 		alpha_in[1] = (_addr_mem.PhysAddr + YOBUF4 + 887040);
 
-	// framebuffer lock
-	HANDLE lock ;
-
 
 	// endless loop
-	while(1)
+	while(0 == notify_to_stop_loop)
 	{
-		// check if all finished !!!
-		if(WaitForSingleObject(notify_to_stop_loop,0) == WAIT_OBJECT_0)
-		{
-			// event to stop reached !!!
-			ExitThread(0);
-		};
-
-
-		// -----------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------
 
 		// first, request new framebuffer
-		int buffer_num;
-		lock = tbc->lock_read(&image_buffer,&buffer_num);
+		image_buffer = tbc->get_output_buf_ptr();
 
 // -----------------------------------------------------------------------------------------
 
@@ -510,9 +499,6 @@ unsigned long WINAPI output_loop(void* obj)
 				1
 			);
 
-		// release framebuffer
-		ReleaseMutex(lock);
-
 		// wait for field #1
 		WaitForSingleObject(_fields_event[1], INFINITE);ResetEvent(_fields_event[1]);
 
@@ -522,12 +508,16 @@ unsigned long WINAPI output_loop(void* obj)
 // -----------------------------------------------------------------------------------------
 
 	};
+
+	// event to stop reached !!!
+	ExitThread(0);
+
+	return 0;
 };
 
 VZOUTPUTS_EXPORT void vzOutput_StartOutputLoop(void* obj)
 {
-	notify_to_stop_loop = CreateEvent(NULL, TRUE, FALSE, NULL);
-	notify_loop_stopped = CreateEvent(NULL, TRUE, FALSE, NULL);
+	notify_to_stop_loop = 0;
 
 	// events
 	if(!(_fields_event[0] = CreateEvent(NULL, TRUE, FALSE, NULL)))//field0 VSync
@@ -556,22 +546,17 @@ VZOUTPUTS_EXPORT void vzOutput_StartOutputLoop(void* obj)
 VZOUTPUTS_EXPORT void vzOutput_StopOutputLoop()
 {
 	// notify to stop thread
-	PulseEvent(notify_to_stop_loop);
+	notify_to_stop_loop = 1;
 
 	// wait thread for stopped state
-	WaitForSingleObject(notify_loop_stopped,INFINITE);
-
-	// sleep a bit
-	Sleep(80);
+	WaitForSingleObject(loop_thread, INFINITE);
 
 	// close everithing
-	CloseHandle(notify_to_stop_loop);
-	CloseHandle(notify_loop_stopped);
 	CloseHandle(loop_thread);
 };
 
 
-void BGRA2UYVA (void* dst, void* src, int count)
+static void BGRA2UYVA (void* dst, void* src, int count)
 {
 	if ( (!(dst)) || (!(src)) || (!(count)) )
 		return;
@@ -752,7 +737,7 @@ pixel:
 };
 
 // trascode and update expected fields
-void load_n_transcode_field(int field, void* dst, void* src, int flip)
+static void load_n_transcode_field(int field, void* dst, void* src, int flip)
 {
 //	return;
 #define PIXEL_SIZE 4
@@ -828,7 +813,7 @@ cp:
 
 };
 
-void transfer_buffer(unsigned long DST_PHYSICAL_ADDR, unsigned long SRC_PHYSICAL_ADDR, unsigned long SIZE , unsigned long user_reg)
+static void transfer_buffer(unsigned long DST_PHYSICAL_ADDR, unsigned long SRC_PHYSICAL_ADDR, unsigned long SIZE , unsigned long user_reg)
 {
 #define __MMIO(offset)  ( ((unsigned long*)user_reg)[(offset) >> 2])
 #define _DMA_READ 1
@@ -858,7 +843,7 @@ void transfer_buffer(unsigned long DST_PHYSICAL_ADDR, unsigned long SRC_PHYSICAL
 	__MMIO(BIU_STATUS) |= (1<<5);
 };
 
-int init_vfb4_info(vfb4_data *vfb4_info)
+static int init_vfb4_info(vfb4_data *vfb4_info)
 {
 	unsigned long ret;
 	HANDLE vdf_dev;
@@ -883,7 +868,7 @@ int init_vfb4_info(vfb4_data *vfb4_info)
 	return 1;
 };
 
-void BGRA2PLANAR4444 (void* dst_yaya, void* dst_u, void* dst_v, void* src, int count)
+static void BGRA2PLANAR4444 (void* dst_yaya, void* dst_u, void* dst_v, void* src, int count)
 {
 /*
 
@@ -1133,7 +1118,7 @@ subpixel:
 };
 
 // trascode and update expected fields
-void load_n_transcode_field_planar(int field, void* dst, void* src,int flip)
+static void load_n_transcode_field_planar(int field, void* dst, void* src,int flip)
 {
 #define SRC_PIXEL_SIZE 4
 #define Y_PIXEL_SIZE 2

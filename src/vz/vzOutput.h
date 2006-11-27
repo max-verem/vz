@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-26:
+		*Hard sync scheme.
+
 	2005-06-25:
 		*Modified TBC's scheme.
 		Added methods:
@@ -55,7 +58,6 @@ VZOUTPUT_API int vzOutputReady(void* obj);
 
 VZOUTPUT_API int vzOutputSync(void* obj,void* fc);
 
-VZOUTPUT_API void vzOutputInitBuffers(void* obj);
 VZOUTPUT_API void vzOuputPostRender(void* obj);
 VZOUTPUT_API void vzOuputPreRender(void* obj);
 

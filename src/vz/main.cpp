@@ -22,7 +22,8 @@
 
 ChangeLog:
 	2006-11-26:
-		OpenGL extension scheme load changes.
+		*Hard sync scheme.
+		*OpenGL extension scheme load changes.
 
 	2006-11-20:
 		*try to enable multisamping 
@@ -84,32 +85,19 @@ void* functions = NULL; // list of loaded function
 void* output_module = NULL; // output module
 char start_path[1024];
 char* application;
-int main_stage;
+//int main_stage;
 char screenshot_file[1024];
-int use_offscreen_buffer = 0;
+//int use_offscreen_buffer = 0;
 
-/*
-----------------------------------------------------------
-
-	this flags define method for sincync
-	of frame counting methods
-
-----------------------------------------------------------
-*/
-HANDLE global_frame_event;
-
-
-/*
-----------------------------------------------------------
-	frame counting functions
-----------------------------------------------------------
-*/
-unsigned long global_frame_no = 0;
-unsigned long stop_global_frames_counter = 0;
-
-
-HANDLE internal_sync_thread;
-unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
+/* ----------------------------------------------------------
+	Sync rendering & frame counting
+---------------------------------------------------------- */
+static HANDLE global_frame_event;
+static unsigned long global_frame_no = 0;
+//static unsigned long stop_global_frames_counter = 0;
+static long skip_draw = 0;
+static long not_first_at = 0;
+static unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
 {
 	frames_counter_proc fc = (frames_counter_proc)fc_proc_addr;
 	
@@ -119,14 +107,21 @@ unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
 		// sleep
 		Sleep(tv.TV_FRAME_DUR_MS);
 
+#ifdef DEBUG_HARD_SYNC
+		printf("[%-10d] internal_sync_generator\n", timeGetTime());
+#endif /* DEBUG_HARD_SYNC */
+
 		// call frame counter
 		if (fc) fc();
 	};
 };
 
-
-void frames_counter()
+static void frames_counter()
 {
+#ifdef DEBUG_HARD_SYNC
+printf("[%-10d] frames_counter\n", timeGetTime());
+#endif /* DEBUG_HARD_SYNC */
+
 	// reset event
 	ResetEvent(global_frame_event);
 
@@ -137,20 +132,37 @@ void frames_counter()
 	PulseEvent(global_frame_event);
 };
 
+static unsigned long WINAPI sync_render(void* data)
+{
+	while(1)
+	{
+		WaitForSingleObject(global_frame_event,INFINITE);
+		ResetEvent(global_frame_event);
 
-/* 
-----------------------------------------------------------
+#ifdef DEBUG_HARD_SYNC
+		printf("[%-10d] sync_render\n", timeGetTime());
+#endif /* DEBUG_HARD_SYNC */
+
+		if(not_first_at)
+		{
+			// reset flag of forcing redraw
+			skip_draw = 0;
+
+			// notify about redisplay
+			glutPostRedisplay();
+		};
+	};
+};
+
+
+/*----------------------------------------------------------
 	GLUT operatives
-----------------------------------------------------------
-*/
-static long skip_draw = 0;
-static long draw_start_time = 0;
-static long dropped_frames = 0;
+----------------------------------------------------------*/
+static long render_time = 0;
 static long rendered_frames = 0;
 static long last_title_update = 0;
-static long not_first_at = 0;
 
-void vz_glut_display(void)
+static void vz_glut_display(void)
 {
 	// check if redraw should processed
 	// by internal needs
@@ -161,21 +173,16 @@ void vz_glut_display(void)
 	skip_draw = 1;
 
 	// save time of draw start
-	draw_start_time = timeGetTime();
+	long draw_start_time = timeGetTime();
+
+#ifdef DEBUG_HARD_SYNC
+	printf("[%-10d] vz_glut_display\n", timeGetTime());
+#endif /* DEBUG_HARD_SYNC */
 
 	// output module tricks
-	if(!(not_first_at))
-	{
-		// init buffers
-		if(output_module)
-			vzOutputInitBuffers(output_module);
-	}
-	else
-	{
-		// preprender buffers
+	if(not_first_at)
 		if(output_module)
 			vzOuputPreRender(output_module);
-	};
 
 	rendered_frames++;
 
@@ -200,6 +207,10 @@ void vz_glut_display(void)
 	// and swap buffers
 	glutSwapBuffers();
 
+	// save time of draw start
+	long draw_stop_time = timeGetTime();
+	render_time = draw_stop_time - draw_start_time;
+
 	// mark flag about first frame
 	not_first_at = 1;
 
@@ -216,11 +227,8 @@ void vz_glut_display(void)
 	ReleaseMutex(scene_lock);
 };
 
-void vz_glut_idle()
+static void vz_glut_idle()
 {
-	// save time of draw stop
-	long draw_stop_time = timeGetTime();
-
 	// check if we need to update frames rendering info
 	if((global_frame_no - last_title_update) > tv.TV_FRAME_PS)
 	{
@@ -228,32 +236,20 @@ void vz_glut_idle()
 		sprintf
 		(
 			buf,
-			"Frame %ld, drawed in %ld miliseconds, dropped %ld frames, distance in frames %ld",
+			"Frame %ld, drawed in %ld miliseconds, distance in frames %ld",
 			global_frame_no,
-			draw_stop_time - draw_start_time,
-			dropped_frames,
+			render_time,
 			global_frame_no - rendered_frames
 		);
 		glutSetWindowTitle(buf);
 		last_title_update = global_frame_no;
 	};
 
-	// lets sleep for next frames redraw
-	unsigned long dur = draw_stop_time - draw_start_time;
-
-	// wait for frame happens
-	WaitForSingleObject(global_frame_event,INFINITE);
-	ResetEvent(global_frame_event);
-
-	// reset flag of forcing redraw
-	skip_draw = 0;
-
-	// notify about redisplay
-	glutPostRedisplay();
+	Sleep(1);
 };
 
 
-void vz_glut_reshape(int w, int h)
+static void vz_glut_reshape(int w, int h)
 {
 	w = tv.TV_FRAME_WIDTH, h = tv.TV_FRAME_HEIGHT;
 	glViewport (0, 0, (GLsizei) w, (GLsizei) h);
@@ -264,11 +260,11 @@ void vz_glut_reshape(int w, int h)
 	glLoadIdentity();
 };
 
-void vz_glut_mouse(int button, int state, int x, int y)
+static void vz_glut_mouse(int button, int state, int x, int y)
 {
 };
 
-void vz_glut_keyboard(unsigned char key, int x, int y)
+static void vz_glut_keyboard(unsigned char key, int x, int y)
 {
 	switch(key)
 	{
@@ -291,7 +287,7 @@ void vz_glut_keyboard(unsigned char key, int x, int y)
 };
 
 
-void vz_glut_start(int argc, char** argv)
+static void vz_glut_start(int argc, char** argv)
 {
 	char *multisampling = vzConfigParam(config,"vzMain","multisampling");
 
@@ -343,16 +339,16 @@ void vz_glut_start(int argc, char** argv)
 	glutIdleFunc(vz_glut_idle);
 	printf("OK\n");
 
-	// save time of draw start
-	draw_start_time = timeGetTime();
-
 	printf("Main Loop starting...\n");
 
 	glutMainLoop();
-	printf("Main loop finished");
+
 };
 
-
+static void vz_exit(void)
+{
+	printf("Main loop finished");
+};
 
 
 /*
@@ -365,17 +361,8 @@ void vz_glut_start(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-#ifdef _DEBUG
-	{
-		vzTTFont* font = new vzTTFont("m1-h",20);
-		delete font;
-
-		unsigned long src[4];
-		unsigned short yuv[4];
-		unsigned char alpha[4];
-		vzImageBGRA2YUAYVA(src, yuv, alpha, 4);
-	};
-#endif
+	/* init timer period */
+	timeBeginPeriod(1);
 
 	// hello message
 	printf("%s (vz-%.2f-%s) [controller]\n",VZ_TITLE, VZ_VERSION_NUMBER,VZ_VERSION_SUFFIX);
@@ -448,7 +435,7 @@ int main(int argc, char** argv)
 	// check if flag. if its not OK - start internal
 	if(output_module_sync == 0)
 	{
-		internal_sync_thread = CreateThread
+		CreateThread
 		(
 			NULL,
 			1024,
@@ -459,6 +446,18 @@ int main(int argc, char** argv)
 		);
 	};
 
+	/* sync render */
+	{
+		CreateThread
+		(
+			NULL,
+			1024,
+			sync_render,
+			NULL, // params
+			0,
+			NULL
+		);
+	};
 
 	// check if we need automaticaly load scene
 	if(scene_file)
@@ -477,6 +476,8 @@ int main(int argc, char** argv)
 	unsigned long thread;
 	HANDLE tcpserver_handle = CreateThread(0, 0, tcpserver, config, 0, &thread);
 
+	/* exit handler */
+	atexit(vz_exit);
 
 	// start glut loop
 	argc++;

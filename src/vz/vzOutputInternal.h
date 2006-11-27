@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-26:
+		*Hard sync scheme
+
 	2005-06-28:
 		*TBC operation modifications.
 
@@ -60,6 +63,8 @@ typedef long (*output_proc_vzOutput_SetSync)(void*);
 
 typedef void (*frames_counter_proc)();
 
+#define VZOUTPUT_OUT_BUFS 4
+
 class VZOUTPUT_API vzOutput
 {
 	// functions pointers
@@ -80,19 +85,14 @@ class VZOUTPUT_API vzOutput
 	// config
 	void* _config;
 
-	// frame buffers pointers
-	void* _framebuffer[3];
-	long _framebuffer_nums[3];
-
-	// mutexes for syncing
-	HANDLE _framebuffer_locks[3],_framebuffer_lock;
-
-
-	// offscreen buffer numbers
-	unsigned int _offscreen_buffers[3];
-
 	// offscreen buffer usage flag
 	long _use_offscreen_buffer;
+
+	/* output frame buffers pointers */
+	void* _output_framebuffer_data[VZOUTPUT_OUT_BUFS];
+	unsigned int _output_framebuffer_nums[VZOUTPUT_OUT_BUFS];
+	int _output_framebuffer_pos;
+
 
 public:
 	vzOutput(void* config,char* name, void* tv);
@@ -109,12 +109,10 @@ public:
 	void notify_field1_start();
 	void notify_field1_stop();
 
-	void init_buffers(void);
 	void post_render(void);
 	void pre_render(void);
 
-	HANDLE lock_read(void** mem,int* num);
-	HANDLE lock_write(void** mem,int* num);
+	void* get_output_buf_ptr(void);
 };
 
 #endif //VZOUTPUTINTERNAL_H

@@ -22,7 +22,8 @@
 
 ChangeLog:
 	2006-11-26:
-		OpenGL extension scheme load changes.
+		*Hard sync scheme.
+		*OpenGL extension scheme load changes.
 
 	2005-07-07:
 		*Removed unused blocks of code
@@ -53,6 +54,9 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=329957&whichpage=1&#2
 http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 
 */
+
+#define FB_CHUNKS 4
+#define DEBUG_HARD_SYNC_DROPS
 
 #include "vzOutputInternal.h"
 #include "vzOutput.h"
@@ -89,11 +93,6 @@ VZOUTPUT_API int vzOutputSync(void* obj,void* fc)
 	return ((vzOutput*)obj)->set_sync_proc(fc);
 };
 
-VZOUTPUT_API void vzOutputInitBuffers(void* obj)
-{
-	((vzOutput*)obj)->init_buffers();
-};
-
 VZOUTPUT_API void vzOuputPostRender(void* obj)
 {
 	((vzOutput*)obj)->post_render();
@@ -107,60 +106,80 @@ VZOUTPUT_API void vzOuputPreRender(void* obj)
 
 
 /// --------------------------------------------------
+#ifdef DEBUG_HARD_SYNC_DROPS
+static int prev_p = 0;
+static int dropped_frames_count = 0;
+#endif /* DEBUG_HARD_SYNC_DROPS */
 
-#define _max_framebuffer_nums \
-	( (_framebuffer_nums[0]>_framebuffer_nums[1]) && (_framebuffer_nums[0]>_framebuffer_nums[2]) ) \
-	? \
-	0 \
-	: \
-	( \
-		( (_framebuffer_nums[1]>_framebuffer_nums[0]) && (_framebuffer_nums[1]>_framebuffer_nums[2]) ) \
-		? \
-		1 \
-		: \
-		2 \
-	) 
+void* vzOutput::get_output_buf_ptr(void)
+{
+	int j = _output_framebuffer_pos;
 
-#define _min_framebuffer_nums \
-	( (_framebuffer_nums[0]<_framebuffer_nums[1]) && (_framebuffer_nums[0]<_framebuffer_nums[2]) ) \
-	? \
-	0 \
-	: \
-	( \
-		( (_framebuffer_nums[1]<_framebuffer_nums[0]) && (_framebuffer_nums[1]<_framebuffer_nums[2]) ) \
-		? \
-		1 \
-		: \
-		2 \
-	) 
+	/* output buffer is lefter */
+	int p = (j + VZOUTPUT_OUT_BUFS - 1) % VZOUTPUT_OUT_BUFS;
 
+#ifdef DEBUG_HARD_SYNC
+	printf("[%-10d] get_output_buf_ptr:\t%d\n", timeGetTime(), j);
+#endif /* DEBUG_HARD_SYNC */
+
+#ifdef DEBUG_HARD_SYNC_DROPS
+	if
+	(
+		((prev_p + 1 + VZOUTPUT_OUT_BUFS) % VZOUTPUT_OUT_BUFS) 
+		!= 
+		p
+	)
+	{
+#ifdef DEBUG_HARD_SYNC
+		printf("[%-10d] get_output_buf_ptr: DROPPPED!!!\n", timeGetTime());
+#endif /* DEBUG_HARD_SYNC */
+		dropped_frames_count++;
+	}
+	else
+	{
+		if(dropped_frames_count)
+			printf("vzOutput: dropped %d frames\n", dropped_frames_count);
+		dropped_frames_count = 0;
+	};
+	prev_p = p;
+#endif /* DEBUG_HARD_SYNC_DROPS */
+
+	/* return pointer to mapped buffer */
+	return _output_framebuffer_data[p];
+};
 
 void vzOutput::post_render()
 {
+	// two method for copying data
+	if(_use_offscreen_buffer)
+	{
+		/* wait async transfer */
+		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _output_framebuffer_nums[_output_framebuffer_pos]);
+		_output_framebuffer_data[_output_framebuffer_pos] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+	};
+
+	/* shift forward */
+	_output_framebuffer_pos = (_output_framebuffer_pos + VZOUTPUT_OUT_BUFS + 1) % VZOUTPUT_OUT_BUFS;
+
+#ifdef DEBUG_HARD_SYNC
+	printf("[%-10d] post_render: %d\n", timeGetTime(), _output_framebuffer_pos);
+#endif /* DEBUG_HARD_SYNC */
 };
 
 void vzOutput::pre_render()
 {
-	// what buffer will be used to grab picture
-	// lock it for update
-	int buffer_num;
-	void* buffer_address;
-	HANDLE lock = lock_write(&buffer_address,&buffer_num);
-	int b = buffer_num;
-
 	// two method for copying data
 	if(_use_offscreen_buffer)
 	{
+		/* bind to buffer */
+		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _output_framebuffer_nums[_output_framebuffer_pos]);
+		glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+		_output_framebuffer_data[_output_framebuffer_pos] = NULL;
+
 		// start asynchroniosly  read from buffer
-		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
-
-#define BUFFER_OFFSET(i) ((char *)NULL + (i))
-		// read pixels into offscreen area
-
-#define FB_CHUNKS 4
-
 #ifdef FB_CHUNKS
-		for(int j=0,b=0; j < FB_CHUNKS ; j++ )
+		for(int j=0; j < FB_CHUNKS ; j++ )
 			glReadPixels
 			(
 				0,
@@ -184,12 +203,6 @@ void vzOutput::pre_render()
 		);
 #endif /* FB_CHUNKS */
 
-		// map buffer to wait for finish read
-//		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
-//		glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY);
-//		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
-//		glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-
 		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
 	}
 	else
@@ -205,117 +218,20 @@ void vzOutput::pre_render()
 			_tv->TV_FRAME_HEIGHT,
 			GL_BGRA_EXT,
 			GL_UNSIGNED_BYTE,
-			_framebuffer[b]
+			_output_framebuffer_data[_output_framebuffer_pos]
 		);
 	};
-
-	// update earliest buffer index
-	long i_max = _max_framebuffer_nums;
-	long i_min = _min_framebuffer_nums;
-	_framebuffer_nums[i_min] = 1 + _framebuffer_nums[i_max];
-
-	// unlock buffer
-	ReleaseMutex(lock);	
 
 	// restore read buffer
 //	glReadBuffer(read_buffer);
 //	glDrawBuffer(draw_buffer);
-
-	// chage last write buffer and unlock
-	
 };
 
-
-long buffers_inited = 0;
-
-HANDLE vzOutput::lock_read(void** mem,int* num)
-{
-	// lock buffers pointers modoficator
-	WaitForSingleObject(_framebuffer_lock,INFINITE);
-
-	// determinate max and min index framebuffers queueu
-	long i_max = _max_framebuffer_nums;
-	long i_min = _min_framebuffer_nums;
-
-	// determinate mutex latest fb
-	HANDLE lock = _framebuffer_locks[i_max];
-
-	// try to lock that buffer - wait!
-	WaitForSingleObject(lock,INFINITE);
-
-	*mem = _framebuffer[i_max];
-	*num = i_max;
-
-	ReleaseMutex(_framebuffer_lock);
-
-	return lock;
-};
-
-HANDLE vzOutput::lock_write(void** mem,int* num)
-{
-	// lock buffers pointers modoficator
-	WaitForSingleObject(_framebuffer_lock,INFINITE);
-
-	// determinate id of max fbuffer
-	long i_max = _max_framebuffer_nums;
-	long i_min = _min_framebuffer_nums;
-
-	// determinate mutex earliest fb
-	HANDLE lock = _framebuffer_locks[i_min];
-
-	// try to lock that buffer - wait!
-	WaitForSingleObject(lock,INFINITE);
-
-	*mem = _framebuffer[i_min];
-	*num = i_min;
-	
-	ReleaseMutex(_framebuffer_lock);
-
-	return lock;
-};
-
-
-void vzOutput::init_buffers()
-{
-	/* check if appropriate exts is loaded */
-	if(_use_offscreen_buffer)
-		if(!(glGenBuffers)) 
-			_use_offscreen_buffer = 0;
-	
-	// create framebuffers
-	if(_use_offscreen_buffer)
-	{
-		// generate 3 offscreen buffers
-		glGenBuffers(3, _offscreen_buffers);
-
-		// init and request mem addrs of buffers
-		for(int b=0;b<3;b++)
-		{
-			// INIT BUFFER SIZE
-			glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
-			glBufferData(GL_PIXEL_PACK_BUFFER_ARB,4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT,NULL,GL_STREAM_READ);
-
-			// REQUEST BUFFER PTR - MAP AND SAVE PTR
-			glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
-			_framebuffer[b] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY);
-
-			// UNMAP
-			glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_offscreen_buffers[b]);
-			glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-		};
-
-		buffers_inited = 1;
-	}
-	else
-	{
-		_framebuffer[0] = malloc(3*4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
-		_framebuffer[1] = ((unsigned char*)_framebuffer[0]) + 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
-		_framebuffer[2] = ((unsigned char*)_framebuffer[0]) + 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
-	};
-};
 
 vzOutput::vzOutput(void* config, char* name, void* tv)
 {
+	int b;
+
 	// tv params
 	_tv = (vzTVSpec*)tv;
 
@@ -325,17 +241,10 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 	// load option
 	_use_offscreen_buffer = vzConfigParam(config,"vzOutput","use_offscreen_buffer")?1:0;
 
-	// set framebuffers pointers to NULL
-	_framebuffer[2] = (_framebuffer[1] = (_framebuffer[0] = NULL));
-
-	// create events
-	_framebuffer_locks[0] = CreateMutex(NULL,FALSE,NULL);
-	_framebuffer_locks[1] = CreateMutex(NULL,FALSE,NULL);
-	_framebuffer_locks[2] = CreateMutex(NULL,FALSE,NULL);
-	_framebuffer_lock = CreateMutex(NULL,FALSE,NULL);
-	_framebuffer_nums[0] = 0;
-	_framebuffer_nums[1] = 1;
-	_framebuffer_nums[2] = 2;
+	/* check if appropriate exts is loaded */
+	if(_use_offscreen_buffer)
+		if(!(glGenBuffers)) 
+			_use_offscreen_buffer = 0;
 
 	// prepare filename
 	char filename[1024];
@@ -387,6 +296,51 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 		{
 			int board_id = 0;
 
+			/* init OUTPUT buffers here */
+			{
+				// create framebuffers
+				if(_use_offscreen_buffer)
+				{
+					// generate VZOUTPUT_OUT_BUFS offscreen buffers
+					glGenBuffers(VZOUTPUT_OUT_BUFS, _output_framebuffer_nums);
+
+					// init and request mem addrs of buffers
+					for(b=0; b<VZOUTPUT_OUT_BUFS; b++)
+					{
+						// INIT BUFFER SIZE
+						glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_output_framebuffer_nums[b]);
+						glBufferData(GL_PIXEL_PACK_BUFFER_ARB,
+							4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT,NULL,GL_STREAM_READ);
+
+						// REQUEST BUFFER PTR - MAP AND SAVE PTR
+						_output_framebuffer_data[b] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY);
+
+						// UNMAP
+						glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+
+						// unbind ?
+						glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+					};
+				}
+				else
+				{
+					/* allocate mem */
+					_output_framebuffer_data[0] = malloc(VZOUTPUT_OUT_BUFS*4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
+
+					/* remap */
+					for(b=1; b<VZOUTPUT_OUT_BUFS; b++)
+						_output_framebuffer_data[b] = 
+						(
+							((unsigned char*)_output_framebuffer_data[b - 1]) 
+							+ 
+							4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT
+						);
+				};
+
+				/* setup output buffer id */
+				_output_framebuffer_pos = 0;
+			};
+
 			// selecting board
 			printf("vzOutput: Selecting board '%d' ... ",board_id);
 			SelectBoard(0,NULL);
@@ -425,25 +379,15 @@ vzOutput::~vzOutput()
 		FreeLibrary(_lib);
 		_lib = NULL;
 
-		// delete mutexes
-		CloseHandle(_framebuffer_locks[1]);
-		CloseHandle(_framebuffer_locks[2]);
-		CloseHandle(_framebuffer_locks[0]);
-		CloseHandle(_framebuffer_lock);
-
 		// free framebuffer
-
 		if(_use_offscreen_buffer)
 		{
-			for(int i=0;i<3;i++)
-			{
-				glDeleteBuffers(3, _offscreen_buffers);
-			};
+			glDeleteBuffers(VZOUTPUT_OUT_BUFS, _output_framebuffer_nums);
 		}
 		else
 		{
-			if (*_framebuffer)
-				free(*_framebuffer);
+			if (_output_framebuffer_data[0])
+				free(_output_framebuffer_data[0]);
 		};
 	};
 };

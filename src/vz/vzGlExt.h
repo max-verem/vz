@@ -79,6 +79,8 @@ http://oss.sgi.com/projects/ogl-sample/ABI/glext.h
 #define GL_SAMPLE_COVERAGE_INVERT			0x80AB
 #endif /* GL_MULTISAMPLE */
 
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+
 /* extensions functions types */
 extern VZGLEXT_API void (WINAPI *glBlendFuncSeparateEXT)(GLenum sfactorRGB,GLenum dfactorRGB,GLenum sfactorAlpha,GLenum dfactorAlpha);
 extern VZGLEXT_API void (WINAPI *glBindBuffer)(GLenum ,GLenum);
