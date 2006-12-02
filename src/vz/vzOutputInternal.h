@@ -53,6 +53,8 @@ ChangeLog:
 #include "../vz/vzImage.h"
 #include "../vz/vzTVSpec.h"
 
+#define DMA_PAGE_SIZE 4096
+
 typedef long (*output_proc_vzOutput_FindBoard)(char** error_log = NULL);
 typedef long (*output_proc_vzOutput_SelectBoard)(unsigned long id,char** error_log = NULL);
 typedef long (*output_proc_vzOutput_InitBoard)(void*);
@@ -60,10 +62,11 @@ typedef void (*output_proc_vzOutput_StartOutputLoop)(void*);
 typedef void (*output_proc_vzOutput_StopOutputLoop)(void);
 typedef void (*output_proc_vzOutput_SetConfig)(void*);
 typedef long (*output_proc_vzOutput_SetSync)(void*);
+typedef void (*output_proc_vzOutput_GetBuffersInfo)(struct vzOutputBuffers *b);
+typedef void (*output_proc_vzOutput_AssignBuffers)(struct vzOutputBuffers *b);
 
 typedef void (*frames_counter_proc)();
 
-#define VZOUTPUT_OUT_BUFS 4
 
 class VZOUTPUT_API vzOutput
 {
@@ -75,6 +78,8 @@ class VZOUTPUT_API vzOutput
 	output_proc_vzOutput_StopOutputLoop		StopOutputLoop;
 	output_proc_vzOutput_SetConfig			SetConfig;
 	output_proc_vzOutput_SetSync			SetSync;
+	output_proc_vzOutput_GetBuffersInfo		GetBuffersInfo;
+	output_proc_vzOutput_AssignBuffers		AssignBuffers;
 
 	// tv spec
 	vzTVSpec* _tv;
@@ -88,11 +93,11 @@ class VZOUTPUT_API vzOutput
 	// offscreen buffer usage flag
 	long _use_offscreen_buffer;
 
-	/* output frame buffers pointers */
-	void* _output_framebuffer_data[VZOUTPUT_OUT_BUFS];
-	unsigned int _output_framebuffer_nums[VZOUTPUT_OUT_BUFS];
-	int _output_framebuffer_pos;
+	/* buffers data */
+	struct vzOutputBuffers _buffers;
 
+	/* internal aux method */
+	void post_render_aux();
 
 public:
 	vzOutput(void* config,char* name, void* tv);
@@ -109,10 +114,14 @@ public:
 	void notify_field1_start();
 	void notify_field1_stop();
 
+	/* renderer interface */
 	void post_render(void);
 	void pre_render(void);
+	int render_slots();
 
-	void* get_output_buf_ptr(void);
+	/* output driver interface for output buffer */
+	void lock_io_bufs(void** output, void*** input);
+	void unlock_io_bufs(void** output, void*** input);
 };
 
 #endif //VZOUTPUTINTERNAL_H

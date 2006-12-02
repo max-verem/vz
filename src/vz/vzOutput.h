@@ -52,6 +52,58 @@ ChangeLog:
 
 typedef void (*frames_counter_proc)();
 
+#define VZOUTPUT_MAX_BUFS 4
+#define VZOUTPUT_MAX_CHANNELS 4
+
+struct vzOutputBuffers
+{
+	long flags;
+
+	HANDLE lock;
+	HANDLE locks[VZOUTPUT_MAX_BUFS];
+
+	unsigned long pos_driver;						/* buffer id for io driver */
+	unsigned long pos_render;						/* buffer id for rendering  */
+
+	unsigned long pos_driver_jump;					/* indicate needs to jump forward */
+	unsigned long pos_render_jump;					/* indicate needs to jump forward */
+
+	unsigned long pos_driver_dropped;
+	unsigned long pos_render_dropped;
+
+	unsigned long cnt_render;
+
+	unsigned long id[VZOUTPUT_MAX_BUFS];
+
+	struct
+	{
+		void* data[VZOUTPUT_MAX_BUFS];
+		unsigned int nums[VZOUTPUT_MAX_BUFS];
+
+		long gold;
+		long size;
+		long offset;
+	} output;
+
+	struct
+	{
+		int channels;
+		int field_mode;
+
+		void* data[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS*2];
+		unsigned int nums[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS*2];
+
+		long gold;
+		long size;
+		long offset;
+
+		long width;
+		long height;
+	} input;
+
+};
+
+
 VZOUTPUT_API void* vzOutputNew(void* config, char* name, void* tv);
 VZOUTPUT_API void vzOutputFree(void* &obj);
 VZOUTPUT_API int vzOutputReady(void* obj);
@@ -60,5 +112,7 @@ VZOUTPUT_API int vzOutputSync(void* obj,void* fc);
 
 VZOUTPUT_API void vzOuputPostRender(void* obj);
 VZOUTPUT_API void vzOuputPreRender(void* obj);
+VZOUTPUT_API int vzOuputRenderSlots(void* obj);
+VZOUTPUT_API struct vzOutputBuffers* vzOutputIOBuffers(void);
 
 #endif

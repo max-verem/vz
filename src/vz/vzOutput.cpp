@@ -21,6 +21,12 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-11-28:
+		*Output buffers paramters aquired from output driver.
+
+	2006-11-27:
+		*Memory allocation changes.
+
 	2006-11-26:
 		*Hard sync scheme.
 		*OpenGL extension scheme load changes.
@@ -55,12 +61,9 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 
 */
 
-#define FB_CHUNKS 4
-#define DEBUG_HARD_SYNC_DROPS
-
-#include "vzOutputInternal.h"
-#include "vzOutput.h"
-#include "vzMain.h"
+#ifdef _DEBUG
+//#define DUMP_DRV_IO_LOCKS
+#endif /* _DEBUG */
 
 #include <stdio.h>
 #include <string.h>
@@ -68,11 +71,23 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 #include <GL/glut.h>
 #include "vzGlExt.h"
 
+#include "vzOutput.h"
+#include "vzOutputInternal.h"
+#include "vzMain.h"
+
+static struct vzOutputBuffers* _global_buffers_info = NULL;
+
 //vzOutput public DLL method
 VZOUTPUT_API void* vzOutputNew(void* config, char* name, void* tv)
 {
 	return new vzOutput(config,name,tv);
 };
+
+VZOUTPUT_API struct vzOutputBuffers* vzOutputIOBuffers(void)
+{
+	return _global_buffers_info;
+};
+
 
 VZOUTPUT_API void vzOutputFree(void* &obj)
 {
@@ -103,94 +118,211 @@ VZOUTPUT_API void vzOuputPreRender(void* obj)
 	((vzOutput*)obj)->pre_render();
 };
 
+VZOUTPUT_API int vzOuputRenderSlots(void* obj)
+{
+	return ((vzOutput*)obj)->render_slots();
+};
 
 
 /// --------------------------------------------------
-#ifdef DEBUG_HARD_SYNC_DROPS
-static int prev_p = 0;
-static int dropped_frames_count = 0;
-#endif /* DEBUG_HARD_SYNC_DROPS */
 
-void* vzOutput::get_output_buf_ptr(void)
+int vzOutput::render_slots()
 {
-	int j = _output_framebuffer_pos;
+	int r = 0;
 
-	/* output buffer is lefter */
-	int p = (j + VZOUTPUT_OUT_BUFS - 1) % VZOUTPUT_OUT_BUFS;
+	/* lock buffers head */
+	WaitForSingleObject(_buffers.lock, INFINITE);
 
-#ifdef DEBUG_HARD_SYNC
-	printf("[%-10d] get_output_buf_ptr:\t%d\n", timeGetTime(), j);
-#endif /* DEBUG_HARD_SYNC */
-
-#ifdef DEBUG_HARD_SYNC_DROPS
+	/* check current and next buffers */
 	if
 	(
-		((prev_p + 1 + VZOUTPUT_OUT_BUFS) % VZOUTPUT_OUT_BUFS) 
-		!= 
-		p
+		(0 == _buffers.id[ _buffers.pos_render ])
+		||
+		(0 == _buffers.id[ (_buffers.pos_render + 1) % VZOUTPUT_MAX_BUFS])
 	)
-	{
-#ifdef DEBUG_HARD_SYNC
-		printf("[%-10d] get_output_buf_ptr: DROPPPED!!!\n", timeGetTime());
-#endif /* DEBUG_HARD_SYNC */
-		dropped_frames_count++;
-	}
-	else
-	{
-		if(dropped_frames_count)
-			printf("vzOutput: dropped %d frames\n", dropped_frames_count);
-		dropped_frames_count = 0;
-	};
-	prev_p = p;
-#endif /* DEBUG_HARD_SYNC_DROPS */
+		r = 1;
 
-	/* return pointer to mapped buffer */
-	return _output_framebuffer_data[p];
+	/* unlock buffers head */
+	ReleaseMutex(_buffers.lock);
+
+	return r;
 };
 
-void vzOutput::post_render()
+void vzOutput::lock_io_bufs(void** output, void*** input)
 {
-	// two method for copying data
+	int i;
+
+	/* lock buffers head */
+	WaitForSingleObject(_buffers.lock, INFINITE);
+
+	/* check if we can use next buffer */
+	if(_buffers.pos_driver_jump)
+	{
+		/* check if next buffer is loaded */
+		if(((_buffers.pos_driver + 1) % VZOUTPUT_MAX_BUFS) != _buffers.pos_render)
+		{
+			/* reset buffer frame number */
+			_buffers.id[ _buffers.pos_driver ] = 0;
+
+			/* increment position */
+			_buffers.pos_driver = (_buffers.pos_driver + 1) % VZOUTPUT_MAX_BUFS;
+
+			/* check drop count */
+			if(_buffers.pos_driver_dropped)
+			{
+				printf("vzOutput: dropped %d frames[driver]\n", _buffers.pos_driver_dropped);
+				_buffers.pos_driver_dropped = 0;
+			};
+		}
+		else
+		{
+			/* increment dropped framescounter */
+			_buffers.pos_driver_dropped++;
+		};
+
+		/* clear flag - no more chances */
+		_buffers.pos_driver_jump = 0;
+	};
+
+	/* unlock buffers head */
+	ReleaseMutex(_buffers.lock);
+
+	/* lock buffer */
+	WaitForSingleObject(_buffers.locks[ _buffers.pos_driver ], INFINITE);
+
+	/* setup pointer to mapped buffer */
+	*output = _buffers.output.data[ _buffers.pos_driver ];
+	*input = _buffers.input.data[ _buffers.pos_driver ];
+
+	/* check if we need to map buffers */
 	if(_use_offscreen_buffer)
 	{
-		/* wait async transfer */
-		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _output_framebuffer_nums[_output_framebuffer_pos]);
-		_output_framebuffer_data[_output_framebuffer_pos] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
-		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+		/* map buffers */
+		for(i = 0; i<(_buffers.input.channels*( (_buffers.input.field_mode)?2:1 )); i++)
+		{
+			int b = _buffers.input.nums[ _buffers.pos_driver ][i];
+
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, b );
+			_buffers.input.data[ _buffers.pos_driver ][i] = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
+		};
+
+		/* unbind ? */
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 	};
 
-	/* shift forward */
-	_output_framebuffer_pos = (_output_framebuffer_pos + VZOUTPUT_OUT_BUFS + 1) % VZOUTPUT_OUT_BUFS;
+#ifdef DUMP_DRV_IO_LOCKS
+	printf("lock_io_bufs: %-10d r=%d d=%d [", timeGetTime(), _buffers.pos_render, _buffers.pos_driver);
+	for(i = 0; i<VZOUTPUT_MAX_BUFS ; i++)
+		printf("%-4d", _buffers.id[i]);
+	printf("]\n");
+#endif /* DUMP_DRV_IO_LOCKS */
 
-#ifdef DEBUG_HARD_SYNC
-	printf("[%-10d] post_render: %d\n", timeGetTime(), _output_framebuffer_pos);
-#endif /* DEBUG_HARD_SYNC */
 };
+
+
+void vzOutput::unlock_io_bufs(void** output, void*** input)
+{
+	int i, b;
+
+	/* check if we need to unmap buffers */
+	if(_use_offscreen_buffer)
+	{
+		/* map buffers */
+		for(i = 0; i<(_buffers.input.channels*( (_buffers.input.field_mode)?2:1 )); i++)
+		{
+			b = _buffers.input.nums[ _buffers.pos_driver ][i];
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, b );
+			glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+		};
+		/* unbind ? */
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+	};
+
+	/* unlock buffer */
+	ReleaseMutex(_buffers.locks[ _buffers.pos_driver ]);
+
+	/* lock buffers head */
+	WaitForSingleObject(_buffers.lock, INFINITE);
+
+	/* try to jump */
+
+	/* check if next buffer is loaded */
+	if(((_buffers.pos_driver + 1) % VZOUTPUT_MAX_BUFS) != _buffers.pos_render)
+	{
+		/* reset buffer frame number */
+		_buffers.id[ _buffers.pos_driver ] = 0;
+
+		/* increment position */
+		_buffers.pos_driver = (_buffers.pos_driver + 1) % VZOUTPUT_MAX_BUFS;
+
+		/* reset jump flag */
+		_buffers.pos_driver_jump = 0;
+
+		/* check drop count */
+		if(_buffers.pos_driver_dropped)
+		{
+			printf("vzOutput: dropped %d frames[driver]\n", _buffers.pos_driver_dropped);
+			_buffers.pos_driver_dropped = 0;
+		};
+	}
+	else
+		/* set jump flag */
+		_buffers.pos_driver_jump = 1;
+
+	/* unlock buffers head */
+	ReleaseMutex(_buffers.lock);
+};
+
 
 void vzOutput::pre_render()
 {
+	/* lock buffers head */
+	WaitForSingleObject(_buffers.lock, INFINITE);
+
+	/* check if we can use next buffer */
+	if(_buffers.pos_render_jump)
+	{
+		/* check if next buffer is loaded */
+		if(((_buffers.pos_render + 1) % VZOUTPUT_MAX_BUFS) != _buffers.pos_driver)
+		{
+			/* increment position */
+			_buffers.pos_render = (_buffers.pos_render + 1) % VZOUTPUT_MAX_BUFS;
+
+			/* check drop count */
+			if(_buffers.pos_render_dropped)
+			{
+				printf("vzOutput: dropped %d frames[render]\n", _buffers.pos_render_dropped);
+				_buffers.pos_render_dropped = 0;
+			};
+		}
+		else
+		{
+			/* increment dropped framescounter */
+			_buffers.pos_render_dropped++;
+		};
+
+		/* clear flag - no more chances */
+		_buffers.pos_render_jump = 0;
+	};
+
+	/* set buffer frame number */
+	_buffers.id[ _buffers.pos_render ] = ++_buffers.cnt_render;
+
+	/* unlock buffers head */
+	ReleaseMutex(_buffers.lock);
+
+	/* lock buffer */
+	WaitForSingleObject(_buffers.locks[ _buffers.pos_render ], INFINITE);
+
 	// two method for copying data
 	if(_use_offscreen_buffer)
 	{
 		/* bind to buffer */
-		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _output_framebuffer_nums[_output_framebuffer_pos]);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _buffers.output.nums[_buffers.pos_render]);
 		glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-		_output_framebuffer_data[_output_framebuffer_pos] = NULL;
+		_buffers.output.data[_buffers.pos_render] = NULL;
 
 		// start asynchroniosly  read from buffer
-#ifdef FB_CHUNKS
-		for(int j=0; j < FB_CHUNKS ; j++ )
-			glReadPixels
-			(
-				0,
-				j * (_tv->TV_FRAME_HEIGHT / FB_CHUNKS),
-				_tv->TV_FRAME_WIDTH,
-				_tv->TV_FRAME_HEIGHT / FB_CHUNKS,
-				GL_BGRA_EXT,
-				GL_UNSIGNED_BYTE,
-				BUFFER_OFFSET( j * (_tv->TV_FRAME_HEIGHT / FB_CHUNKS)*4*_tv->TV_FRAME_WIDTH   )
-			);
-#else /* !FB_CHUNKS */
 		glReadPixels
 		(
 			0,
@@ -199,9 +331,8 @@ void vzOutput::pre_render()
 			_tv->TV_FRAME_HEIGHT,
 			GL_BGRA_EXT,
 			GL_UNSIGNED_BYTE,
-			BUFFER_OFFSET(0)
+			BUFFER_OFFSET( _buffers.output.offset )
 		);
-#endif /* FB_CHUNKS */
 
 		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
 	}
@@ -218,8 +349,13 @@ void vzOutput::pre_render()
 			_tv->TV_FRAME_HEIGHT,
 			GL_BGRA_EXT,
 			GL_UNSIGNED_BYTE,
-			_output_framebuffer_data[_output_framebuffer_pos]
+			((unsigned char*)_buffers.output.data[_buffers.pos_render])
+			+
+			_buffers.output.offset
 		);
+
+		/* deal with indexes */
+		post_render_aux();
 	};
 
 	// restore read buffer
@@ -228,9 +364,57 @@ void vzOutput::pre_render()
 };
 
 
+void vzOutput::post_render_aux()
+{
+	/* unlock buffer */
+	ReleaseMutex(_buffers.locks[ _buffers.pos_render ]);
+
+	/* lock buffers head */
+	WaitForSingleObject(_buffers.lock, INFINITE);
+
+	/* check if next buffer is loaded */
+	if(((_buffers.pos_render + 1) % VZOUTPUT_MAX_BUFS) != _buffers.pos_driver)
+	{
+		/* increment position */
+		_buffers.pos_render = (_buffers.pos_render + 1) % VZOUTPUT_MAX_BUFS;
+
+		/* reset jump flag */
+		_buffers.pos_render_jump = 0;
+
+		/* check drop count */
+		if(_buffers.pos_render_dropped)
+		{
+			printf("vzOutput: dropped %d frames[render]\n", _buffers.pos_render_dropped);
+			_buffers.pos_render_dropped = 0;
+		};
+	}
+	else
+		/* set jump flag */
+		_buffers.pos_render_jump = 1;
+
+	/* unlock buffers head */
+	ReleaseMutex(_buffers.lock);
+}
+
+void vzOutput::post_render()
+{
+	// two method for copying data
+	if(_use_offscreen_buffer)
+	{
+		/* wait async transfer */
+		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _buffers.output.nums[_buffers.pos_render]);
+		_buffers.output.data[_buffers.pos_render] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+
+		/* deal with indexes */
+		post_render_aux();
+	};
+};
+
+
 vzOutput::vzOutput(void* config, char* name, void* tv)
 {
-	int b;
+	int b, i, n;
 
 	// tv params
 	_tv = (vzTVSpec*)tv;
@@ -278,6 +462,10 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 		(StartOutputLoop = (output_proc_vzOutput_StartOutputLoop)GetProcAddress(_lib,"vzOutput_StartOutputLoop"))
 		&&
 		(StopOutputLoop = (output_proc_vzOutput_StopOutputLoop)GetProcAddress(_lib,"vzOutput_StopOutputLoop"))
+		&&
+		(GetBuffersInfo = (output_proc_vzOutput_GetBuffersInfo)GetProcAddress(_lib,"vzOutput_GetBuffersInfo"))
+		&&
+		(AssignBuffers = (output_proc_vzOutput_AssignBuffers)GetProcAddress(_lib,"vzOutput_AssignBuffers"))
 	)
 	{
 		printf("OK!\n");
@@ -296,51 +484,6 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 		{
 			int board_id = 0;
 
-			/* init OUTPUT buffers here */
-			{
-				// create framebuffers
-				if(_use_offscreen_buffer)
-				{
-					// generate VZOUTPUT_OUT_BUFS offscreen buffers
-					glGenBuffers(VZOUTPUT_OUT_BUFS, _output_framebuffer_nums);
-
-					// init and request mem addrs of buffers
-					for(b=0; b<VZOUTPUT_OUT_BUFS; b++)
-					{
-						// INIT BUFFER SIZE
-						glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,_output_framebuffer_nums[b]);
-						glBufferData(GL_PIXEL_PACK_BUFFER_ARB,
-							4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT,NULL,GL_STREAM_READ);
-
-						// REQUEST BUFFER PTR - MAP AND SAVE PTR
-						_output_framebuffer_data[b] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY);
-
-						// UNMAP
-						glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-
-						// unbind ?
-						glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
-					};
-				}
-				else
-				{
-					/* allocate mem */
-					_output_framebuffer_data[0] = malloc(VZOUTPUT_OUT_BUFS*4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
-
-					/* remap */
-					for(b=1; b<VZOUTPUT_OUT_BUFS; b++)
-						_output_framebuffer_data[b] = 
-						(
-							((unsigned char*)_output_framebuffer_data[b - 1]) 
-							+ 
-							4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT
-						);
-				};
-
-				/* setup output buffer id */
-				_output_framebuffer_pos = 0;
-			};
-
 			// selecting board
 			printf("vzOutput: Selecting board '%d' ... ",board_id);
 			SelectBoard(0,NULL);
@@ -350,6 +493,93 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 			printf("vzOutput: Init board '%d' ... ",board_id);
 			InitBoard(_tv);
 			printf("OK\n");
+
+			/* init INPUT/OUTPUT buffers here */
+			{
+				/* ask for output buffer sizes */
+				memset(&_buffers, 0, sizeof(struct vzOutputBuffers));
+				_buffers.lock = CreateMutex(NULL,FALSE,NULL);
+				for(b = 0; b < VZOUTPUT_MAX_BUFS; b++)
+					_buffers.locks[b] = CreateMutex(NULL,FALSE,NULL);
+				GetBuffersInfo(&_buffers);
+
+				// create framebuffers
+				if(_use_offscreen_buffer)
+				{
+					// generate VZOUTPUT_MAX_BUFS offscreen buffers
+					glGenBuffers(VZOUTPUT_MAX_BUFS, _buffers.output.nums);
+
+					// init and request mem addrs of buffers
+					for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
+					{
+						// INIT BUFFER SIZE
+						glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _buffers.output.nums[b]);
+						glBufferData(GL_PIXEL_PACK_BUFFER_ARB, _buffers.output.gold, NULL, GL_STREAM_READ);
+
+						// REQUEST BUFFER PTR - MAP AND SAVE PTR
+						_buffers.output.data[b] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY);
+
+						// UNMAP
+						glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+
+						/* deal with input buffers */
+						n = (_buffers.input.channels*( (_buffers.input.field_mode)?2:1));
+						glGenBuffers(n, _buffers.input.nums[b]);
+						for(i = 0; i<n; i++)
+						{
+							glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, _buffers.input.nums[b][i]);
+							glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, _buffers.input.gold, NULL, GL_STREAM_DRAW);
+						};
+
+						// unbind ?
+						glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
+					};
+
+				}
+				else
+				{
+
+					/* allocate mem */
+					for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
+					{
+						_buffers.output.data[b] = VirtualAlloc
+						(
+							NULL, 
+							_buffers.output.gold,
+							MEM_COMMIT, 
+							PAGE_READWRITE
+						);
+						VirtualLock(_buffers.output.data[b], _buffers.output.gold);
+
+						/* deal with input buffers */
+						n = (_buffers.input.channels*( (_buffers.input.field_mode)?2:1));
+						for(i = 0; i<n; i++)
+						{
+							_buffers.input.data[b][i] = VirtualAlloc
+							(
+								NULL, 
+								_buffers.input.gold,
+								MEM_COMMIT, 
+								PAGE_READWRITE
+							);
+							VirtualLock(_buffers.input.data[b][i], _buffers.input.gold);
+						};
+					};
+				};
+
+				/* Man/Remap or other ops */
+				AssignBuffers(&_buffers);
+
+				/* setup output buffer ids */
+				_buffers.cnt_render = 0;
+				_buffers.pos_driver = 0;
+				_buffers.pos_render = 1;
+//				for(i = 0; i<VZOUTPUT_MAX_BUFS; i++)
+//					_buffers.id[i] = ++_buffers.cnt_render;
+
+				/* assign to module global version */
+				_global_buffers_info = &_buffers;
+			};
 
 			// request sync proc !
 			SetSync = (output_proc_vzOutput_SetSync)GetProcAddress(_lib,"vzOutput_SetSync");
@@ -372,6 +602,8 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 
 vzOutput::~vzOutput()
 {
+	int b, n, i;
+
 	if(_lib)
 	{
 		// delete all objects
@@ -379,15 +611,41 @@ vzOutput::~vzOutput()
 		FreeLibrary(_lib);
 		_lib = NULL;
 
+		/* close locks */
+		CloseHandle(_buffers.lock);
+		for(b = 0; b < VZOUTPUT_MAX_BUFS; b++)
+			CloseHandle(_buffers.locks[b]);
+
 		// free framebuffer
 		if(_use_offscreen_buffer)
 		{
-			glDeleteBuffers(VZOUTPUT_OUT_BUFS, _output_framebuffer_nums);
+			glDeleteBuffers(VZOUTPUT_MAX_BUFS, _buffers.output.nums);
+
+			/* deal with input buffers */
+			n = (_buffers.input.channels*( (_buffers.input.field_mode)?2:1));
+			for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
+				glDeleteBuffers(n, _buffers.input.nums[b]);
 		}
 		else
 		{
-			if (_output_framebuffer_data[0])
-				free(_output_framebuffer_data[0]);
+			/* release mem */
+			for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
+			{
+				if(_buffers.output.data[b])
+				{
+					VirtualUnlock(_buffers.output.data[b], _buffers.output.gold);
+					VirtualFree(_buffers.output.data[b], _buffers.output.gold, MEM_RELEASE);
+				};
+
+				/* deal with input buffers */
+				n = (_buffers.input.channels*( (_buffers.input.field_mode)?2:1));
+				for(i = 0; i<n; i++)
+					if(_buffers.input.data[b][i])
+					{
+						VirtualUnlock(_buffers.input.data[b][i], _buffers.input.gold);
+						VirtualFree(_buffers.input.data[b][i], _buffers.input.gold, MEM_RELEASE);
+					};
+			};
 		};
 	};
 };

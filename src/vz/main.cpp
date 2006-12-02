@@ -134,22 +134,42 @@ printf("[%-10d] frames_counter\n", timeGetTime());
 
 static unsigned long WINAPI sync_render(void* data)
 {
+	int r,p;
+
 	while(1)
 	{
-		WaitForSingleObject(global_frame_event,INFINITE);
-		ResetEvent(global_frame_event);
+		p = 0;
+		r = WaitForSingleObject(global_frame_event, 15) ;/* INFINITE); */
+		if(WAIT_OBJECT_0 == r)
+			p = 1;
+		else
+		{
+			if
+			(
+				(NULL != output_module)
+				&&
+				(vzOuputRenderSlots(output_module) > 0)
+			)
+				p = 1;
+		};
+
+		/* check if we need to pulse */
+		if(p)
+		{
+			ResetEvent(global_frame_event);
 
 #ifdef DEBUG_HARD_SYNC
-		printf("[%-10d] sync_render\n", timeGetTime());
+			printf("[%-10d] sync_render\n", timeGetTime());
 #endif /* DEBUG_HARD_SYNC */
 
-		if(not_first_at)
-		{
-			// reset flag of forcing redraw
-			skip_draw = 0;
+			if(not_first_at)
+			{
+				// reset flag of forcing redraw
+				skip_draw = 0;
 
-			// notify about redisplay
-			glutPostRedisplay();
+				// notify about redisplay
+				glutPostRedisplay();
+			};
 		};
 	};
 };
@@ -164,6 +184,8 @@ static long last_title_update = 0;
 
 static void vz_glut_display(void)
 {
+	int force_render = 0, force_rendered = 0;
+
 	// check if redraw should processed
 	// by internal needs
 	if (skip_draw)
@@ -172,59 +194,91 @@ static void vz_glut_display(void)
 	// scene redrawed
 	skip_draw = 1;
 
-	// save time of draw start
-	long draw_start_time = timeGetTime();
+	/* check if we need to draw frame */
+	if
+	(
+		(NULL == output_module)
+		||
+		(
+			(NULL != output_module)
+			&&
+			(vzOuputRenderSlots(output_module) > 0)
+		)
+	)
+		force_render = 1;
+
+
+	while(force_render)
+	{
+		/* reset force render flag */
+		force_render = 0;
+		force_rendered++;
+
+		// save time of draw start
+		long draw_start_time = timeGetTime();
 
 #ifdef DEBUG_HARD_SYNC
-	printf("[%-10d] vz_glut_display\n", timeGetTime());
+		printf("[%-10d] vz_glut_display\n", timeGetTime());
 #endif /* DEBUG_HARD_SYNC */
 
-	// output module tricks
-	if(not_first_at)
+		// output module tricks
 		if(output_module)
 			vzOuputPreRender(output_module);
 
-	rendered_frames++;
+		rendered_frames++;
 
-	// lock scene
-	WaitForSingleObject(scene_lock,INFINITE);
+		// lock scene
+		WaitForSingleObject(scene_lock,INFINITE);
 
-	// draw scene
-	if (scene)
-		vzMainSceneDisplay(scene,global_frame_no);
-	else
-	{
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	};
+		// draw scene
+		if (scene)
+			vzMainSceneDisplay(scene,global_frame_no);
+		else
+		{
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		};
 
-	// flush all 
-    glFlush();
+		// flush all 
+		glFlush();
 
-	if(not_first_at)
 		if(output_module)
 			vzOuputPostRender(output_module);
 
-	// and swap buffers
-	glutSwapBuffers();
+		// and swap buffers
+		glutSwapBuffers();
 
-	// save time of draw start
-	long draw_stop_time = timeGetTime();
-	render_time = draw_stop_time - draw_start_time;
+		// save time of draw start
+		long draw_stop_time = timeGetTime();
+		render_time = draw_stop_time - draw_start_time;
+
+		// check if we need to make a screenshot
+		if(*screenshot_file)
+		{
+			char* error_log;
+			vzImage* screenshot = vzImageNewFromVB(tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT);
+			vzImageSaveTGA(screenshot_file,screenshot,&error_log);
+			*screenshot_file = 0;
+			vzImageFree(screenshot);
+		};
+
+		ReleaseMutex(scene_lock);
+
+		/* check if we need to draw more frames */
+		if
+		(
+			(NULL != output_module)
+			&&
+			(vzOuputRenderSlots(output_module) > 0)
+		)
+			force_render = 1;
+
+		/* check if we need to terminate this loop */
+		if(force_rendered > VZOUTPUT_MAX_BUFS)
+			force_rendered = 0;
+	};
 
 	// mark flag about first frame
 	not_first_at = 1;
-
-	// check if we need to make a screenshot
-	if(*screenshot_file)
-	{
-		char* error_log;
-		vzImage* screenshot = vzImageNewFromVB(tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT);
-		vzImageSaveTGA(screenshot_file,screenshot,&error_log);
-		*screenshot_file = 0;
-		vzImageFree(screenshot);
-	};
-
-	ReleaseMutex(scene_lock);
 };
 
 static void vz_glut_idle()
@@ -435,7 +489,7 @@ int main(int argc, char** argv)
 	// check if flag. if its not OK - start internal
 	if(output_module_sync == 0)
 	{
-		CreateThread
+		HANDLE l = CreateThread
 		(
 			NULL,
 			1024,
@@ -444,11 +498,13 @@ int main(int argc, char** argv)
 			0,
 			NULL
 		);
+
+		SetThreadPriority(l , THREAD_PRIORITY_HIGHEST);
 	};
 
 	/* sync render */
 	{
-		CreateThread
+		HANDLE l = CreateThread
 		(
 			NULL,
 			1024,
@@ -457,6 +513,8 @@ int main(int argc, char** argv)
 			0,
 			NULL
 		);
+
+		SetThreadPriority(l , THREAD_PRIORITY_HIGHEST);
 	};
 
 	// check if we need automaticaly load scene

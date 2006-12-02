@@ -71,4 +71,7 @@ ChangeLog:
 #endif
 */
 
+/* plugins additional threads priorities */
+#define VZPLUGINS_AUX_THREAD_PRIO THREAD_PRIORITY_LOWEST
+
 #endif
