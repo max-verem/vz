@@ -22,8 +22,11 @@
 
 	
 ChangeLog:
-	2006-11-26:
-		*
+	2006-11-29:
+		*Output/Input buffers described by the same data block
+
+	2006-11-28:
+		*Output buffers paramters aquired from output driver.
 
     2005-06-25:
 		*Fake output module developed ....
@@ -76,6 +79,7 @@ static void hr_sleep(struct hr_sleep_data* sleep_data, unsigned long delay_milis
 /*---------------------------------------------------------------------------- */
 
 
+#include "../vz/vzOutput.h"
 #include "../vz/vzOutput-devel.h"
 #include "../vz/vzImage.h"
 #include "../vz/vzOutputInternal.h"
@@ -85,8 +89,12 @@ static void hr_sleep(struct hr_sleep_data* sleep_data, unsigned long delay_milis
 
 static void* _config = NULL;
 static vzTVSpec* _tv = NULL;
-struct hr_sleep_data timer_data;
+static struct vzOutputBuffers* _buffers_info = NULL;
+static struct hr_sleep_data timer_data;
 static frames_counter_proc _fc = NULL;
+static unsigned long test_patter_line[720];
+static unsigned long bars_colour_values[8] = { 0xFFFFFFFF, 0xFFBFBE01, 0xFF01BFBF, 0xFF00BF00, 0xFFBF00BF, 0xFFC00000, 0xFF0100C0, 0xFF000000};
+
 
 // threads cotrols
 HANDLE loop_thread;
@@ -122,13 +130,18 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 	/* init timer */
 	hr_sleep_init(&timer_data);
 
+	/* init test pattern line */
+	for(int i=0;i<720; i++)
+		test_patter_line[i] = bars_colour_values[i / 90];
+
 	return 1;
 };
 
 
 unsigned long WINAPI output_loop(void* obj)
 {
-	void* buffer_address;
+	int j, b;
+	void *output_buffer, **input_buffers;
 
 	// cast pointer to vzOutput
 	vzOutput* tbc = (vzOutput*)obj;
@@ -162,42 +175,94 @@ unsigned long WINAPI output_loop(void* obj)
 		// 2. start transfering transcoded buffer
 
 		// 3. request pointer to new buffer
-		buffer_address = tbc->get_output_buf_ptr();
+		tbc->lock_io_bufs(&output_buffer, &input_buffers);
 
-
+		/* send sync */
 		if(_fc)
 			_fc();
 
-
 		// 4. transcode buffer
 		if(vzConfigParam(_config,"nullvideo","YUV_CONVERT"))
-			if (buffer_address)
+			if (output_buffer)
 				vzImageBGRA2YUAYVA
 				(
-					buffer_address,
+					output_buffer,
 					yuv_buffer,
 					alpha_buffer,
 					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT
 				);
 		/* transfer buffer */
 		if(vzConfigParam(_config,"nullvideo","OUTPUT_BUF_TRANSFER"))
-			if (buffer_address)
+			if (output_buffer)
 				memcpy
 				(
 					fake_buffer,
-					buffer_address,
+					output_buffer,
 					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*4
 				);
+
+		/* transfer input */
+		if(_buffers_info->input.channels)
+		{
+			for
+			(
+				b = 0
+				; 
+				b
+				<
+				(
+					(
+						_buffers_info->input.channels 
+						* 
+						(
+							(_buffers_info->input.field_mode)
+							?
+							2
+							:
+							1
+						)
+					)
+				)
+				;
+				b++
+			)
+			{
+				unsigned char *p = (unsigned char*)input_buffers[b];
+				for
+				(
+					j = 0
+					;
+					j
+					<
+					(
+						(_buffers_info->input.field_mode)
+						?
+						(_tv->TV_FRAME_HEIGHT/2)
+						:
+						_tv->TV_FRAME_HEIGHT
+					)
+					;
+					j++, p += 4*_tv->TV_FRAME_WIDTH
+				)
+					memcpy(p, test_patter_line, 4*_tv->TV_FRAME_WIDTH);
+			};
+		};
+				
 
 		tbc->notify_frame_stop();
 
 		// mark stop time
 		long B = timeGetTime();
 
+		// 3. request pointer to new buffer
+		tbc->unlock_io_bufs(&output_buffer, &input_buffers);
+
 		// mark time to sleep
 		long C = B - A;
 		if((C>=0) && (C<40))
 			hr_sleep(&timer_data, 40 - C);
+		else
+			printf("nullvideo: %d miliseconds overrun\n", C - 40);
 
 #ifdef DEBUG_HARD_SYNC
 		printf("A=%d, B=%d, C=%d\n", A, B, C);
@@ -220,6 +285,9 @@ VZOUTPUTS_EXPORT void vzOutput_StartOutputLoop(void* tbc)
 		0,
 		NULL
 	);
+
+	/* set thread priority */
+	SetThreadPriority(loop_thread , THREAD_PRIORITY_HIGHEST);
 };
 
 
@@ -237,6 +305,30 @@ VZOUTPUTS_EXPORT long vzOutput_SetSync(frames_counter_proc fc)
 	return (long)(_fc =  fc);
 };
 
+VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
+{
+	b->output.offset = 0;
+	b->output.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
+	b->output.gold = ((b->output.size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
 
+	if(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"))
+	{
+		b->input.channels = atol(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"));
+		b->input.field_mode = vzConfigParam(_config,"nullvideo","FIELD_MODE")?1:0;
 
+		b->input.offset = 0;
+		b->input.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT / (b->input.field_mode?2:1) ;
+		b->input.gold = ((b->input.size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
+
+		b->input.width = _tv->TV_FRAME_WIDTH;
+		b->input.height = _tv->TV_FRAME_HEIGHT / (b->input.field_mode?2:1);
+	};
+
+	_buffers_info = b;
+};
+
+VZOUTPUTS_EXPORT void vzOutput_AssignBuffers(struct vzOutputBuffers* b)
+{
+
+};
 

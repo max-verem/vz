@@ -22,6 +22,14 @@
 
 	
 ChangeLog:
+	2006-12-02:
+		*New scheme of buffers config.
+
+	2006-11-29:
+		*Output/Input buffers described by the same data block
+
+	2006-11-28:
+		*Output buffers paramters aquired from output driver.
 
 	2005-07-09:
 		*Transformation function turned off. Update of framebuffer provided 
@@ -60,7 +68,9 @@ ChangeLog:
 
 */
 
+#include <windows.h>
 
+#include "../vz/vzOutput.h"
 #include "../vz/vzOutput-devel.h"
 #include "../vz/vzImage.h"
 #include "../vz/vzOutputInternal.h"
@@ -440,7 +450,7 @@ static int notify_to_stop_loop = 0;
 static unsigned long WINAPI output_loop(void* obj)
 {
 	// framebuffer pointer
-	void* image_buffer = NULL;
+	void **input_buffers, *image_buffer = NULL;
 
 	vzOutput* tbc = (vzOutput*)obj;
 
@@ -461,7 +471,7 @@ static unsigned long WINAPI output_loop(void* obj)
 // -----------------------------------------------------------------------------------------
 
 		// first, request new framebuffer
-		image_buffer = tbc->get_output_buf_ptr();
+		tbc->lock_io_bufs(&image_buffer, &input_buffers);
 
 // -----------------------------------------------------------------------------------------
 
@@ -498,6 +508,9 @@ static unsigned long WINAPI output_loop(void* obj)
 				(void*)image_buffer,
 				1
 			);
+
+		// unlock used buffer
+		tbc->unlock_io_bufs(&image_buffer, &input_buffers);
 
 		// wait for field #1
 		WaitForSingleObject(_fields_event[1], INFINITE);ResetEvent(_fields_event[1]);
@@ -555,6 +568,20 @@ VZOUTPUTS_EXPORT void vzOutput_StopOutputLoop()
 	CloseHandle(loop_thread);
 };
 
+
+VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
+{
+	b->output.offset = 0;
+	b->output.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
+	b->output.gold = ((b->output.size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
+};
+
+VZOUTPUTS_EXPORT void vzOutput_AssignBuffers(struct vzOutputBuffers* b)
+{
+
+};
+
+/* ------------------------------------------------------------------------ */
 
 static void BGRA2UYVA (void* dst, void* src, int count)
 {
