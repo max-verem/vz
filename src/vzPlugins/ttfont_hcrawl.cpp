@@ -695,6 +695,7 @@ PLUGIN_EXPORT void notify(void* data)
 		/* start async thread */
 		unsigned long thread;
 		txt_msg->async = CreateThread(0, 0, _msg_layouter, txt_msg, 0, &thread);
+                SetThreadPriority(txt_msg->async , VZPLUGINS_AUX_THREAD_PRIO);
 
 		/* clear bit */
 		_DATA->_s_trig_append = _DATA->s_trig_append;

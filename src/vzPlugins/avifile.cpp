@@ -454,6 +454,7 @@ static struct aviloader_desc* aviloader_init(char* filename, int mem_preload)
 
 	/* run thread */
 	desc->task = CreateThread(0, 0, aviloader_proc, desc, 0, &thread_id);
+        SetThreadPriority(desc->task , VZPLUGINS_AUX_THREAD_PRIO);
 
 	return desc;
 };

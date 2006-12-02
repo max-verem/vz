@@ -647,6 +647,7 @@ PLUGIN_EXPORT void notify(void* data)
 
 		//start thread for texture loading
 		_DATA->_async_image_loader = CreateThread(0, 0, imageloader_proc, desc, 0, NULL);
+                SetThreadPriority(_DATA->_async_image_loader , VZPLUGINS_AUX_THREAD_PRIO);
 
 		/* sunc filename */
 		_DATA->_filename = _DATA->s_filename;

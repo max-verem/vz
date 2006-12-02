@@ -324,6 +324,7 @@ PLUGIN_EXPORT void* constructor(void)
 	_DATA->_async_renderer_queue[1] = NULL;
 	_DATA->_async_renderer_lock = CreateMutex(NULL,FALSE,NULL);
 	_DATA->_async_renderer_handle = CreateThread(0, 0, _async_renderer, data, 0, &thread);
+        SetThreadPriority(_DATA->_async_renderer_handle , VZPLUGINS_AUX_THREAD_PRIO);
 
 	dump_text_params(&_DATA->params);
 
