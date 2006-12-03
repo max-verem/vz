@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-03:
+		*Height twice in field mode.
+
 	2006-12-01:
 		*Draft version startup
 
@@ -393,6 +396,10 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		(_DATA->_buffers->input.channels)						/* input chennels present */
 	)
 	{
+		/* scale up */
+		long k = (_DATA->_buffers->input.field_mode)?2:1;
+
+		/* mode depend rendering */
 		if (FOURCC_TO_LONG('_','F','T','_') == _DATA->L_center)
 		{
 			int i;
@@ -408,8 +415,8 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			calc_free_transform
 			(
 				/* dimentsions */
-				_DATA->_width, _DATA->_height,
-				_DATA->_buffers->input.width, _DATA->_buffers->input.height,
+				_DATA->_width, _DATA->_height*k,
+				_DATA->_buffers->input.width, _DATA->_buffers->input.height*k,
 
 				/* source coordinates */
 				_DATA->f_x1, _DATA->f_y1,
@@ -498,13 +505,14 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			center_vector
 			(
 				_DATA->L_center, 
-				_DATA->_buffers->input.width, _DATA->_buffers->input.height, 
+				_DATA->_buffers->input.width, 
+				_DATA->_buffers->input.height*k,
 				co_X, co_Y
 			);
 
 
 			// translate coordinate according to real image
-			co_Y -= (_DATA->_height - _DATA->_buffers->input.height)/2;
+			co_Y -= k*(_DATA->_height - _DATA->_buffers->input.height)/2;
 			co_X -= (_DATA->_width - _DATA->_buffers->input.width)/2;
 
 
@@ -529,14 +537,14 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 				(_DATA->l_flip_h)?1.0f:0.0f,
 				(_DATA->l_flip_v)?1.0f:0.0f
 			);
-			glVertex3f(co_X + 0.0f, co_Y + _DATA->_height, co_Z + 0.0f);
+			glVertex3f(co_X + 0.0f, co_Y + _DATA->_height*k, co_Z + 0.0f);
 
 			glTexCoord2f
 			(
 				(_DATA->l_flip_h)?0.0f:1.0f,
 				(_DATA->l_flip_v)?1.0f:0.0f
 			);
-			glVertex3f(co_X + _DATA->_width, co_Y + _DATA->_height, co_Z + 0.0f);
+			glVertex3f(co_X + _DATA->_width, co_Y + _DATA->_height*k, co_Z + 0.0f);
 
 			glTexCoord2f
 			(
