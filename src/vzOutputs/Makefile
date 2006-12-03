@@ -8,7 +8,7 @@ CFG=Debug
 !MESSAGE You can specify a configuration when running NMAKE
 !MESSAGE by defining the macro CFG on the command line. For example:
 !MESSAGE 
-!MESSAGE NMAKE CFG="Debug"
+!MESSAGE NMAKE CFG="Debug" or NMAKE CFG="Release"
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
