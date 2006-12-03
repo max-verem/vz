@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-03:
+		*Fixed bug with frame size to transfer.
+
 	2006-11-19:
 		*free transform feature added
 
@@ -179,12 +182,10 @@ static unsigned long WINAPI aviloader_proc(void* p)
 	LPBITMAPINFOHEADER frame_info;
 	int i,l;
 
-#ifdef VERBOSE
-	printf("avifile: aviloader_proc started\n");
-#endif /* VERBOSE */
-
 	/* cast struct */
 	struct aviloader_desc* desc = (struct aviloader_desc*)p;
+
+	printf("avifile: aviloader_proc started('%s')\n", desc->filename);
 
 	/* init AVI for this thread */
 #ifdef AVI_OP_LOCK
@@ -273,8 +274,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 					for(i = 0; i<((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH); i++)
 					{
 						/* init buffer */
-						frame_size = frame_info->biSize + 
-							(frame_info->biWidth + 4)* frame_info->biHeight * (frame_info->biBitCount / 8);
+						frame_size = frame_info->biWidth * frame_info->biHeight * (frame_info->biBitCount / 8);
 						desc->buf_data[i] = malloc( frame_size );
 						memset(desc->buf_data[i], 0, frame_size);
 		
@@ -317,13 +317,14 @@ static unsigned long WINAPI aviloader_proc(void* p)
 										l++;						/* increment jobs counter */
 										Sleep(0);					/* allow context switch */
 										frame_info = (LPBITMAPINFOHEADER)frame_head;
+////fprintf(stderr, "avifile: '%s' [ %d-%.8X] frame_head=%.8X, frame_info->biSize=%d, frame_size=%d\n", desc->filename, i, desc->buf_data[i], frame_head, frame_info->biSize, frame_size);
+////fflush(stderr);
 										memcpy
 										(
 											desc->buf_data[i], 
 											((unsigned char*)frame_head) + frame_info->biSize, 
-											frame_size - frame_info->biSize
+											frame_size
 										);							/* copy frame */
-										Sleep(0);					/* allow context switch */
 										/* setup flags */
 										desc->buf_fill[i] = 0;
 										desc->buf_clear[i] = 0;
@@ -338,6 +339,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 										desc->buf_fill[i] = 0;
 										printf("avifile: WARNING! AVIStreamGetFrame('%d') == NULL\n", desc->buf_frame[i]);
 									}
+									Sleep(0);					/* allow context switch */
 								}
 								else
 								{
@@ -424,10 +426,16 @@ static unsigned long WINAPI aviloader_proc(void* p)
 	/* setup flag of exiting */
 	desc->flag_gone = 1;
 
-#ifdef VERBOSE
-	printf("avifile: aviloader_proc exiting\n");
-#endif /* VERBOSE */
+	/* init AVI for this thread */
+#ifdef AVI_OP_LOCK
+	WaitForSingleObject(_avi_op_lock,INFINITE);
+#endif /* AVI_OP_LOCK */
+	AVIFileExit();
+#ifdef AVI_OP_LOCK
+	ReleaseMutex(_avi_op_lock);
+#endif /* AVI_OP_LOCK */
 
+	printf("avifile: aviloader_proc exiting('%s')\n", desc->filename);
 
 	/* exit thread */
 	return 0;
