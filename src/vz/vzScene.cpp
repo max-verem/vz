@@ -529,10 +529,10 @@ tree.function.<function_id>.<parameter_name>=<value>;
 tree.container.<container_id>.visible=<value>;
 
 // directors control
-tree.motion.director.<director_id>.start();
+tree.motion.director.<director_id>.start([<position>]);
 tree.motion.director.<director_id>.stop();
 tree.motion.director.<director_id>.continue();
-tree.motion.director.<director_id>.reset();
+tree.motion.director.<director_id>.reset([<position>]);
 
 // timeline modification
 tree.motion.timeline.<timeline_id>.<t1|t2|y1|y2>=<value>;

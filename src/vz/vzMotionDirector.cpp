@@ -241,7 +241,12 @@ void vzMotionDirector::reset(char* arg)
 	if(!(_ready)) return;
 	WaitForSingleObject(_lock,INFINITE);
 
-	_pos = 0;
+	if(*arg)
+		/* goto given frame and stop */
+		_pos = atol(arg);
+	else
+		_pos = 0;
+
 	_run = 0;
 
 	ReleaseMutex(_lock);
