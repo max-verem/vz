@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-04:
+		*screenshot dumping feature reintroducing.
+
 	2006-11-26:
 		*Hard sync scheme.
 		*OpenGL extension scheme load changes.
