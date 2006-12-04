@@ -45,6 +45,7 @@ ChangeLog:
 #include <stdlib.h>
 #include <string.h>
 #include <process.h>
+#include <time.h>
 #include <GL/glut.h>
 #include "vzGlExt.h"
 
@@ -88,6 +89,27 @@ char* application;
 //int main_stage;
 char screenshot_file[1024];
 //int use_offscreen_buffer = 0;
+
+static void timestamp_screenshot()
+{
+	time_t ltime;
+	struct tm *rtime;
+
+	/* request time */
+	time( &ltime );
+
+	/* local */
+	rtime = localtime( &ltime );
+
+	/* format name */
+	strftime
+	(
+		screenshot_file , 
+		sizeof(screenshot_file),
+		"./vz-sc-%Y%m%d_%H%M%S.tga",
+		rtime 
+	);
+};
 
 /* ----------------------------------------------------------
 	Sync rendering & frame counting
@@ -336,6 +358,15 @@ static void vz_glut_keyboard(unsigned char key, int x, int y)
 			// unlock scene
 			ReleaseMutex(scene_lock);
 
+			break;
+
+		case 's':
+		case 'S':
+			/* create a screen shot */
+			WaitForSingleObject(scene_lock,INFINITE);
+			if(scene)
+				timestamp_screenshot();
+			ReleaseMutex(scene_lock);
 			break;
 	};
 };
