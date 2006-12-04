@@ -22,6 +22,10 @@
 
 	
 ChangeLog:
+	2006-12-04:
+		*Input test pattern added.
+		*Pattern selected via INPUT_%d_PATTERN config var.
+
 	2006-11-29:
 		*Output/Input buffers described by the same data block
 
@@ -87,13 +91,22 @@ static void hr_sleep(struct hr_sleep_data* sleep_data, unsigned long delay_milis
 #include "../vz/vzTVSpec.h"
 #include <stdio.h>
 
+/* test patters */
+#define TP_COUNT 3
+#include "nullvideo.tp_bars.h"
+#include "nullvideo.tp_grid.h"
+#include "nullvideo.tp_lines.h"
+static void *tps[TP_COUNT] = { tp_bars_surface, tp_grid_surface, tp_lines_surface};
+static int channels_tp[VZOUTPUT_MAX_CHANNELS] = {0, 0, 0, 0};
+
 static void* _config = NULL;
 static vzTVSpec* _tv = NULL;
 static struct vzOutputBuffers* _buffers_info = NULL;
 static struct hr_sleep_data timer_data;
 static frames_counter_proc _fc = NULL;
-static unsigned long test_patter_line[720];
-static unsigned long bars_colour_values[8] = { 0xFFFFFFFF, 0xFFBFBE01, 0xFF01BFBF, 0xFF00BF00, 0xFFBF00BF, 0xFFC00000, 0xFF0100C0, 0xFF000000};
+
+//static unsigned long test_patter_line[720];
+//static unsigned long bars_colour_values[8] = { 0xFFFFFFFF, 0xFFBFBE01, 0xFF01BFBF, 0xFF00BF00, 0xFFBF00BF, 0xFFC00000, 0xFF0100C0, 0xFF000000};
 
 
 // threads cotrols
@@ -130,17 +143,13 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 	/* init timer */
 	hr_sleep_init(&timer_data);
 
-	/* init test pattern line */
-	for(int i=0;i<720; i++)
-		test_patter_line[i] = bars_colour_values[i / 90];
-
 	return 1;
 };
 
 
 unsigned long WINAPI output_loop(void* obj)
 {
-	int j, b;
+	int j, b, i, c;
 	void *output_buffer, **input_buffers;
 
 	// cast pointer to vzOutput
@@ -201,50 +210,45 @@ unsigned long WINAPI output_loop(void* obj)
 					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*4
 				);
 
-		/* transfer input */
-		if(_buffers_info->input.channels)
+		/* transfer input(s) */
+		for(c = 0; c < _buffers_info->input.channels; c++)
 		{
-			for
-			(
-				b = 0
-				; 
-				b
-				<
-				(
-					(
-						_buffers_info->input.channels 
-						* 
-						(
-							(_buffers_info->input.field_mode)
-							?
-							2
-							:
-							1
-						)
-					)
-				)
-				;
-				b++
-			)
+			/* defferent methods for fields and frame mode */
+			if(_buffers_info->input.field_mode)
 			{
-				unsigned char *p = (unsigned char*)input_buffers[b];
-				for
+				/* field mode */
+				long l = _tv->TV_FRAME_WIDTH*4;
+				unsigned char
+					*src = (unsigned char*)tps[channels_tp[c]],
+					*dstA = (unsigned char*)input_buffers[2*c],
+					*dstB = (unsigned char*)input_buffers[2*c + 1];
+
+				for(i = 0; i < 576; i++)
+				{
+					if(i&1)
+					{
+						/* second field */
+						memcpy(dstB, src, l); dstB += l;
+						memcpy(dstB, src, l); dstB += l;
+					}
+					else
+					{
+						/* first field */
+						memcpy(dstA, src, l); dstA += l;
+						memcpy(dstA, src, l); dstA += l;
+					};
+					src += l;
+				};
+			}
+			else
+			{
+				/* frame mode */
+				memcpy
 				(
-					j = 0
-					;
-					j
-					<
-					(
-						(_buffers_info->input.field_mode)
-						?
-						(_tv->TV_FRAME_HEIGHT/2)
-						:
-						_tv->TV_FRAME_HEIGHT
-					)
-					;
-					j++, p += 4*_tv->TV_FRAME_WIDTH
-				)
-					memcpy(p, test_patter_line, 4*_tv->TV_FRAME_WIDTH);
+					input_buffers[c],
+					tps[channels_tp[c]],
+					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*4
+				);
 			};
 		};
 				
@@ -307,23 +311,36 @@ VZOUTPUTS_EXPORT long vzOutput_SetSync(frames_counter_proc fc)
 
 VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 {
+	int i;
+	char temp[128];
+
 	b->output.offset = 0;
 	b->output.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
 	b->output.gold = ((b->output.size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
 
+	/* inputs count conf */
 	if(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"))
 	{
 		b->input.channels = atol(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"));
 		b->input.field_mode = vzConfigParam(_config,"nullvideo","FIELD_MODE")?1:0;
 
 		b->input.offset = 0;
-		b->input.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT / (b->input.field_mode?2:1) ;
+		b->input.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT ;
 		b->input.gold = ((b->input.size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
 
 		b->input.width = _tv->TV_FRAME_WIDTH;
-		b->input.height = _tv->TV_FRAME_HEIGHT / (b->input.field_mode?2:1);
+		b->input.height = _tv->TV_FRAME_HEIGHT;
 	};
 
+	/* input test pattern */
+	for(i = 0; i< VZOUTPUT_MAX_CHANNELS ; i++)
+	{
+		sprintf(temp, "INPUT_%d_PATTERN", i + 1);
+		if(vzConfigParam(_config,"nullvideo", temp))
+			if(TP_COUNT <= (channels_tp[i] = atol(vzConfigParam(_config,"nullvideo",temp))))
+				channels_tp[i] = 0;
+	};
+	
 	_buffers_info = b;
 };
 

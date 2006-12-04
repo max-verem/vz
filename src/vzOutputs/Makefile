@@ -29,7 +29,7 @@ OBJS_DIR	= ../../tmp/Debug/outputs/
 LIB_PATH	= /LIBPATH:"../../tmp/Debug/"
 LINKER_OPT	= /LDd
 LINKER_FLAGS	= $(LIB_PATH)
-CPPFLAGS	= $(CPPFLAGS) /MDd
+CPPFLAGS	= $(CPPFLAGS) /MDd /Zm256
 !ENDIF
 
 !IF  "$(CFG)" == "Release"
@@ -40,7 +40,7 @@ OBJS_DIR	= ../../tmp/Release/outputs/
 LIB_PATH	= /LIBPATH:"../../tmp/Release/"
 LINKER_OPT	= /LD
 LINKER_FLAGS	= $(LIB_PATH)
-CPPFLAGS	= $(CPPFLAGS) /MD
+CPPFLAGS	= $(CPPFLAGS) /MD /Zm256
 !ENDIF
 
 # additional sdks
@@ -50,7 +50,7 @@ SDK_INC		=  -I"$(STREAMALPHA_INC)"
 # compiler setting
 CPPFLAGS	= $(CPPFLAGS) /G6 -TP -GD 
 LIB_PATH	= $(LIB_PATH) $(SDK_LIB)
-INCLUDE_DIR	= -I. -I../vz $(SDK_INC)
+INCLUDE_DIR	= -I. -I../vz $(SDK_INC) -I$(OBJS_DIR)
 LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
@@ -87,5 +87,21 @@ streamalpha_sdk: "$(STREAMALPHA_LIB)" "$(STREAMALPHA_INC)"
 	@if not exist "$(STREAMALPHA_INC)" echo "STREAMALPHA_INC incorrect"
 
 # NULL output module - fake for testing....
-nullvideo: nullvideo.dll
+nullvideo: nullvideo.cpp nullvideo.dll
 
+nullvideo.cpp: nullvideo.tp_bars.h nullvideo.tp_grid.h nullvideo.tp_lines.h
+
+nullvideo.tp_bars.h: nullvideo.tp_bars.tga
+	@echo Converting $**
+	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
+	@tga2h $** $(OBJS_DIR)$(**:.tga=.h) tp_bars
+
+nullvideo.tp_grid.h: nullvideo.tp_grid.tga
+	@echo Converting $**
+	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
+	@tga2h $** $(OBJS_DIR)$(**:.tga=.h) tp_grid
+
+nullvideo.tp_lines.h: nullvideo.tp_lines.tga
+	@echo Converting $**
+	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
+	@tga2h $** $(OBJS_DIR)$(**:.tga=.h) tp_lines
