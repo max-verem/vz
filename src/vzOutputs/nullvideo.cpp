@@ -25,6 +25,7 @@ ChangeLog:
 	2006-12-04:
 		*Input test pattern added.
 		*Pattern selected via INPUT_%d_PATTERN config var.
+		*Added MMX and SSE2 copy fields data routines.
 
 	2006-11-29:
 		*Output/Input buffers described by the same data block
@@ -35,6 +36,11 @@ ChangeLog:
     2005-06-25:
 		*Fake output module developed ....
 */
+
+//#define DUPL_LINES_STD
+//#define DUPL_LINES_MMX
+#define DUPL_LINES_SSE2
+
 
 /*----------------------------------------------------------------------------
   
@@ -78,6 +84,165 @@ static void hr_sleep(struct hr_sleep_data* sleep_data, unsigned long delay_milis
 
 	while( (timeGetTime() - a) < delay_miliseconds )
 		WaitForSingleObject(sleep_data->event, INFINITE);
+};
+
+/*---------------------------------------------------------------------------- */
+
+void inline copy_data_twice(void* dst,void *src, int count, int o)
+{
+	__asm
+	{
+		// loading source surface pointer
+		mov		esi, dword ptr[src];
+
+		// loading dst surface pointer
+		mov		edi, dword ptr[dst];
+
+		// counter
+		mov		ecx, count;
+
+		// divide ecx
+		sar		ecx,6	// devide on 2
+
+		/* load offset */
+		mov		eax, o
+
+
+		// loop data copy
+cp:
+		movq		MM0, qword ptr[esi]
+		movq		MM1, qword ptr[esi+8]
+		movq		MM2, qword ptr[esi+16]
+		movq		MM3, qword ptr[esi+24]
+		movq		MM4, qword ptr[esi+32]
+		movq		MM5, qword ptr[esi+40]
+		movq		MM6, qword ptr[esi+48]
+		movq		MM7, qword ptr[esi+56]
+		add			esi,64
+
+		/* save block copy #1 */
+		movq		qword ptr[edi],MM0
+		movq		qword ptr[edi+8],MM1
+		movq		qword ptr[edi+16],MM2
+		movq		qword ptr[edi+24],MM3
+		movq		qword ptr[edi+32],MM4
+		movq		qword ptr[edi+40],MM5
+		movq		qword ptr[edi+48],MM6
+		movq		qword ptr[edi+56],MM7
+		
+		push		edi							/* save dest counter */
+		add			edi, eax					/* add offset */
+
+		/* save block copy #2 */
+		movq		qword ptr[edi],MM0
+		movq		qword ptr[edi+8],MM1
+		movq		qword ptr[edi+16],MM2
+		movq		qword ptr[edi+24],MM3
+		movq		qword ptr[edi+32],MM4
+		movq		qword ptr[edi+40],MM5
+		movq		qword ptr[edi+48],MM6
+		movq		qword ptr[edi+56],MM7
+
+
+		pop			edi							/* restore dest counter */
+		add			edi,64						/* increment */
+		loop		cp;
+
+
+		emms
+	}
+
+	return;
+
+};
+
+
+void inline copy_data_twice_sse(void* dst,void *src)
+{
+	__asm
+	{
+		// loading source surface pointer
+		mov		esi, dword ptr[src];
+
+		// loading dst surface pointer
+		mov		edi, dword ptr[dst];
+
+		// counter
+		mov		ecx, 22
+
+		/* load offset */
+		mov		eax, 720*4
+
+
+		// loop data copy
+cp1:
+		movupd		xmm0, [esi +   0]
+		movupd		xmm1, [esi +  16]
+		movupd		xmm2, [esi +  32]
+		movupd		xmm3, [esi +  48]
+		movupd		xmm4, [esi +  64]
+		movupd		xmm5, [esi +  80]
+		movupd		xmm6, [esi +  96]
+		movupd		xmm7, [esi + 112]
+		add			esi, 128
+
+		/* save block copy #1 */
+		movupd		[edi +   0], xmm0
+		movupd		[edi +  16], xmm1
+		movupd		[edi +  32], xmm2
+		movupd		[edi +  48], xmm3
+		movupd		[edi +  64], xmm4
+		movupd		[edi +  80], xmm5
+		movupd		[edi +  96], xmm6
+		movupd		[edi + 112], xmm7
+		
+		push		edi							/* save dest counter */
+		add			edi, eax					/* add offset */
+
+		/* save block copy #2 */
+		movupd		[edi +   0], xmm0
+		movupd		[edi +  16], xmm1
+		movupd		[edi +  32], xmm2
+		movupd		[edi +  48], xmm3
+		movupd		[edi +  64], xmm4
+		movupd		[edi +  80], xmm5
+		movupd		[edi +  96], xmm6
+		movupd		[edi + 112], xmm7
+
+		jmp			cp3
+cp2:
+		jmp			cp1
+cp3:
+		pop			edi							/* restore dest counter */
+		add			edi,128						/* increment */
+		loop		cp2
+
+		/* load last block */
+		movupd		xmm0, [esi +   0]
+		movupd		xmm1, [esi +  16]
+		movupd		xmm2, [esi +  32]
+		movupd		xmm3, [esi +  48]
+
+		/* save block copy #1 */
+		movupd		[edi +   0], xmm0
+		movupd		[edi +  16], xmm1
+		movupd		[edi +  32], xmm2
+		movupd		[edi +  48], xmm3
+
+		add			edi, eax					/* add offset */
+
+		/* save block copy #2 */
+		movupd		[edi +   0], xmm0
+		movupd		[edi +  16], xmm1
+		movupd		[edi +  32], xmm2
+		movupd		[edi +  48], xmm3
+
+
+		emms
+	}
+
+	return;
+
 };
 
 /*---------------------------------------------------------------------------- */
@@ -228,14 +393,34 @@ unsigned long WINAPI output_loop(void* obj)
 					if(i&1)
 					{
 						/* second field */
+#ifdef DUPL_LINES_STD
 						memcpy(dstB, src, l); dstB += l;
 						memcpy(dstB, src, l); dstB += l;
+#endif /* DUPL_LINES_STD */
+
+#ifdef DUPL_LINES_MMX
+						copy_data_twice(dstB, src, l, l); dstB += 2*l;
+#endif /* DUPL_LINES_MMX */
+
+#ifdef DUPL_LINES_SSE2
+						copy_data_twice_sse(dstB, src); dstB += 2*l;
+#endif /* DUPL_LINES_SSE2 */
 					}
 					else
 					{
 						/* first field */
+#ifdef DUPL_LINES_STD
 						memcpy(dstA, src, l); dstA += l;
 						memcpy(dstA, src, l); dstA += l;
+#endif /* DUPL_LINES_STD */
+
+#ifdef DUPL_LINES_MMX
+						copy_data_twice(dstA, src, l, l); dstA += 2*l;
+#endif /* DUPL_LINES_MMX */
+
+#ifdef DUPL_LINES_SSE2
+						copy_data_twice_sse(dstA, src); dstA += 2*l;
+#endif /* DUPL_LINES_SSE2 */
 					};
 					src += l;
 				};
@@ -266,7 +451,10 @@ unsigned long WINAPI output_loop(void* obj)
 		if((C>=0) && (C<40))
 			hr_sleep(&timer_data, 40 - C);
 		else
+		{
 			printf("nullvideo: %d miliseconds overrun\n", C - 40);
+			Sleep(0);
+		};
 
 #ifdef DEBUG_HARD_SYNC
 		printf("A=%d, B=%d, C=%d\n", A, B, C);
