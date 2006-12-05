@@ -93,8 +93,8 @@ static void CMD_loadscene(char* filename,char* &error_log)
 #pragma comment(lib, "ws2_32.lib") 
 
 // define buffer size and port
-long TCPSERVER_PORT = 8001;
-long TCPSERVER_BUFSIZE = 4096;
+static long TCPSERVER_PORT = 8001;
+static long TCPSERVER_BUFSIZE = 4096;
 
 typedef enum LITERALS
 {
@@ -114,7 +114,7 @@ static char* literals[] =
 	"renderman.screenshot("
 };
 
-LITERALS FIND_FROM_LITERAL(char* &src,LITERALS literal)
+static LITERALS FIND_FROM_LITERAL(char* &src,LITERALS literal)
 {
 	if
 	(
@@ -133,7 +133,7 @@ LITERALS FIND_FROM_LITERAL(char* &src,LITERALS literal)
 		return LITERAL_NOT_FOUND;
 };
 
-void FIND_TO_TERM(char* &src,char* &buf, char* term)
+static void FIND_TO_TERM(char* &src,char* &buf, char* term)
 {
 	char* temp;
 
