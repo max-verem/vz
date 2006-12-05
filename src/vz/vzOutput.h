@@ -89,6 +89,7 @@ struct vzOutputBuffers
 	{
 		int channels;
 		int field_mode;
+		int twice_fields;
 
 		void* data[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS*2];
 		unsigned int nums[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS*2];

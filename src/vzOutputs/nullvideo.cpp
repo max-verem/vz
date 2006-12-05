@@ -22,6 +22,11 @@
 
 	
 ChangeLog:
+	2006-12-05:
+		*Field duplicating in 'FIELD_MODE' adjusted by parameter 'TWICE_FIELDS'
+		*DUPL_LINES_ARCH enable use mmx and sse field duplicator.
+		*SSE possibility usage detection.
+
 	2006-12-04:
 		*Input test pattern added.
 		*Pattern selected via INPUT_%d_PATTERN config var.
@@ -37,9 +42,7 @@ ChangeLog:
 		*Fake output module developed ....
 */
 
-//#define DUPL_LINES_STD
-//#define DUPL_LINES_MMX
-#define DUPL_LINES_SSE2
+#define DUPL_LINES_ARCH
 
 
 /*----------------------------------------------------------------------------
@@ -88,7 +91,9 @@ static void hr_sleep(struct hr_sleep_data* sleep_data, unsigned long delay_milis
 
 /*---------------------------------------------------------------------------- */
 
-void inline copy_data_twice(void* dst,void *src, int count, int o)
+int static sse_supported = 0;
+
+void inline copy_data_twice_mmx(void* dst,void *src)
 {
 	__asm
 	{
@@ -99,14 +104,10 @@ void inline copy_data_twice(void* dst,void *src, int count, int o)
 		mov		edi, dword ptr[dst];
 
 		// counter
-		mov		ecx, count;
-
-		// divide ecx
-		sar		ecx,6	// devide on 2
+		mov		ecx, 45;
 
 		/* load offset */
-		mov		eax, o
-
+		mov		eax, 720*4
 
 		// loop data copy
 cp:
@@ -155,6 +156,12 @@ cp:
 	return;
 
 };
+
+/* 
+http://www.hayestechnologies.com/en/techsimd.htm#SSE2
+http://www.jorgon.freeserve.co.uk/TestbugHelp/XMMfpins2.htm
+
+*/
 
 
 void inline copy_data_twice_sse(void* dst,void *src)
@@ -269,9 +276,6 @@ static vzTVSpec* _tv = NULL;
 static struct vzOutputBuffers* _buffers_info = NULL;
 static struct hr_sleep_data timer_data;
 static frames_counter_proc _fc = NULL;
-
-//static unsigned long test_patter_line[720];
-//static unsigned long bars_colour_values[8] = { 0xFFFFFFFF, 0xFFBFBE01, 0xFF01BFBF, 0xFF00BF00, 0xFFBF00BF, 0xFFC00000, 0xFF0100C0, 0xFF000000};
 
 
 // threads cotrols
@@ -390,38 +394,58 @@ unsigned long WINAPI output_loop(void* obj)
 
 				for(i = 0; i < 576; i++)
 				{
-					if(i&1)
+					/* calc case number */
+					int d = 
+						((i&1)?2:0)
+						|
+						((_buffers_info->input.twice_fields)?1:0);
+
+					switch(d)
 					{
-						/* second field */
-#ifdef DUPL_LINES_STD
-						memcpy(dstB, src, l); dstB += l;
-						memcpy(dstB, src, l); dstB += l;
-#endif /* DUPL_LINES_STD */
+						case 3:
+							/* odd field */
+							/* duplicate fields */
+#ifdef DUPL_LINES_ARCH
+							if(sse_supported)
+								copy_data_twice_sse(dstB, src);
+							else
+								copy_data_twice_mmx(dstB, src);
+							dstB += 2*l;
+#else  /* !DUPL_LINES_ARCH */
+							memcpy(dstB, src, l); dstB += l;
+							memcpy(dstB, src, l); dstB += l;
+#endif /* DUPL_LINES_ARCH */
+							break;
 
-#ifdef DUPL_LINES_MMX
-						copy_data_twice(dstB, src, l, l); dstB += 2*l;
-#endif /* DUPL_LINES_MMX */
+						case 2:
+							/* odd field */
+							/* NO duplication */
+							memcpy(dstB, src, l); dstB += l;
+							break;
 
-#ifdef DUPL_LINES_SSE2
-						copy_data_twice_sse(dstB, src); dstB += 2*l;
-#endif /* DUPL_LINES_SSE2 */
-					}
-					else
-					{
-						/* first field */
-#ifdef DUPL_LINES_STD
-						memcpy(dstA, src, l); dstA += l;
-						memcpy(dstA, src, l); dstA += l;
-#endif /* DUPL_LINES_STD */
+						case 1:
+							/* even field */
+							/* duplicate fields */
+#ifdef DUPL_LINES_ARCH
+							if(sse_supported)
+								copy_data_twice_sse(dstA, src);
+							else
+								copy_data_twice_mmx(dstA, src);
+							dstA += 2*l;
+#else  /* !DUPL_LINES_ARCH */
+							memcpy(dstA, src, l); dstA += l;
+							memcpy(dstA, src, l); dstA += l;
+#endif /* DUPL_LINES_ARCH */
+							break;
 
-#ifdef DUPL_LINES_MMX
-						copy_data_twice(dstA, src, l, l); dstA += 2*l;
-#endif /* DUPL_LINES_MMX */
-
-#ifdef DUPL_LINES_SSE2
-						copy_data_twice_sse(dstA, src); dstA += 2*l;
-#endif /* DUPL_LINES_SSE2 */
+						case 0:
+							/* even field */
+							/* NO duplication */
+							memcpy(dstA, src, l); dstA += l;
+							break;
 					};
+
+					/* step forward src */
 					src += l;
 				};
 			}
@@ -511,13 +535,19 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 	{
 		b->input.channels = atol(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"));
 		b->input.field_mode = vzConfigParam(_config,"nullvideo","FIELD_MODE")?1:0;
+		if(b->input.field_mode)
+			b->input.twice_fields = vzConfigParam(_config,"nullvideo","TWICE_FIELDS")?1:0;
+		else
+			b->input.twice_fields = 0;
+
+		int k = (b->input.twice_fields)?1:2;
 
 		b->input.offset = 0;
-		b->input.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT ;
+		b->input.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT / k;
 		b->input.gold = ((b->input.size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
 
 		b->input.width = _tv->TV_FRAME_WIDTH;
-		b->input.height = _tv->TV_FRAME_HEIGHT;
+		b->input.height = _tv->TV_FRAME_HEIGHT / k;
 	};
 
 	/* input test pattern */
@@ -530,6 +560,22 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 	};
 	
 	_buffers_info = b;
+
+#ifdef DUPL_LINES_ARCH
+	/* detect SSE2 support */
+	__asm
+	{
+		mov		eax, 1
+		cpuid
+		test	edx, 4000000h		/* test bit 26 (SSE2) */
+		jnz		no_sse2
+		mov		sse_supported, 1
+no_sse2:
+	};
+	if(sse_supported)
+		printf("nullvideo: SSE2 detected\n");
+
+#endif /* DUPL_LINES_ARCH */
 };
 
 VZOUTPUTS_EXPORT void vzOutput_AssignBuffers(struct vzOutputBuffers* b)

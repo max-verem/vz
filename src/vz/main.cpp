@@ -315,7 +315,7 @@ static void vz_glut_idle()
 		sprintf
 		(
 			buf,
-			"Frame %ld, drawed in %ld miliseconds, distance in frames %ld",
+			"Frame %ld, drawn in %ld miliseconds, distance in frames %ld",
 			global_frame_no,
 			render_time,
 			global_frame_no - rendered_frames
