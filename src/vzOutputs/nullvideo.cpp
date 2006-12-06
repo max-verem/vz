@@ -568,12 +568,11 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 		mov		eax, 1
 		cpuid
 		test	edx, 4000000h		/* test bit 26 (SSE2) */
-		jnz		no_sse2
-		mov		sse_supported, 1
+		jz		no_sse2
+		mov		dword ptr[sse_supported], 1
 no_sse2:
 	};
-	if(sse_supported)
-		printf("nullvideo: SSE2 detected\n");
+	printf("nullvideo: %s detected\n", (sse_supported)?"SSE2":"NO SEE2");
 
 #endif /* DUPL_LINES_ARCH */
 };
