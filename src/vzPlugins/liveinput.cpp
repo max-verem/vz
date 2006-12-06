@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-06:
+		*one more trick with 'f_offset_y' 'l_offset_y' - no greater picture 
+		improvement.
+
 	2006-12-05:
 		*'Twice height' reincarnated (again) due to configurable behavior of
 		fields duplicator in IO driver.
@@ -100,6 +104,8 @@ typedef struct
 	long L_center;			// centering of image
 	long l_flip_v;			/* flip vertical flag */
 	long l_flip_h;			/* flip vertical flag */
+	long l_offset_y;		/* texture field dribling */
+	float f_offset_y;		/* coords field dribling */
 // free transform coords
 	float f_x1;				/* left bottom coner */
 	float f_y1;
@@ -134,6 +140,8 @@ vzPluginData default_value =
 	GEOM_CENTER_CM,			// long L_center;			// centering of image
 	0,						// long l_flip_v;			/* flip vertical flag */
 	0,						// long l_flip_h;			/* flip vertical flag */
+	0,						// long l_offset_y;			/* texture field dribling */
+	0.0,					// float f_offset_y;		/* coords field dribling */
 // free transform coords
 	0.0,					// float f_x1;				/* left bottom coner */
 	0.0,					// float f_y1;
@@ -174,6 +182,12 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 
 	{"l_flip_h",		"flag to horozontal flip",
 						PLUGIN_PARAMETER_OFFSET(default_value,l_flip_h)},
+
+	{"l_offset_y",		"texture field number depend dribling (-1, 0, 1)",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_offset_y)},
+
+	{"f_offset_y",		"rect coordinate Y field number depend dribling [-1.0 .. 1.0]",
+						PLUGIN_PARAMETER_OFFSET(default_value,l_offset_y)},
 
 	{"f_x1",			"X of left bottom corner (free transorm mode)", 
 						PLUGIN_PARAMETER_OFFSET(default_value, f_x1)},
@@ -328,8 +342,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		void* buffer_ptr = _DATA->_buffers->input.data[_DATA->_buffers->pos_render][i];
 
 		/* y offset trick */
-		float y_offset = (_DATA->_buffers->input.twice_fields)?0.0:((float)-session->field); 
-		y_offset = 0.0;
+		long y_offset = (_DATA->_buffers->input.twice_fields)?0:(session->field*_DATA->l_offset_y); 
 
 		/* load new texture , if it ready*/
 		glBindTexture(GL_TEXTURE_2D, _DATA->_texture);			/* bind to buffer */
@@ -512,6 +525,9 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		
 			// determine center offset 
 			float co_X = 0.0f, co_Y = 0.0f, co_Z = 0.0f;
+
+			/* fix co_Y */
+			co_Y += _DATA->f_offset_y*session->field;
 
 			// translate coordinates accoring to base image
 			center_vector
