@@ -45,215 +45,9 @@ ChangeLog:
 #define DUPL_LINES_ARCH
 
 
-/*----------------------------------------------------------------------------
-  
-	HIGH PRECISION TIMERS 
-
-----------------------------------------------------------------------------*/
 #include <windows.h>
-
-#pragma comment(lib, "winmm")
-
-struct hr_sleep_data
-{
-	HANDLE event;
-	MMRESULT timer;
-};
-
-static void hr_sleep_init(struct hr_sleep_data* sleep_data)
-{
-	timeBeginPeriod(1);
-	sleep_data->event = CreateEvent(NULL, FALSE,FALSE,NULL);
-	sleep_data->timer = timeSetEvent
-	(
-		1,
-		0,
-		(LPTIMECALLBACK)sleep_data->event,
-		NULL,
-		TIME_PERIODIC | TIME_CALLBACK_EVENT_PULSE
-	);
-};
-
-static void hr_sleep_destroy(struct hr_sleep_data* sleep_data)
-{
-	timeEndPeriod(1);
-	timeKillEvent(sleep_data->timer);
-	CloseHandle(sleep_data->event);
-};
-
-static void hr_sleep(struct hr_sleep_data* sleep_data, unsigned long delay_miliseconds)
-{
-	long a = timeGetTime();
-
-	while( (timeGetTime() - a) < delay_miliseconds )
-		WaitForSingleObject(sleep_data->event, INFINITE);
-};
-
-/*---------------------------------------------------------------------------- */
-
-int static sse_supported = 0;
-
-void inline copy_data_twice_mmx(void* dst,void *src)
-{
-	__asm
-	{
-		// loading source surface pointer
-		mov		esi, dword ptr[src];
-
-		// loading dst surface pointer
-		mov		edi, dword ptr[dst];
-
-		// counter
-		mov		ecx, 45;
-
-		/* load offset */
-		mov		eax, 720*4
-
-		// loop data copy
-cp:
-		movq		MM0, qword ptr[esi]
-		movq		MM1, qword ptr[esi+8]
-		movq		MM2, qword ptr[esi+16]
-		movq		MM3, qword ptr[esi+24]
-		movq		MM4, qword ptr[esi+32]
-		movq		MM5, qword ptr[esi+40]
-		movq		MM6, qword ptr[esi+48]
-		movq		MM7, qword ptr[esi+56]
-		add			esi,64
-
-		/* save block copy #1 */
-		movq		qword ptr[edi],MM0
-		movq		qword ptr[edi+8],MM1
-		movq		qword ptr[edi+16],MM2
-		movq		qword ptr[edi+24],MM3
-		movq		qword ptr[edi+32],MM4
-		movq		qword ptr[edi+40],MM5
-		movq		qword ptr[edi+48],MM6
-		movq		qword ptr[edi+56],MM7
-		
-		push		edi							/* save dest counter */
-		add			edi, eax					/* add offset */
-
-		/* save block copy #2 */
-		movq		qword ptr[edi],MM0
-		movq		qword ptr[edi+8],MM1
-		movq		qword ptr[edi+16],MM2
-		movq		qword ptr[edi+24],MM3
-		movq		qword ptr[edi+32],MM4
-		movq		qword ptr[edi+40],MM5
-		movq		qword ptr[edi+48],MM6
-		movq		qword ptr[edi+56],MM7
-
-
-		pop			edi							/* restore dest counter */
-		add			edi,64						/* increment */
-		loop		cp;
-
-
-		emms
-	}
-
-	return;
-
-};
-
-/* 
-http://www.hayestechnologies.com/en/techsimd.htm#SSE2
-http://www.jorgon.freeserve.co.uk/TestbugHelp/XMMfpins2.htm
-
-*/
-
-
-void inline copy_data_twice_sse(void* dst,void *src)
-{
-	__asm
-	{
-		// loading source surface pointer
-		mov		esi, dword ptr[src];
-
-		// loading dst surface pointer
-		mov		edi, dword ptr[dst];
-
-		// counter
-		mov		ecx, 22
-
-		/* load offset */
-		mov		eax, 720*4
-
-
-		// loop data copy
-cp1:
-		movupd		xmm0, [esi +   0]
-		movupd		xmm1, [esi +  16]
-		movupd		xmm2, [esi +  32]
-		movupd		xmm3, [esi +  48]
-		movupd		xmm4, [esi +  64]
-		movupd		xmm5, [esi +  80]
-		movupd		xmm6, [esi +  96]
-		movupd		xmm7, [esi + 112]
-		add			esi, 128
-
-		/* save block copy #1 */
-		movupd		[edi +   0], xmm0
-		movupd		[edi +  16], xmm1
-		movupd		[edi +  32], xmm2
-		movupd		[edi +  48], xmm3
-		movupd		[edi +  64], xmm4
-		movupd		[edi +  80], xmm5
-		movupd		[edi +  96], xmm6
-		movupd		[edi + 112], xmm7
-		
-		push		edi							/* save dest counter */
-		add			edi, eax					/* add offset */
-
-		/* save block copy #2 */
-		movupd		[edi +   0], xmm0
-		movupd		[edi +  16], xmm1
-		movupd		[edi +  32], xmm2
-		movupd		[edi +  48], xmm3
-		movupd		[edi +  64], xmm4
-		movupd		[edi +  80], xmm5
-		movupd		[edi +  96], xmm6
-		movupd		[edi + 112], xmm7
-
-		jmp			cp3
-cp2:
-		jmp			cp1
-cp3:
-		pop			edi							/* restore dest counter */
-		add			edi,128						/* increment */
-		loop		cp2
-
-		/* load last block */
-		movupd		xmm0, [esi +   0]
-		movupd		xmm1, [esi +  16]
-		movupd		xmm2, [esi +  32]
-		movupd		xmm3, [esi +  48]
-
-		/* save block copy #1 */
-		movupd		[edi +   0], xmm0
-		movupd		[edi +  16], xmm1
-		movupd		[edi +  32], xmm2
-		movupd		[edi +  48], xmm3
-
-		add			edi, eax					/* add offset */
-
-		/* save block copy #2 */
-		movupd		[edi +   0], xmm0
-		movupd		[edi +  16], xmm1
-		movupd		[edi +  32], xmm2
-		movupd		[edi +  48], xmm3
-
-
-		emms
-	}
-
-	return;
-
-};
-
-/*---------------------------------------------------------------------------- */
-
+#include "hr_timer.h"
+#include "arch_copy.h"
 
 #include "../vz/vzOutput.h"
 #include "../vz/vzOutput-devel.h"
@@ -540,7 +334,7 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 		else
 			b->input.twice_fields = 0;
 
-		int k = (b->input.twice_fields)?1:2;
+		int k = ((b->input.field_mode) && (!(b->input.twice_fields)))?2:1;
 
 		b->input.offset = 0;
 		b->input.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT / k;
@@ -563,17 +357,9 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 
 #ifdef DUPL_LINES_ARCH
 	/* detect SSE2 support */
-	__asm
-	{
-		mov		eax, 1
-		cpuid
-		test	edx, 4000000h		/* test bit 26 (SSE2) */
-		jz		no_sse2
-		mov		dword ptr[sse_supported], 1
-no_sse2:
-	};
+	DUPL_LINES_ARCH_SSE2_DETECT;
+	/* report */
 	printf("nullvideo: %s detected\n", (sse_supported)?"SSE2":"NO SEE2");
-
 #endif /* DUPL_LINES_ARCH */
 };
 

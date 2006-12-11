@@ -19,17 +19,23 @@ CFG=Debug
 !ENDIF 
 
 # StreamAlpha SDK path
-STREAMALPHA_LIB	= c:\sdk\streamalpha\SDK_Code\Lib
-STREAMALPHA_INC	= c:\sdk\streamalpha\SDK_Code\Inc
+STREAMALPHA_SDK = c:\sdk\streamalpha\SDK_Code
+STREAMALPHA_LIB	= $(STREAMALPHA_SDK)\Lib
+STREAMALPHA_INC	= $(STREAMALPHA_SDK)\Inc
+
+# Bluefish SDK
+BLUEFISH_SDK	= c:\sdk\bluefish
+BLUEFISH_LIB	= $(BLUEFISH_SDK)\Lib
+BLUEFISH_INC	= $(BLUEFISH_SDK)\Inc
 
 !IF  "$(CFG)" == "Debug"
-DEBUGFLAGS	= -D_DEBUG /Z7 /Yd /GZ
+DEBUGFLAGS	= -D_DEBUG /Yd /GZ /GX /Zi /FD
 INSTALL_DIR	= ../../install/Debug/outputs/
 OBJS_DIR	= ../../tmp/Debug/outputs/
 LIB_PATH	= /LIBPATH:"../../tmp/Debug/"
-LINKER_OPT	= /LDd
-LINKER_FLAGS	= $(LIB_PATH)
-CPPFLAGS	= $(CPPFLAGS) /MDd /Zm256
+LINKER_OPT	= /LDd /Yd
+LINKER_FLAGS	= $(LIB_PATH) /DEBUG /PDB:$(INSTALL_DIR)$(<:.cpp=.pdb)
+CPPFLAGS	= $(CPPFLAGS) /MDd /Zm256 -Fd$(INSTALL_DIR)$(<:.cpp=.pdb)
 !ENDIF
 
 !IF  "$(CFG)" == "Release"
@@ -44,8 +50,8 @@ CPPFLAGS	= $(CPPFLAGS) /MD /Zm256
 !ENDIF
 
 # additional sdks
-SDK_LIB		=  /LIBPATH:"$(STREAMALPHA_LIB)"
-SDK_INC		=  -I"$(STREAMALPHA_INC)"
+SDK_LIB		=  /LIBPATH:"$(STREAMALPHA_LIB)" /LIBPATH:"$(BLUEFISH_LIB)"
+SDK_INC		=  -I"$(STREAMALPHA_INC)" -I"$(BLUEFISH_INC)"
 
 # compiler setting
 CPPFLAGS	= $(CPPFLAGS) /G6 -TP -GD 
@@ -54,7 +60,7 @@ INCLUDE_DIR	= -I. -I../vz $(SDK_INC) -I$(OBJS_DIR)
 LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
-TARGET = nullvideo streamalpha
+TARGET = bluefish nullvideo streamalpha
 
 all: "$(OBJS_DIR)" "$(INSTALL_DIR)" $(TARGET)
 
@@ -69,22 +75,33 @@ all: "$(OBJS_DIR)" "$(INSTALL_DIR)" $(TARGET)
 
 .cpp.dll:
 	@echo Compiling:$< ... $(<:.cpp=.obj)
-	@$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) -Fo$(OBJS_DIR)$(<:.cpp=.obj) $<
+	@$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) -Fo$(OBJS_DIR)$(<:.cpp=.obj)  $<
 	@echo Linking:$(<:.cpp=.obj) ... $@
-	@$(CPP) $(LINKER_OPT) -Fe$(INSTALL_DIR)$@ $(OBJS_DIR)$(<:.cpp=.obj) /link $(LINKER) /implib:$(OBJS_DIR)$(<:.cpp=.lib)
+	@$(CPP) $(LINKER_OPT) -Fe$(INSTALL_DIR)$@ $(OBJS_DIR)$(<:.cpp=.obj) /link  $(LINKER) /implib:$(OBJS_DIR)$(<:.cpp=.lib) 
 
 # stream alpha depends on streamalpha SDK (www.streamalpha.com)
-# please modify STREAMALPHA_LIB and STREAMALPHA_INC for proper
-# location
+# please modify STREAMALPHA_SDK for proper location
 streamalpha: streamalpha_sdk streamalpha.dll
 
 streamalpha_sdk: "$(STREAMALPHA_LIB)" "$(STREAMALPHA_INC)" 
 
 "$(STREAMALPHA_LIB)":
-	@if not exist "$(STREAMALPHA_LIB)" echo "STREAMALPHA_LIB incorrect"
+	@if not exist "$(STREAMALPHA_LIB)" echo "STREAMALPHA_SDK incorrect"
 
 "$(STREAMALPHA_INC)":
-	@if not exist "$(STREAMALPHA_INC)" echo "STREAMALPHA_INC incorrect"
+	@if not exist "$(STREAMALPHA_INC)" echo "STREAMALPHA_SDK incorrect"
+
+# check bluefish sdk
+bluefish: bluefish_sdk bluefish.cpp bluefish.dll
+
+bluefish_sdk: "$(BLUEFISH_LIB)" "$(BLUEFISH_INC)"
+
+"$(BLUEFISH_LIB)":
+	@if not exist "$(BLUEFISH_LIB)" echo "BLUEFISH_LIB incorrect"
+
+"$(BLUEFISH_INC)":
+	@if not exist "$(BLUEFISH_INC)" echo "BLUEFISH_SDK incorrect"
+
 
 # NULL output module - fake for testing....
 nullvideo: nullvideo.cpp nullvideo.dll
