@@ -22,13 +22,13 @@ GLUT_DIR="C:/SDK/glut/"
 
 
 !IF  "$(CFG)" == "Debug"
-DEBUGFLAGS	= -D_DEBUG /Yd /GZ /GX /Zi /ZI
+DEBUGFLAGS	= -D_DEBUG /Yd /GZ /GX /Zi /FD
 INSTALL_DIR	= ../../install/Debug/plugins/
 OBJS_DIR	= ../../tmp/Debug/plugins/
 LIB_PATH	= /LIBPATH:"../../tmp/Debug/" /LIBPATH:"$(GLUT_DIR)"
 LINKER_OPT	= /LDd /nologo 
-LINKER_FLAGS	= $(LIB_PATH)
-CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
+LINKER_FLAGS	= $(LIB_PATH) /DEBUG /PDB:$(INSTALL_DIR)$(<:.cpp=.pdb)
+CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16 -Fd$(INSTALL_DIR)$(<:.cpp=.pdb)
 !ENDIF
 
 

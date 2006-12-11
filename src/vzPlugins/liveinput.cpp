@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-11:
+		*'twice_fields' depends on field mode, fixed.
+
 	2006-12-06:
 		*one more trick with 'f_offset_y' 'l_offset_y' - no greater picture 
 		improvement.
@@ -351,6 +354,8 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			(0 == buffer_id)
 			&&
 			(NULL != buffer_ptr)
+			&&
+			(0 == session->field)
 		)
 		{
 			/* classic method - loading buffer */
@@ -422,7 +427,12 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	)
 	{
 		/* detect if field count is twiced in IO driver or we should scale */
-		long k = (_DATA->_buffers->input.twice_fields)?1:2;
+		long k =
+		(
+			(_DATA->_buffers->input.field_mode)
+			&&
+			(!(_DATA->_buffers->input.twice_fields))
+		)?2:1;
 
 		/* mode depend rendering */
 		if (FOURCC_TO_LONG('_','F','T','_') == _DATA->L_center)
