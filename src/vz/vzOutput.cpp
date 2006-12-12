@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-12:
+		*ring buffer jumping should not be so smart :-((( (in future 'QQ'
+		blocks should be deleted.
+
 	2006-11-28:
 		*Output buffers paramters aquired from output driver.
 
@@ -184,15 +188,18 @@ void vzOutput::lock_io_bufs(void** output, void*** input)
 		_buffers.pos_driver_jump = 0;
 	};
 
+	/* lock buffer */
+	WaitForSingleObject(_buffers.locks[ _buffers.pos_driver ], INFINITE);
+
 	/* unlock buffers head */
 	ReleaseMutex(_buffers.lock);
 
-	/* lock buffer */
-	WaitForSingleObject(_buffers.locks[ _buffers.pos_driver ], INFINITE);
 
 	/* setup pointer to mapped buffer */
 	*output = _buffers.output.data[ _buffers.pos_driver ];
 	*input = _buffers.input.data[ _buffers.pos_driver ];
+
+//printf("lock_io_bufs: id=%d\n",_buffers.id[ _buffers.pos_driver ]);
 
 	/* check if we need to map buffers */
 	if(_use_offscreen_buffer)
@@ -245,7 +252,7 @@ void vzOutput::unlock_io_bufs(void** output, void*** input)
 	WaitForSingleObject(_buffers.lock, INFINITE);
 
 	/* try to jump */
-
+#ifdef QQ
 	/* check if next buffer is loaded */
 	if(((_buffers.pos_driver + 1) % VZOUTPUT_MAX_BUFS) != _buffers.pos_render)
 	{
@@ -266,6 +273,7 @@ void vzOutput::unlock_io_bufs(void** output, void*** input)
 		};
 	}
 	else
+#endif /* QQ */
 		/* set jump flag */
 		_buffers.pos_driver_jump = 1;
 
@@ -308,11 +316,12 @@ void vzOutput::pre_render()
 	/* set buffer frame number */
 	_buffers.id[ _buffers.pos_render ] = ++_buffers.cnt_render;
 
+	/* lock buffer */
+	WaitForSingleObject(_buffers.locks[ _buffers.pos_render ], INFINITE);
+
 	/* unlock buffers head */
 	ReleaseMutex(_buffers.lock);
 
-	/* lock buffer */
-	WaitForSingleObject(_buffers.locks[ _buffers.pos_render ], INFINITE);
 
 	// two method for copying data
 	if(_use_offscreen_buffer)
@@ -371,7 +380,7 @@ void vzOutput::post_render_aux()
 
 	/* lock buffers head */
 	WaitForSingleObject(_buffers.lock, INFINITE);
-
+#ifdef QQ
 	/* check if next buffer is loaded */
 	if(((_buffers.pos_render + 1) % VZOUTPUT_MAX_BUFS) != _buffers.pos_driver)
 	{
@@ -389,6 +398,7 @@ void vzOutput::post_render_aux()
 		};
 	}
 	else
+#endif /* QQ */
 		/* set jump flag */
 		_buffers.pos_render_jump = 1;
 
