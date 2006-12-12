@@ -22,6 +22,10 @@
 
 
 ChangeLog:
+	2006-12-12:
+		*Attemp move board init to DLL attach block.
+		*SWAP_INPUT_CONNECTORS added, seem to be usefull when we want
+		to use input and anboard keyer.
 
 	2006-12-10:
 		*WE STARTED THIS DRIVERS AFTER 1.5 YEAR!!! AT LAST!!!!!
@@ -60,19 +64,20 @@ ChangeLog:
 #define MODULE_PREFIX "bluefish: "
 #define CONFIG_O(VAR) vzConfigParam(_config, "bluefish", VAR)
 
-#define O_KEY_INVERT		"KEY_INVERT"
-#define O_KEY_WHITE			"KEY_WHITE"
-#define O_SINGLE_INPUT		"SINGLE_INPUT"
-#define O_DUAL_INPUT		"DUAL_INPUT"
-#define O_VIDEO_MODE		"VIDEO_MODE"
-#define O_PAL				"PAL"
-#define O_ONBOARD_KEYER		"ONBOARD_KEYER"
-#define O_H_PHASE_OFFSET	"H_PHASE_OFFSET"
-#define O_V_PHASE_OFFSET	"V_PHAZE_OFFSET"
-#define O_VERTICAL_FLIP		"VERTICAL_FLIP"
-#define O_SCALED_RGB		"SCALED_RGB"
-#define O_SOFT_FIELD_MODE	"SOFT_FIELD_MODE"
-#define O_SOFT_TWICE_FIELDS	"SOFT_TWICE_FIELDS"
+#define O_KEY_INVERT			"KEY_INVERT"
+#define O_KEY_WHITE				"KEY_WHITE"
+#define O_SINGLE_INPUT			"SINGLE_INPUT"
+#define O_DUAL_INPUT			"DUAL_INPUT"
+#define O_VIDEO_MODE			"VIDEO_MODE"
+#define O_PAL					"PAL"
+#define O_ONBOARD_KEYER			"ONBOARD_KEYER"
+#define O_H_PHASE_OFFSET		"H_PHASE_OFFSET"
+#define O_V_PHASE_OFFSET		"V_PHAZE_OFFSET"
+#define O_VERTICAL_FLIP			"VERTICAL_FLIP"
+#define O_SCALED_RGB			"SCALED_RGB"
+#define O_SOFT_FIELD_MODE		"SOFT_FIELD_MODE"
+#define O_SOFT_TWICE_FIELDS		"SOFT_TWICE_FIELDS"
+#define O_SWAP_INPUT_CONNECTORS	"SWAP_INPUT_CONNECTORS"
 
 
 /* ------------------------------------------------------------------
@@ -138,26 +143,35 @@ static unsigned long WINAPI io_out(void* buffer)
 	unsigned long address, buffer_id, underrun, next_buf_id;
 
 
-	bluefish[0]->video_playback_allocate((void **)&address,buffer_id,underrun);
-
-	if (buffer_id  != -1)
+	if(BLUE_OK(bluefish[0]->video_playback_allocate((void **)&address,buffer_id,underrun)))
 	{
-		bluefish[0]->system_buffer_write_async
-		(
-			(unsigned char*)buffer,	/* buffer id */
-			buffers_golden,					/* buffer size */
-			NULL,
-			buffer_id,						/* host buffer id */ 
-			0								/* offset */
-		);
-		bluefish[0]->video_playback_present
-		(
-			next_buf_id,
-			buffer_id,
-			1,								/* count */
-			0,								/* keep */
-			0								/* odd */
-		);	
+		if (buffer_id  != -1)
+		{
+			bluefish[0]->system_buffer_write_async
+			(
+				(unsigned char*)buffer,	/* buffer id */
+				buffers_golden,					/* buffer size */
+				NULL,
+				buffer_id,						/* host buffer id */ 
+				0								/* offset */
+			);
+			bluefish[0]->video_playback_present
+			(
+				next_buf_id,
+				buffer_id,
+				1,								/* count */
+				0,								/* keep */
+				0								/* odd */
+			);
+		}
+		else
+		{
+			fprintf(stderr, MODULE_PREFIX "'buffer_id' failed for 'video_playback_allocate'\n");
+		};
+	}
+	else
+	{
+		fprintf(stderr, MODULE_PREFIX "'video_playback_allocate' failed\n");
 	};
 
 	return 0;
@@ -342,7 +356,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 	{
 #ifdef USE_KERNEL_BUFFERS
 		bluefish[1]->system_buffer_map((void**)&input_mapped_buffers[0], BUFFER_ID_VIDEO0);
-#else /* USE_KERNEL_BUFFERS */
+#else /* !USE_KERNEL_BUFFERS */
 		input_mapped_buffers[0] = (unsigned char*)VirtualAlloc
 		(
 			NULL, 
@@ -357,7 +371,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 		{
 #ifdef USE_KERNEL_BUFFERS
 			bluefish[2]->system_buffer_map((void**)&input_mapped_buffers[1], BUFFER_ID_VIDEO1);
-#else /* USE_KERNEL_BUFFERS */
+#else /* !USE_KERNEL_BUFFERS */
 			input_mapped_buffers[1] = (unsigned char*)VirtualAlloc
 			(
 				NULL, 
@@ -399,9 +413,14 @@ static unsigned long WINAPI main_io_loop(void* p)
 	if(inputs_count > 1)
 		bluefish[2]->video_capture_start();
 
+	/* notify */
+	fprintf(stderr, MODULE_PREFIX "'main_io_loop' started\n");
+
 	/* skip 2 cyrcles */
 	bluefish[0]->wait_output_video_synch(update_format, f1);
 	bluefish[0]->wait_output_video_synch(update_format, f1);
+
+	long A,B, C1 = 0, C2 = 0;
 
 	/* endless loop */
 	while(!(flag_exit))
@@ -411,16 +430,28 @@ static unsigned long WINAPI main_io_loop(void* p)
 		/* wait output vertical sync */
 		bluefish[0]->wait_output_video_synch(update_format, f1);
 		
-		dump_line;
+		/* fix time */
+		C1 = (A = timeGetTime());
 
-		/* request pointers to buffers */
-		tbc->lock_io_bufs(&output_buffer, &input_buffers);
+		if(C2)
+		{
+			if((C1 - C2) > 50)
+				fprintf(stderr, MODULE_PREFIX "%d out of sync \n",  (C1 - C2) - 40);
+		};
+		C2 = C1;
+		
 
 		dump_line;
 
 		/* send sync */
 		if(_fc)
 			_fc();
+
+		/* request pointers to buffers */
+		tbc->lock_io_bufs(&output_buffer, &input_buffers);
+
+		dump_line;
+
 
 		/* start output thread */
 		io_ops[0] = CreateThread(0, 0, io_out,  output_buffer , 0, &io_ops_id[0]);
@@ -458,6 +489,13 @@ static unsigned long WINAPI main_io_loop(void* p)
 		/* unlock buffers */
 		tbc->unlock_io_bufs(&output_buffer, &input_buffers);
 		dump_line;
+
+		B = timeGetTime();
+
+		if ( (B - A) >= 40 )
+			fprintf(stderr, MODULE_PREFIX "%d miliseconds overrun\n",  (B - A) - 40);
+//		else
+//			fprintf(stderr, MODULE_PREFIX "transf: %d\n", B - A);
 	};
 
 	/* stop playback/capture */
@@ -478,7 +516,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 #else /* USE_KERNEL_BUFFERS */
 		VirtualUnlock(input_mapped_buffers[0], buffers_golden);
 		VirtualFree(input_mapped_buffers[0], buffers_golden, MEM_RELEASE);
-#endif /* USE_KERNEL_BUFFERS */
+#endif /* !USE_KERNEL_BUFFERS */
 
 		if(inputs_count > 1)
 		{
@@ -487,10 +525,13 @@ static unsigned long WINAPI main_io_loop(void* p)
 #else /* USE_KERNEL_BUFFERS */
 			VirtualUnlock(input_mapped_buffers[1], buffers_golden);
 			VirtualFree(input_mapped_buffers[1], buffers_golden, MEM_RELEASE);
-#endif /* USE_KERNEL_BUFFERS */
+#endif /* !USE_KERNEL_BUFFERS */
 		};
 
 	};
+
+	/* notify */
+	fprintf(stderr, MODULE_PREFIX "'main_io_loop' finished\n");
 
 	return 0;
 };
@@ -544,7 +585,7 @@ static int bluefish_init(int board_id)
 	r = bluefish[0]->device_attach(board_id,0); /* 1 - device number, 0 - no audio */
 	r = bluefish[1]->device_attach(board_id,0); /* 1 - device number, 0 - no audio */
 	r = bluefish[2]->device_attach(board_id,0); /* 1 - device number, 0 - no audio */
-	bluefish_obj = blue_attach_to_device(device_id);
+	bluefish_obj = blue_attach_to_device(board_id);
 
 	return 1;
 };
@@ -582,7 +623,7 @@ static void bluefish_configure(void)
 		r = bluefish[2]->SetCardProperty(DEFAULT_VIDEO_OUTPUT_CHANNEL, v);
 
 
-		/* inputss */
+		/* inputs */
 		v.ulVal = BLUE_VIDEO_INPUT_CHANNEL_A;
 		r = bluefish[0]->SetCardProperty(DEFAULT_VIDEO_INPUT_CHANNEL, v);
 
@@ -651,7 +692,7 @@ static void bluefish_configure(void)
 		{
 			/* first input for channel A */
 			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_A;
-			routes[0].connector = BLUE_CONNECTOR_DVID_3;
+			routes[0].connector = (CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_CONNECTOR_DVID_4:BLUE_CONNECTOR_DVID_3;
 			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
 			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 			r = blue_set_connector_property(bluefish_obj, 1, routes);
@@ -660,7 +701,7 @@ static void bluefish_configure(void)
 			{
 				/* second input for channel B */
 				routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_B;
-				routes[0].connector = BLUE_CONNECTOR_DVID_4;
+				routes[0].connector = (CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_CONNECTOR_DVID_3:BLUE_CONNECTOR_DVID_4;
 				routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
 				routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 				r = blue_set_connector_property(bluefish_obj, 1, routes);
@@ -751,11 +792,7 @@ static void bluefish_configure(void)
 
 VZOUTPUTS_EXPORT long vzOutput_FindBoard(char** error_log = NULL)
 {
-	int c, r;
-	CBlueVelvet4* b = BlueVelvetFactory4();
-	r = b->device_enumerate(c);
-	delete b;
-	return c;
+	return boards_count;
 };
 
 VZOUTPUTS_EXPORT void vzOutput_SetConfig(void* config)
@@ -780,13 +817,6 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 	/* report */
 	printf(MODULE_PREFIX "%s detected\n", (sse_supported)?"SSE2":"NO SEE2");
 #endif /* DUPL_LINES_ARCH */
-
-	/* init board */
-	if(0 == bluefish_init(device_id))
-	{
-		bluefish_destroy();
-		exit(-1);
-	};
 
 	/* configure */
 	bluefish_configure();
@@ -899,13 +929,24 @@ BOOL APIENTRY DllMain
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
+
+			timeBeginPeriod(1);
+
+			/* init board */
+			if(0 == bluefish_init(device_id))
+			{
+				bluefish_destroy();
+				exit(-1);
+			};
+
 			break;
 		case DLL_THREAD_ATTACH:
 			break;
 		case DLL_THREAD_DETACH:
 			break;
 		case DLL_PROCESS_DETACH:
-	
+
+			timeEndPeriod(1);
 			
 			/* wait all finished */
 			fprintf(stderr, MODULE_PREFIX "waiting loop end\n");
@@ -916,6 +957,14 @@ BOOL APIENTRY DllMain
 				CloseHandle(main_io_loop_thread);
 				main_io_loop_thread = INVALID_HANDLE_VALUE;
 			};
+
+			/* trying to stop all devices */
+		    if(bluefish[0])
+				bluefish[0]->video_playback_stop(false, false);
+			if(bluefish[1])
+				bluefish[1]->video_capture_stop();
+			if(bluefish[2])
+				bluefish[2]->video_capture_stop();
 
 			/* deinit */
 			fprintf(stderr, MODULE_PREFIX "force bluefish deinit\n");
