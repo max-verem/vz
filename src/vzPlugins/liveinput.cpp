@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-12:
+		*texture updates depend on field mode, for frame mode we update texture
+		one time per two filed.
+
 	2006-12-11:
 		*'twice_fields' depends on field mode, fixed.
 
@@ -355,7 +359,18 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			&&
 			(NULL != buffer_ptr)
 			&&
-			(0 == session->field)
+			(
+				/* in frame mode we upload texture one time (per frame) */
+				(
+					(0 == session->field)
+					&&
+					(0 == _DATA->_buffers->input.field_mode)
+				)
+				||
+				/* in field mode we update texture each field */
+				(1 == _DATA->_buffers->input.field_mode)
+			)
+
 		)
 		{
 			/* classic method - loading buffer */
