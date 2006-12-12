@@ -26,6 +26,7 @@ ChangeLog:
 		*Attemp move board init to DLL attach block.
 		*SWAP_INPUT_CONNECTORS added, seem to be usefull when we want
 		to use input and anboard keyer.
+		*O_SWAP_INPUT_CONNECTORS will swap channels.
 
 	2006-12-10:
 		*WE STARTED THIS DRIVERS AFTER 1.5 YEAR!!! AT LAST!!!!!
@@ -624,13 +625,16 @@ static void bluefish_configure(void)
 
 
 		/* inputs */
-		v.ulVal = BLUE_VIDEO_INPUT_CHANNEL_A;
+//		v.ulVal = BLUE_VIDEO_INPUT_CHANNEL_A;
+		v.ulVal = (!CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_VIDEO_INPUT_CHANNEL_A:BLUE_VIDEO_INPUT_CHANNEL_B;
 		r = bluefish[0]->SetCardProperty(DEFAULT_VIDEO_INPUT_CHANNEL, v);
 
-		v.ulVal = BLUE_VIDEO_INPUT_CHANNEL_A;
+//		v.ulVal = BLUE_VIDEO_INPUT_CHANNEL_A;
+		v.ulVal = (!CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_VIDEO_INPUT_CHANNEL_A:BLUE_VIDEO_INPUT_CHANNEL_B;
 		r = bluefish[1]->SetCardProperty(DEFAULT_VIDEO_INPUT_CHANNEL, v);
 
-		v.ulVal = BLUE_VIDEO_INPUT_CHANNEL_B;
+//		v.ulVal = BLUE_VIDEO_INPUT_CHANNEL_B;
+		v.ulVal = (!CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_VIDEO_INPUT_CHANNEL_B:BLUE_VIDEO_INPUT_CHANNEL_A;
 		r = bluefish[2]->SetCardProperty(DEFAULT_VIDEO_INPUT_CHANNEL, v);
 
 	};
@@ -692,7 +696,8 @@ static void bluefish_configure(void)
 		{
 			/* first input for channel A */
 			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_A;
-			routes[0].connector = (CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_CONNECTOR_DVID_4:BLUE_CONNECTOR_DVID_3;
+			routes[0].connector = BLUE_CONNECTOR_DVID_3;
+//			routes[0].connector = (CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_CONNECTOR_DVID_4:BLUE_CONNECTOR_DVID_3;
 			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
 			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 			r = blue_set_connector_property(bluefish_obj, 1, routes);
@@ -701,7 +706,8 @@ static void bluefish_configure(void)
 			{
 				/* second input for channel B */
 				routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_B;
-				routes[0].connector = (CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_CONNECTOR_DVID_3:BLUE_CONNECTOR_DVID_4;
+				routes[0].connector = BLUE_CONNECTOR_DVID_4;
+//				routes[0].connector = (CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_CONNECTOR_DVID_3:BLUE_CONNECTOR_DVID_4;
 				routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
 				routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 				r = blue_set_connector_property(bluefish_obj, 1, routes);
