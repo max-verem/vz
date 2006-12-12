@@ -27,6 +27,10 @@ ChangeLog:
 		*SWAP_INPUT_CONNECTORS added, seem to be usefull when we want
 		to use input and anboard keyer.
 		*O_SWAP_INPUT_CONNECTORS will swap channels.
+		*OVERRUN_RECOVERY feature is usefull then I/O operations longer
+		frame duration in 0..7 miliseconds - we will start capture/play 
+		frame without wait of H sync.
+		.
 
 	2006-12-10:
 		*WE STARTED THIS DRIVERS AFTER 1.5 YEAR!!! AT LAST!!!!!
@@ -51,6 +55,7 @@ ChangeLog:
 #define DUPL_LINES_ARCH
 #define DIRECT_FRAME_COPY
 //#define USE_KERNEL_BUFFERS
+#define OVERRUN_RECOVERY 7			/* 7 miliseconds is upper limit */
 
 #define dump_line {};
 #ifndef dump_line
@@ -352,6 +357,11 @@ static unsigned long WINAPI main_io_loop(void* p)
 	HANDLE io_ops[3] = {INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE};
 	unsigned long io_ops_id[3];
 
+#ifdef OVERRUN_RECOVERY
+	int skip_wait_sync = 0;
+#endif /* OVERRUN_RECOVERY */
+
+
 	/* map buffers for input */
 	if(inputs_count)
 	{
@@ -428,6 +438,9 @@ static unsigned long WINAPI main_io_loop(void* p)
 	{
 		dump_line;
 
+#ifdef OVERRUN_RECOVERY
+		if(!(skip_wait_sync))
+#endif /* OVERRUN_RECOVERY */
 		/* wait output vertical sync */
 		bluefish[0]->wait_output_video_synch(update_format, f1);
 		
@@ -494,9 +507,31 @@ static unsigned long WINAPI main_io_loop(void* p)
 		B = timeGetTime();
 
 		if ( (B - A) >= 40 )
-			fprintf(stderr, MODULE_PREFIX "%d miliseconds overrun\n",  (B - A) - 40);
-//		else
-//			fprintf(stderr, MODULE_PREFIX "transf: %d\n", B - A);
+		{
+			fprintf(stderr, MODULE_PREFIX "%d miliseconds overrun",  (B - A) - 40);
+#ifdef OVERRUN_RECOVERY
+			if
+			(
+				( (B - A - 40) < OVERRUN_RECOVERY)	/* overrun in our range */
+				&&									/* and */
+				(0 == skip_wait_sync)				/* previous not skipped */
+			)
+			{
+				skip_wait_sync = 1;
+				fprintf(stderr, " [recovering]");
+			}
+			else
+				skip_wait_sync = 0;
+#endif /* OVERRUN_RECOVERY */
+			fprintf(stderr, "\n");
+		}
+#ifdef OVERRUN_RECOVERY
+		else 
+		{
+			skip_wait_sync = 0;
+		}
+#endif /* OVERRUN_RECOVERY */
+		;
 	};
 
 	/* stop playback/capture */
