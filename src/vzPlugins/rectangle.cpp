@@ -21,7 +21,12 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangleLog:
-	2005-06-08: Code Cleanup. Modification centering algoritms
+	2006-12-14:
+		*constructor updates, added two parameters 'scene' 'parent_container'
+
+	2005-06-08:
+		*Code Cleanup. 
+		*Modification centering algoritms
 
 */
 static char* _plugin_description = 
@@ -88,7 +93,7 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 };
 
 
-PLUGIN_EXPORT void* constructor(void)
+PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 {
 	// init memmory for structure
 	vzPluginData* data = (vzPluginData*)malloc(sizeof(vzPluginData));

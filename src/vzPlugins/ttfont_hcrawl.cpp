@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-14:
+		*constructor updates, added two parameters 'scene' 'parent_container'
+
 	2006-09-21:
 		*ttfont source as base src for plugin
 
@@ -187,7 +190,7 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{NULL,NULL,0}
 };
 
-PLUGIN_EXPORT void* constructor(void)
+PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 {
 	// init memmory for structure
 	vzPluginData* data = (vzPluginData*)malloc(sizeof(vzPluginData));

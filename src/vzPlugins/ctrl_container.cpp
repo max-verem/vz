@@ -20,15 +20,15 @@
     along with ViZualizator; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-ChangleLog:
-	2006-12-14:
-		*constructor updates, added two parameters 'scene' 'parent_container'
+ChangeLog:
+    2006-12-13:
+		*Code start
 
-	2005-06-08: Code Cleanup. 
 
 */
 static char* _plugin_description = 
-""
+"Control container visiblitiy, usefull for "
+"turning off container from timeline operations."
 ;
 
 static char* _plugin_notes = 
@@ -37,12 +37,15 @@ static char* _plugin_notes =
 
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
+#include "../vz/vzMain.h"
 
+#define VALUE_VISIBLE		FOURCC_TO_LONG('_','V','I','S')	/* '_VIS' */
+#define VALUE_INVISIBLE		FOURCC_TO_LONG('_','I','N','V') /* '_INV' */
 
 // declare name and version of plugin
 PLUGIN_EXPORT vzPluginInfo info =
 {
-	"rotate",
+	"ctrl_container",
 	1.0,
 	"rc8",
 	_plugin_description,
@@ -52,27 +55,23 @@ PLUGIN_EXPORT vzPluginInfo info =
 // internal structure of plugin
 typedef struct
 {
-	float f_angle;
-	float f_x;
-	float f_y;
-	float f_z;
+	long L_value;
+	void* _parent;
 } vzPluginData;
 
 // default value of structore
 vzPluginData default_value = 
 {
-	0.0f,
-	0.0f,
-	0.0f,
-	0.0f
+	VALUE_VISIBLE,
+	NULL
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
 {
-	{"f_angle", "The angle of rotation, in degrees", PLUGIN_PARAMETER_OFFSET(default_value,f_angle)},
-	{"f_x", "The x coordinates of a vector.",PLUGIN_PARAMETER_OFFSET(default_value,f_x)},
-	{"f_y", "The y coordinates of a vector.",PLUGIN_PARAMETER_OFFSET(default_value,f_y)},
-	{"f_z", "The z coordinates of a vector.",PLUGIN_PARAMETER_OFFSET(default_value,f_z)},
+	{"L_value",				"Parent container visiblity control parameter. "
+							"Set value '_VIS' to enable container or "
+							"set value '_INV' to disable container", 
+							PLUGIN_PARAMETER_OFFSET(default_value,L_value)},
 	{NULL,NULL,0}
 };
 
@@ -85,38 +84,47 @@ PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 	// copy default value
 	*data = default_value;
 
+	/* setup parent container */
+	_DATA->_parent = parent_container;
+
 	// return pointer
 	return data;
 };
 
 PLUGIN_EXPORT void destructor(void* data)
 {
+	// free data
 	free(data);
 };
 
 PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 {
-	glPushMatrix();
-	glRotatef
-	(
-		((vzPluginData*)data)->f_angle,
-		((vzPluginData*)data)->f_x,
-		((vzPluginData*)data)->f_y,
-		((vzPluginData*)data)->f_z
-	);
 };
 
 PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 {
-	glPopMatrix();
 };
 
 PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 {
-
 };
 
 PLUGIN_EXPORT void notify(void* data)
 {
-
+	/* set value for container data */
+	if
+	(
+		(VALUE_VISIBLE == _DATA->L_value)
+		&&
+		(NULL != _DATA->_parent)
+	)
+		vzContainerVisible(_DATA->_parent, 1);
+	
+	if
+	(
+		(VALUE_INVISIBLE == _DATA->L_value)
+		&&
+		(NULL != _DATA->_parent)
+	)
+		vzContainerVisible(_DATA->_parent, 0);
 };
