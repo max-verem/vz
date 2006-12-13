@@ -420,9 +420,12 @@ void vzScene::draw(long frame,long field,long fill,long key,long order)
 			int i = 0; 
 			char *name;
 			char *value;
-			char* target_id = _id_datasources.key(d);
+			/* get source function */
 			vzContainerFunction* source = _id_datasources.value(d);
-			vzContainerFunction* target = _id_functions.find(target_id);
+			/* detect target function */
+			char* target_id = source->get_datatarget();
+			vzContainerFunction* target = (target_id)?_id_functions.find(target_id):NULL;
+
 
 			/* check if target,source is ok */
 			if((target)&&(source))

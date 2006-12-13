@@ -35,6 +35,8 @@ vzContainerFunction::vzContainerFunction(DOMNode* parent_node,vzFunctions* funct
 	// reset 
 	_data = NULL;
 	_function = NULL;
+	_id = NULL;
+	_datatarget = NULL;
 
 	// load attributes
 	_attributes = new vzXMLAttributes(parent_node);
@@ -54,13 +56,12 @@ vzContainerFunction::vzContainerFunction(DOMNode* parent_node,vzFunctions* funct
 		if(_function)
 		{
 			// register function
-			char* temp;
-			if(temp = _attributes->find("id"))
-				scene->register_function(temp,this);
+			if(_id = _attributes->find("id"))
+				scene->register_function(_id,this);
 
 			// register datasource
-			if(temp = _attributes->find("datatarget"))
-				scene->register_datasource(temp,this);
+			if(_datatarget = _attributes->find("datatarget"))
+				scene->register_datasource(_id,this);
 
 			// create data object
 			_data = _function->constructor(scene, parent_container);

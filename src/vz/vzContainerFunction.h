@@ -52,12 +52,19 @@ class vzContainerFunction
 	// data stored 
 	void* _data;
 
+	/* idents */
+	char* _id;
+	char* _datatarget;
+
 	// function
 	vzFunction* _function;
 
 public:
 	vzContainerFunction(DOMNode* parent_node,vzFunctions* functions_list,vzScene* scene, vzContainer* parent_container);
 	~vzContainerFunction();
+
+	inline char* get_id(void){ return _id;};
+	inline char* get_datatarget(void){ return _datatarget;};
 
 	inline void render(vzRenderSession* render_session)
 	{ if (_function) _function->render(_data,render_session);};
