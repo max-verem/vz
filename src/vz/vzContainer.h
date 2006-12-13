@@ -60,6 +60,7 @@ public:
 	void draw(vzRenderSession* render_session);
 	virtual ~vzContainer();
 	void visible(char* value);
+	void visible(long value);
 	long visible();
 };
 

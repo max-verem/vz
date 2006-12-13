@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-13:
+		*Attempt to submit container object to plugin.
+
 	2005-06-24:
 		*Fixed 'draw' method to use '_visible' parameter.
 
@@ -89,7 +92,7 @@ vzContainer::vzContainer(DOMNode* parent_node,vzFunctions* functions_list,vzScen
 		if (XMLString::compareIString(child->getNodeName(),tag_function) == 0)
 		{
 			// init function Instance object
-			vzContainerFunction* function = new vzContainerFunction(child,functions_list,scene);
+			vzContainerFunction* function = new vzContainerFunction(child,functions_list,scene,this);
 
 			// push it into functions hash
 			sprintf(node_name,"#%04d",++nodes_counter); // create internal id
@@ -142,6 +145,12 @@ void vzContainer::draw(vzRenderSession* render_session)
 
 	unsigned int i;
 
+	/* save origin parent */
+	void* parent = render_session->container;
+
+	/* setup new parent - this */
+	render_session->container = this;
+
 	// 1. prerender of all function
 	for(i=0;i<_functions.count();i++)
 		_functions.value(i)->prerender(render_session);
@@ -164,10 +173,15 @@ void vzContainer::draw(vzRenderSession* render_session)
 			_containers.value(i - 1)->draw(render_session);
 	};
 
+	/* setup new parent - this */
+	render_session->container = this;
+
 	// 4. post-render functions
 	for(i=_functions.count();i>0;i--)
 		_functions.value(i - 1)->postrender(render_session);
 
+	/* restore orignal container */
+	render_session->container = parent;
 };
 
 void vzContainer::visible(char* value)
@@ -175,7 +189,13 @@ void vzContainer::visible(char* value)
 	_visible = atol(value);
 };
 
+void vzContainer::visible(long value)
+{
+	_visible = value;
+};
+
 long vzContainer::visible()
 {
 	return _visible;
 };
+

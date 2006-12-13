@@ -21,8 +21,11 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
-    2005-06-08: Code cleanup
+	2006-12-13:
+		*Added parameter container to plugin session, some code formatting
 
+    2005-06-08:
+		*Code cleanup
 
 */
 
@@ -43,6 +46,7 @@ typedef struct
 	long fill;
 	long key;
 	long order;
+	void* container;
 } vzRenderSession;
 
 typedef struct

@@ -166,9 +166,9 @@ int set_data_param_fromtext(char* name, char* value, void* data ,vzFunction* fun
 
 
 #ifdef _DEBUG
-void* vzFunction::constructor()
+void* vzFunction::constructor(void* scene,void* parent_container)
 {
-	return (proc_constructor)?proc_constructor():NULL;
+	return (proc_constructor)?proc_constructor(scene,parent_container):NULL;
 };
 
 void vzFunction::destructor(void* data)

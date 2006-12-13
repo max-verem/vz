@@ -21,8 +21,12 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-13:
+		*vzContainer wrapper added. one more hook.
+
 	2005-06-13:
 		*Modified 'vzMainSceneNew' arguments list - added parameter 'tv';
+
 	2005-06-10
 		*Added parameter config to vzMainSceneNew(void* functions,void* config);
 
@@ -67,5 +71,9 @@ VZMAIN_API char* vzConfigAttr(void* config, char* module, char* name);
 
 // tv spec loads from config or set default
 VZMAIN_API void vzConfigTVSpec(void* config, char* module, void* spec);
+
+/* vzContainer wrapper */
+VZMAIN_API void vzContainerVisible(void* container, int visible);
+VZMAIN_API void vzContainerDraw(void* container, void* session);
 
 #endif

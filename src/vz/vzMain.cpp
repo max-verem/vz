@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-13:
+		*vzContainer wrapper added. one more hook.
+
 	2006-04-23:
 		*XML initialization moved to DLL_PROCESS_ATTACH section
 
@@ -192,3 +195,21 @@ VZMAIN_API void vzConfigTVSpec(void* config, char* module, void* spec)
 		temp->TV_FRAME_PS = atol(v);
 
 };
+
+/* --------------------------------------------------------------------------
+
+	vzContainer procs
+
+-------------------------------------------------------------------------- */
+VZMAIN_API void vzContainerVisible(void* container, int visible)
+{
+	if (container)
+		((vzContainer*)container)->visible(visible);
+};
+
+VZMAIN_API void vzContainerDraw(void* container, void* session)
+{
+	if (container)
+		((vzContainer*)container)->draw((vzRenderSession*)session);
+};
+

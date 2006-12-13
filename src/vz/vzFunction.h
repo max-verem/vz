@@ -38,7 +38,7 @@ ChangeLog:
 
 class vzContainerFunction;
 
-typedef void* (*plugin_proc_constructor)(void);
+typedef void* (*plugin_proc_constructor)(void*,void*);
 typedef void (*plugin_proc_destructor)(void*);
 typedef void (*plugin_proc_postrender)(void* data,vzRenderSession* render_session);
 typedef void (*plugin_proc_prerender)(void* data,vzRenderSession* render_session);
@@ -75,7 +75,7 @@ public:
 
 
 #ifndef _DEBUG
-	inline void* constructor(){return (proc_constructor)?proc_constructor():NULL;};
+	inline void* constructor(void* scene,void* parent_container){return (proc_constructor)?proc_constructor(scene, parent_container):NULL;};
 
 	inline void destructor(void* data){ if (proc_destructor) proc_destructor(data);};
 
@@ -95,7 +95,7 @@ public:
 
 	inline vzPluginInfo* info(void){return _info;};
 #else
-	void* constructor();
+	void* constructor(void* scene,void* parent_container);
 	void destructor(void* data);
 	void render(void* data,vzRenderSession* render_session);
 	void prerender(void* data,vzRenderSession* render_session);

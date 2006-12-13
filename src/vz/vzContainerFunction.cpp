@@ -30,7 +30,7 @@ ChangeLog:
 
 #include "unicode.h"
 
-vzContainerFunction::vzContainerFunction(DOMNode* parent_node,vzFunctions* functions_list,vzScene* scene)
+vzContainerFunction::vzContainerFunction(DOMNode* parent_node,vzFunctions* functions_list,vzScene* scene, vzContainer* parent_container)
 {
 	// reset 
 	_data = NULL;
@@ -63,7 +63,7 @@ vzContainerFunction::vzContainerFunction(DOMNode* parent_node,vzFunctions* funct
 				scene->register_datasource(temp,this);
 
 			// create data object
-			_data = _function->constructor();
+			_data = _function->constructor(scene, parent_container);
 		
 			// try to set parameters values
 			for(unsigned int i=0;i<_params->count();i++)
