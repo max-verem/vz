@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-13:
+		*Force avi deinit in mem_preload mode.
+
 	2006-12-03:
 		*Fixed bug with frame size to transfer.
 
@@ -378,6 +381,15 @@ static unsigned long WINAPI aviloader_proc(void* p)
 #endif /* VERBOSE */
 
 						desc->flag_exit = 0;
+
+						/* deinit avi */
+						AVIStreamGetFrameClose(pgf);
+						pgf = NULL;
+						AVIStreamClose(avi_stream);
+						avi_stream = NULL;
+						free(strhdr);
+						strhdr = NULL;
+
 						while(!(desc->flag_exit))
 						{
 							WaitForSingleObject(desc->wakeup, 40);
@@ -400,7 +412,8 @@ static unsigned long WINAPI aviloader_proc(void* p)
 				};
 
 				/* close frame pointer */
-				AVIStreamGetFrameClose(pgf);
+				if(pgf)
+					AVIStreamGetFrameClose(pgf);
 			}
 			else
 			{
@@ -413,10 +426,12 @@ static unsigned long WINAPI aviloader_proc(void* p)
 		};
 
 		/* close avi stream */
-		AVIStreamClose(avi_stream);
+		if(avi_stream)
+			AVIStreamClose(avi_stream);
 
 		/* free stream header info struct */
-		free(strhdr);
+		if(strhdr)
+			free(strhdr);
 	}
 	else
 	{
