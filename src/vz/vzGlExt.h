@@ -31,6 +31,10 @@ ChangeLog:
 #define VZGLEXT_H
 
 //#define USE_OPENGLUT
+//#define USE_OPENGLUT_STATIC
+//#define USE_FREEGLUT
+//#define USE_FREEGLUT_STATIC
+
 
 #ifdef VZGLEXT_EXPORTS
 #define VZGLEXT_API __declspec(dllexport)
@@ -39,13 +43,29 @@ ChangeLog:
 #pragma comment(lib, "vzGlExt.lib") 
 #endif
 
-#ifndef USE_OPENGLUT
+#if ((!defined(USE_OPENGLUT)) && (!defined(USE_FREEGLUT)) && (!defined(USE_OPENGLUT_STATIC)) && (!defined(USE_FREEGLUT_STATIC)))
 #include <GL/glut.h>
-#else /* USE_OPENGLUT */
+#else /* USE_XXXXGLUT */
+
+#if defined(USE_OPENGLUT) || defined(USE_OPENGLUT_STATIC)
 #include <GL/openglut.h>
-//#pragma comment(lib, "openGLUT.lib") 
+#ifdef USE_OPENGLUT_STATIC
 #pragma comment(lib, "openGLUT_static.lib") 
-#endif /* !USE_OPENGLUT */
+#else /* !USE_OPENGLUT_STATIC */
+#pragma comment(lib, "openGLUT.lib") 
+#endif /* USE_OPENGLUT_STATIC */
+#endif /* USE_OPENGLUT || USE_OPENGLUT_STATIC */
+
+#if defined(USE_FREEGLUT) || defined(USE_FREEGLUT_STATIC)
+#include <GL/freeglut.h>
+#ifdef USE_FREEGLUT_STATIC
+#pragma comment(lib, "freeGLUT_static.lib") 
+#else /* !USE_FREEGLUT_STATIC */
+#pragma comment(lib, "freeGLUT.lib") 
+#endif /* USE_FREEGLUT_STATIC */
+#endif /* USE_FREEGLUT || USE_FREEGLUT_STATIC */
+
+#endif /* USE_XXXXGLUT */
 
 /* 
 http://oss.sgi.com/projects/ogl-sample/ABI/glext.h
