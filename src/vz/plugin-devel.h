@@ -35,7 +35,7 @@ ChangeLog:
 #include <windows.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
-#include <GL/glut.h>
+#include "vzGlExt.h"
 
 // dll exporst deals
 #define PLUGIN_EXPORT extern "C" __declspec(dllexport)

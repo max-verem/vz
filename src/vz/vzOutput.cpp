@@ -72,7 +72,6 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
-#include <GL/glut.h>
 #include "vzGlExt.h"
 
 #include "vzOutput.h"

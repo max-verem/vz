@@ -30,6 +30,8 @@ ChangeLog:
 #ifndef VZGLEXT_H
 #define VZGLEXT_H
 
+//#define USE_OPENGLUT
+
 #ifdef VZGLEXT_EXPORTS
 #define VZGLEXT_API __declspec(dllexport)
 #else
@@ -37,7 +39,13 @@ ChangeLog:
 #pragma comment(lib, "vzGlExt.lib") 
 #endif
 
-// #include <GL/glut.h>
+#ifndef USE_OPENGLUT
+#include <GL/glut.h>
+#else /* USE_OPENGLUT */
+#include <GL/openglut.h>
+//#pragma comment(lib, "openGLUT.lib") 
+#pragma comment(lib, "openGLUT_static.lib") 
+#endif /* !USE_OPENGLUT */
 
 /* 
 http://oss.sgi.com/projects/ogl-sample/ABI/glext.h

@@ -49,7 +49,6 @@ ChangeLog:
 #include <string.h>
 #include <process.h>
 #include <time.h>
-#include <GL/glut.h>
 #include "vzGlExt.h"
 
 #include "vzMain.h"

@@ -26,13 +26,13 @@ ChangeLog:
 */
 
 
-#include "vzImage.h"
-
-#include <GL/glut.h>
-
+#include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "vzImage.h"
+#include "vzGlExt.h"
 
 typedef struct {
    char  idlength;
@@ -412,10 +412,10 @@ VZIMAGE_API int vzImageSaveTGA(char* filename, vzImage* vzimage, char** error_lo
 		0,				//	char  colourmapdepth;
 		0,				//	short int x_origin;
 		0,				//	short int y_origin;
-		vzimage->width,	//	short width;
-		vzimage->height,	//	short height;
+		(short)vzimage->width,	//	short width;
+		(short)vzimage->height,	//	short height;
 		32,				//	char  bitsperpixel;
-		(flipped)?0:(1<<5) //char  imagedescriptor;
+		(char)((flipped)?0:(1<<5)) //char  imagedescriptor;
 	};
 
 #define ERR2(MSG) if(error_log) *error_log = __FILE__ "::vzImageSaveTGA: " MSG;return NULL;

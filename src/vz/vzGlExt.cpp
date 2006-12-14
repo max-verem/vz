@@ -29,7 +29,6 @@ ChangeLog:
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include <GL/glut.h>
 #include "vzGlExt.h"
 
 BOOL APIENTRY DllMain

@@ -93,7 +93,6 @@ ChangeLog:
 #include "xerces.h"
 #include <stdio.h>
 #include <windows.h>
-#include <GL/glut.h>
 #include "vzGlExt.h"
 
 static const unsigned short tag_tree[] = {'t', 'r', 'e', 'e',0};
