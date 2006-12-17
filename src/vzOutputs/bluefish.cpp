@@ -22,6 +22,13 @@
 
 
 ChangeLog:
+	2006-12-17:
+		*input buffers cleanup.
+		*HANC buffer size decrease.
+
+	2006-12-16:
+		*audio support added.
+
 	2006-12-12:
 		*Attemp move board init to DLL attach block.
 		*SWAP_INPUT_CONNECTORS added, seem to be usefull when we want
@@ -86,11 +93,13 @@ ChangeLog:
 #define O_SOFT_TWICE_FIELDS		"SOFT_TWICE_FIELDS"
 #define O_SWAP_INPUT_CONNECTORS	"SWAP_INPUT_CONNECTORS"
 
+#define O_AUDIO_OUTPUT_EMBED	"AUDIO_OUTPUT_EMBED"
 #define O_AUDIO_OUTPUT_ENABLE	"AUDIO_OUTPUT_ENABLE"
 #define O_AUDIO_INPUT_ENABLE	"AUDIO_INPUT_ENABLE"
 #define O_AUDIO_INPUT_EMBED		"AUDIO_INPUT_EMBED"
 
-#define MAX_HANC_BUFFER_SIZE (256*1024)
+#define MAX_HANC_BUFFER_SIZE (64*1024)
+//#define MAX_HANC_BUFFER_SIZE (256*1024)
 
 /* ------------------------------------------------------------------
 
@@ -122,18 +131,11 @@ static int
 
 static int
 	audio_output = 0,
+	audio_output_embed = 0,
 	audio_input = 0,
 	audio_input_embed = 0;
 
 static void* input_hanc_buffers[2] = {NULL, NULL};
-
-/*static long audio_input_aes_map[VZOUTPUT_MAX_CHANNELS] = 
-{
-	STEREO_PAIR_1,
-	STEREO_PAIR_2,
-	STEREO_PAIR_3,
-	STEREO_PAIR_4
-};*/
 
 static unsigned long 
 	video_format, 
@@ -187,6 +189,9 @@ static unsigned long WINAPI io_in_a(void* p)
 		n = 0,
 		channel_map = (2 == inputs_count)?(STEREO_PAIR_1 | STEREO_PAIR_2):STEREO_PAIR_1
 		;
+
+	/* clean buffer */
+	memset(composite_buffer, 0, 2 * 2 * VZOUTPUT_AUDIO_SAMPLES);
 
 	/* read first buffer */
 	n = bluefish[0]->ReadAudioSample
@@ -318,6 +323,9 @@ static unsigned long WINAPI io_in(void* p)
 			/* audio deals */
 			if(audio_input_embed)
 			{
+				/* clear buffer */
+				memset(desc->audio, 0, 2 * 2 * VZOUTPUT_AUDIO_SAMPLES);
+
 				/* read HANC data */
 				bluefish[desc->id]->system_buffer_read_async
 				(
@@ -335,7 +343,7 @@ static unsigned long WINAPI io_in(void* p)
 				(
 					(unsigned int *)input_hanc_buffers[desc->id - 1],
 					desc->audio,
-					1920,									/* BLUE_UINT32 req_audio_sample_count, */
+					VZOUTPUT_AUDIO_SAMPLES,					/* BLUE_UINT32 req_audio_sample_count, */
 					STEREO_PAIR_1,							/* BLUE_UINT32 required_audio_channels, */
 					AUDIO_CHANNEL_LITTLEENDIAN | 
 					AUDIO_CHANNEL_16BIT						/* BLUE_UINT32 sample_type */
@@ -985,6 +993,9 @@ static void bluefish_configure(void)
 	/* check if audio output is enables */
 	if(audio_output = CONFIG_O(O_AUDIO_OUTPUT_ENABLE)?1:0)
 	{
+		/* embed audio output */
+		audio_output_embed = CONFIG_O(O_AUDIO_OUTPUT_EMBED)?1:0;
+
 		/* check input options */
 		if(audio_input = CONFIG_O(O_AUDIO_INPUT_ENABLE)?1:0)
 			audio_input_embed = CONFIG_O(O_AUDIO_INPUT_EMBED)?1:0;
@@ -995,7 +1006,12 @@ static void bluefish_configure(void)
 			prop.video_channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;
 			prop.prop = EMBEDEDDED_AUDIO_OUTPUT;
 			prop.value.vt = VT_UI4;
-			prop.value.ulVal = blue_auto_aes_to_emb_audio_encoder | blue_emb_audio_enable;
+			prop.value.ulVal = 
+				(audio_output_embed)
+				?
+				(blue_auto_aes_to_emb_audio_encoder | blue_emb_audio_enable)
+				:
+				0;
 			r = blue_set_video_property(bluefish_obj, 1, &prop);
 		};
 	};
