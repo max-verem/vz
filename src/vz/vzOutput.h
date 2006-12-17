@@ -54,6 +54,7 @@ typedef void (*frames_counter_proc)();
 
 #define VZOUTPUT_MAX_BUFS 4
 #define VZOUTPUT_MAX_CHANNELS 4
+#define VZOUTPUT_AUDIO_SAMPLES 1920
 
 struct vzOutputBuffers
 {
@@ -78,11 +79,14 @@ struct vzOutputBuffers
 	struct
 	{
 		void* data[VZOUTPUT_MAX_BUFS];
+		void* audio[VZOUTPUT_MAX_BUFS];
 		unsigned int nums[VZOUTPUT_MAX_BUFS];
 
 		long gold;
 		long size;
 		long offset;
+
+		long audio_buf_size;
 	} output;
 
 	struct
@@ -92,7 +96,9 @@ struct vzOutputBuffers
 		int twice_fields;
 
 		void* data[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS*2];
+		void* audio[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS];
 		unsigned int nums[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS*2];
+		long audio_buf_size;
 
 		long gold;
 		long size;

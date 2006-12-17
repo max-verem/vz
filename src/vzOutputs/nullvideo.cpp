@@ -113,7 +113,7 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 unsigned long WINAPI output_loop(void* obj)
 {
 	int j, b, i, c;
-	void *output_buffer, **input_buffers;
+	void *output_buffer, **input_buffers, *output_a_buffer, **input_a_buffers;
 
 	// cast pointer to vzOutput
 	vzOutput* tbc = (vzOutput*)obj;
@@ -147,7 +147,7 @@ unsigned long WINAPI output_loop(void* obj)
 		// 2. start transfering transcoded buffer
 
 		// 3. request pointer to new buffer
-		tbc->lock_io_bufs(&output_buffer, &input_buffers);
+		tbc->lock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
 		/* send sync */
 		if(_fc)
@@ -262,7 +262,7 @@ unsigned long WINAPI output_loop(void* obj)
 		long B = timeGetTime();
 
 		// 3. request pointer to new buffer
-		tbc->unlock_io_bufs(&output_buffer, &input_buffers);
+		tbc->unlock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
 		// mark time to sleep
 		long C = B - A;

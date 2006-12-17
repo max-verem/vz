@@ -55,6 +55,7 @@ ChangeLog:
 #define DUPL_LINES_ARCH
 #define DIRECT_FRAME_COPY
 //#define USE_KERNEL_BUFFERS
+
 #define OVERRUN_RECOVERY 7			/* 7 miliseconds is upper limit */
 
 #define dump_line {};
@@ -85,6 +86,11 @@ ChangeLog:
 #define O_SOFT_TWICE_FIELDS		"SOFT_TWICE_FIELDS"
 #define O_SWAP_INPUT_CONNECTORS	"SWAP_INPUT_CONNECTORS"
 
+#define O_AUDIO_OUTPUT_ENABLE	"AUDIO_OUTPUT_ENABLE"
+#define O_AUDIO_INPUT_ENABLE	"AUDIO_INPUT_ENABLE"
+#define O_AUDIO_INPUT_EMBED		"AUDIO_INPUT_EMBED"
+
+#define MAX_HANC_BUFFER_SIZE (256*1024)
 
 /* ------------------------------------------------------------------
 
@@ -113,6 +119,21 @@ static unsigned long
 static int 
 	boards_count, 
 	inputs_count = 0;
+
+static int
+	audio_output = 0,
+	audio_input = 0,
+	audio_input_embed = 0;
+
+static void* input_hanc_buffers[2] = {NULL, NULL};
+
+/*static long audio_input_aes_map[VZOUTPUT_MAX_CHANNELS] = 
+{
+	STEREO_PAIR_1,
+	STEREO_PAIR_2,
+	STEREO_PAIR_3,
+	STEREO_PAIR_4
+};*/
 
 static unsigned long 
 	video_format, 
@@ -143,11 +164,63 @@ static int
 	VIDEO IO
 
 ------------------------------------------------------------------ */
+struct io_in_desc
+{
+	int id;
+	void** buffers;
+	void* audio;
+};
 
-static unsigned long WINAPI io_out(void* buffer)
+struct io_out_desc
+{
+	void* buffer;
+	void* audio;
+};
+
+static unsigned long WINAPI io_in_a(void* p)
+{
+#define MAX_DROPPED_CLEAN 5
+	unsigned long **buffers = (unsigned long **)p;
+	unsigned long *composite_buffer = (unsigned long *)malloc(MAX_DROPPED_CLEAN*VZOUTPUT_MAX_CHANNELS * 2 * 2 * VZOUTPUT_AUDIO_SAMPLES);
+	int 
+		r = 0,
+		n = 0,
+		channel_map = (2 == inputs_count)?(STEREO_PAIR_1 | STEREO_PAIR_2):STEREO_PAIR_1
+		;
+
+	/* read first buffer */
+	n = bluefish[0]->ReadAudioSample
+	(
+		channel_map,
+		composite_buffer,
+		VZOUTPUT_AUDIO_SAMPLES * MAX_DROPPED_CLEAN,
+		AUDIO_CHANNEL_LITTLEENDIAN | AUDIO_CHANNEL_16BIT,
+		0
+	);
+
+	/* demultiplex buffers */
+	if(2 == inputs_count)
+	{
+		for(int i=0, j=0 ; j<VZOUTPUT_AUDIO_SAMPLES; j++)
+		{
+			buffers[0][j] = composite_buffer[i]; i++;
+			buffers[1][j] = composite_buffer[i]; i++;
+		};
+	}
+	else
+		memcpy(buffers[0], composite_buffer, 4 * VZOUTPUT_AUDIO_SAMPLES);
+
+	/* free buffers */
+	free(composite_buffer);
+
+	return 0;
+};
+
+static unsigned long WINAPI io_out(void* p)
 {
 	unsigned long address, buffer_id, underrun, next_buf_id;
-
+	struct io_out_desc* desc = (struct io_out_desc*)p;
+	void* buffer = desc->buffer;
 
 	if(BLUE_OK(bluefish[0]->video_playback_allocate((void **)&address,buffer_id,underrun)))
 	{
@@ -169,6 +242,21 @@ static unsigned long WINAPI io_out(void* buffer)
 				0,								/* keep */
 				0								/* odd */
 			);
+
+			/* write audio */
+			if(audio_output)
+			{
+				int c = bluefish[0]->WriteAudioSample
+				(
+					STEREO_PAIR_1,					/* int AudioChannelMap, */
+					desc->audio,					/* void * pBuffer, */
+					VZOUTPUT_AUDIO_SAMPLES,			/* long nSampleCount, */
+					AUDIO_CHANNEL_LITTLEENDIAN |	/* int bFlag, */
+					AUDIO_CHANNEL_16BIT,
+					0
+				);
+//fprintf(stderr, "out: c=%d\n", c);
+			};
 		}
 		else
 		{
@@ -181,12 +269,6 @@ static unsigned long WINAPI io_out(void* buffer)
 	};
 
 	return 0;
-};
-
-struct io_in_desc
-{
-	int id;
-	void** buffers;
 };
 
 static unsigned long WINAPI io_in(void* p)
@@ -223,7 +305,7 @@ static unsigned long WINAPI io_in(void* p)
 				buf = desc->buffers[0];
 #endif /* DIRECT_FRAME_COPY */
 
-			/* read mem */
+			/* read video mem */
 			bluefish[desc->id]->system_buffer_read_async
 			(
 				(unsigned char *)buf,
@@ -232,6 +314,34 @@ static unsigned long WINAPI io_in(void* p)
 				buffer_id
 			);
 			dump_line;
+
+			/* audio deals */
+			if(audio_input_embed)
+			{
+				/* read HANC data */
+				bluefish[desc->id]->system_buffer_read_async
+				(
+					(unsigned char *)input_hanc_buffers[desc->id - 1],
+					MAX_HANC_BUFFER_SIZE,
+					NULL,
+					BlueImage_VBI_HANC_DMABuffer
+					(
+						buffer_id,
+						BLUE_DATA_HANC
+					)
+				);
+				/* decode embedded audio */
+				int c = emb_audio_decoder
+				(
+					(unsigned int *)input_hanc_buffers[desc->id - 1],
+					desc->audio,
+					1920,									/* BLUE_UINT32 req_audio_sample_count, */
+					STEREO_PAIR_1,							/* BLUE_UINT32 required_audio_channels, */
+					AUDIO_CHANNEL_LITTLEENDIAN | 
+					AUDIO_CHANNEL_16BIT						/* BLUE_UINT32 sample_type */
+				);
+//fprintf(stderr, "in=%d: c=%d\n", desc->id, c);
+			};
 
 			/* check dropped frames */
 /*			if(dropped_count)
@@ -349,13 +459,15 @@ static unsigned long WINAPI main_io_loop(void* p)
 	/* cast pointer to vzOutput */
 	vzOutput* tbc = (vzOutput*)p;
 
-	void *output_buffer, **input_buffers;
+	void *output_buffer, **input_buffers, *output_a_buffer, **input_a_buffers;
 	struct io_in_desc in1;
 	struct io_in_desc in2;
+	struct io_out_desc out_main;
 
 	unsigned long f1;
-	HANDLE io_ops[3] = {INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE};
-	unsigned long io_ops_id[3];
+	HANDLE io_ops[4] = {INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE};
+	unsigned long io_ops_id[4];
+	int r, i;
 
 #ifdef OVERRUN_RECOVERY
 	int skip_wait_sync = 0;
@@ -418,11 +530,35 @@ static unsigned long WINAPI main_io_loop(void* p)
 
 
 	/* start playback/capture */
-    bluefish[0]->video_playback_start(false, false);
+    r = bluefish[0]->video_playback_start(false, false);
 	if(inputs_count)
-		bluefish[1]->video_capture_start();
+		r = bluefish[1]->video_capture_start();
 	if(inputs_count > 1)
-		bluefish[2]->video_capture_start();
+		r = bluefish[2]->video_capture_start();
+
+	/* start audio capture / playout */
+	if(audio_output)
+	{
+		r = bluefish[0]->InitAudioPlaybackMode();
+		r = bluefish[0]->StartAudioPlayback(0);
+		if
+		(
+			(audio_input)
+			&&
+			(!(audio_input_embed))
+		)
+		{
+			bluefish[0]->InitAudioCaptureMode();
+			{
+				VARIANT v;
+				v.ulVal= 2; /* 0 - AES, 1 - Analouge, 2 - SDI A, 3 - SDI B */
+				v.vt = VT_UI4;
+				bluefish[0]->SetCardProperty(AUDIO_INPUT_PROP,v);
+			}
+			bluefish[0]->StartAudioCapture(0);		
+		};
+	};
+
 
 	/* notify */
 	fprintf(stderr, MODULE_PREFIX "'main_io_loop' started\n");
@@ -462,46 +598,60 @@ static unsigned long WINAPI main_io_loop(void* p)
 			_fc();
 
 		/* request pointers to buffers */
-		tbc->lock_io_bufs(&output_buffer, &input_buffers);
+		tbc->lock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
 		dump_line;
 
-
 		/* start output thread */
-		io_ops[0] = CreateThread(0, 0, io_out,  output_buffer , 0, &io_ops_id[0]);
+		out_main.audio = output_a_buffer;
+		out_main.buffer = output_buffer;
+		io_ops[0] = CreateThread(0, 0, io_out,  &out_main , 0, &io_ops_id[0]);
+
+		/* start audio output */
+		if
+		(
+			(inputs_count)
+			&&
+			(audio_input)
+			&&
+			(!(audio_input_embed))
+		)
+			io_ops[3] = CreateThread(0, 0, io_in_a,  input_a_buffers , 0, &io_ops_id[3]);
+		else
+			io_ops[3] = INVALID_HANDLE_VALUE;
+
 
 		/* start inputs */
+		io_ops[1] = INVALID_HANDLE_VALUE;
+		io_ops[2] = INVALID_HANDLE_VALUE;
 		if(inputs_count)
 		{
 			in1.id = 1;
 			in1.buffers = &input_buffers[0];
+			in1.audio = input_a_buffers[0];
 			io_ops[1] = CreateThread(0, 0, io_in,  &in1 , 0, &io_ops_id[1]);
 
 			if(inputs_count > 1)
 			{
 				in2.id = 2;
 				in2.buffers = &input_buffers[ (_buffers_info->input.field_mode)?2:1 ];
+				in2.audio = input_a_buffers[1];
 				io_ops[2] = CreateThread(0, 0, io_in,  &in2 , 0, &io_ops_id[2]);
-			};
+			}
 		};
 
 		/* wait for thread ends */
-		WaitForSingleObject(io_ops[0], INFINITE);
-		CloseHandle(io_ops[0]);
-		if(inputs_count)
-		{
-			WaitForSingleObject(io_ops[1], INFINITE);
-			CloseHandle(io_ops[1]);
-			if(inputs_count>1)
+		for(i = 0; i<4; i++)
+			if(INVALID_HANDLE_VALUE != io_ops[i])
 			{
-				WaitForSingleObject(io_ops[2], INFINITE);
-				CloseHandle(io_ops[2]);
+				WaitForSingleObject(io_ops[i], INFINITE);
+				CloseHandle(io_ops[i]);
+				io_ops[i] = INVALID_HANDLE_VALUE;
 			};
-		};
 		dump_line;
 
 		/* unlock buffers */
-		tbc->unlock_io_bufs(&output_buffer, &input_buffers);
+		tbc->unlock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 		dump_line;
 
 		B = timeGetTime();
@@ -543,6 +693,22 @@ static unsigned long WINAPI main_io_loop(void* p)
 			bluefish[2]->video_capture_stop();
 	};
 
+	/* stop audio capture / playout */
+	if(audio_output)
+	{
+		r = bluefish[0]->StopAudioPlayback();
+		r = bluefish[0]->EndAudioPlaybackMode();
+		if
+		(
+			(audio_input)
+			&&
+			(!(audio_input_embed))
+		)
+		{
+			r = bluefish[0]->StopAudioCapture();
+			r = bluefish[0]->EndAudioCaptureMode(); 
+		};
+	};
 
 	/* unmap drivers buffer */
 	if(inputs_count)
@@ -732,7 +898,6 @@ static void bluefish_configure(void)
 			/* first input for channel A */
 			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_A;
 			routes[0].connector = BLUE_CONNECTOR_DVID_3;
-//			routes[0].connector = (CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_CONNECTOR_DVID_4:BLUE_CONNECTOR_DVID_3;
 			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
 			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 			r = blue_set_connector_property(bluefish_obj, 1, routes);
@@ -742,7 +907,6 @@ static void bluefish_configure(void)
 				/* second input for channel B */
 				routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_B;
 				routes[0].connector = BLUE_CONNECTOR_DVID_4;
-//				routes[0].connector = (CONFIG_O(O_SWAP_INPUT_CONNECTORS))?BLUE_CONNECTOR_DVID_3:BLUE_CONNECTOR_DVID_4;
 				routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
 				routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 				r = blue_set_connector_property(bluefish_obj, 1, routes);
@@ -818,6 +982,23 @@ static void bluefish_configure(void)
 	)
 		r = bluefish[0]->set_timing_adjust(h_phase, v_phase);
 
+	/* check if audio output is enables */
+	if(audio_output = CONFIG_O(O_AUDIO_OUTPUT_ENABLE)?1:0)
+	{
+		/* check input options */
+		if(audio_input = CONFIG_O(O_AUDIO_INPUT_ENABLE)?1:0)
+			audio_input_embed = CONFIG_O(O_AUDIO_INPUT_EMBED)?1:0;
+
+		/* enable embedded output */
+		{
+			blue_card_property prop;
+			prop.video_channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;
+			prop.prop = EMBEDEDDED_AUDIO_OUTPUT;
+			prop.value.vt = VT_UI4;
+			prop.value.ulVal = blue_auto_aes_to_emb_audio_encoder | blue_emb_audio_enable;
+			r = blue_set_video_property(bluefish_obj, 1, &prop);
+		};
+	};
 
 	/* detect buffers */
 	r = bluefish[0]->render_buffer_sizeof(buffers_count, buffers_length, buffers_actual, buffers_golden);
@@ -913,12 +1094,20 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 	b->output.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
 	b->output.gold = buffers_golden;
 
+	b->output.audio_buf_size = 
+		2 /* 16 bits */ * 
+		2 /* 2 channels */ * 
+		VZOUTPUT_AUDIO_SAMPLES;
+
 	/* inputs count conf */
 	
 
 	if(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"))
 	{
-
+		b->input.audio_buf_size = 
+			2 /* 16 bits */ * 
+			2 /* 2 channels */ * 
+			VZOUTPUT_AUDIO_SAMPLES;
 		b->input.channels = inputs_count;
 		b->input.field_mode = CONFIG_O(O_SOFT_FIELD_MODE)?1:0;
 		if(b->input.field_mode)
@@ -949,7 +1138,7 @@ VZOUTPUTS_EXPORT void vzOutput_AssignBuffers(struct vzOutputBuffers* b)
 
 	DLL Initialization 
 
-*/
+------------------------------------------------------------------ */
 
 #pragma comment(lib, "winmm")
 
@@ -967,11 +1156,26 @@ BOOL APIENTRY DllMain
     LPVOID lpReserved
 )
 {
+	int i;
+
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
 
 			timeBeginPeriod(1);
+
+			/* init HANC buffers */
+			for(i = 0; i<2; i++)
+			{
+				input_hanc_buffers[i] = VirtualAlloc
+				(
+					NULL, 
+					MAX_HANC_BUFFER_SIZE,
+					MEM_COMMIT, 
+					PAGE_READWRITE
+				);
+				VirtualLock(input_hanc_buffers[i], MAX_HANC_BUFFER_SIZE);
+			};
 
 			/* init board */
 			if(0 == bluefish_init(device_id))
@@ -1011,7 +1215,16 @@ BOOL APIENTRY DllMain
 			fprintf(stderr, MODULE_PREFIX "force bluefish deinit\n");
 			bluefish_destroy();
 
+			/* free HANC buffers */
+			for(i = 0; i< 2; i++)
+			{
+				VirtualUnlock(input_hanc_buffers[i], MAX_HANC_BUFFER_SIZE);
+				VirtualFree(input_hanc_buffers[i], MAX_HANC_BUFFER_SIZE, MEM_RELEASE);
+			};
+
+
 			break;
     }
     return TRUE;
 }
+

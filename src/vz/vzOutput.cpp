@@ -151,7 +151,7 @@ int vzOutput::render_slots()
 	return r;
 };
 
-void vzOutput::lock_io_bufs(void** output, void*** input)
+void vzOutput::lock_io_bufs(void** v_output, void*** v_input, void** a_output, void*** a_input)
 {
 	int i;
 
@@ -195,8 +195,10 @@ void vzOutput::lock_io_bufs(void** output, void*** input)
 
 
 	/* setup pointer to mapped buffer */
-	*output = _buffers.output.data[ _buffers.pos_driver ];
-	*input = _buffers.input.data[ _buffers.pos_driver ];
+	*v_output = _buffers.output.data[ _buffers.pos_driver ];
+	*v_input = _buffers.input.data[ _buffers.pos_driver ];
+	*a_output = _buffers.output.audio[ _buffers.pos_driver ];
+	*a_input = _buffers.input.audio[ _buffers.pos_driver ];
 
 //printf("lock_io_bufs: id=%d\n",_buffers.id[ _buffers.pos_driver ]);
 
@@ -226,7 +228,7 @@ void vzOutput::lock_io_bufs(void** output, void*** input)
 };
 
 
-void vzOutput::unlock_io_bufs(void** output, void*** input)
+void vzOutput::unlock_io_bufs(void** v_output, void*** v_input, void** a_output, void*** a_input)
 {
 	int i, b;
 
@@ -321,7 +323,6 @@ void vzOutput::pre_render()
 	/* unlock buffers head */
 	ReleaseMutex(_buffers.lock);
 
-
 	// two method for copying data
 	if(_use_offscreen_buffer)
 	{
@@ -365,6 +366,14 @@ void vzOutput::pre_render()
 		/* deal with indexes */
 		post_render_aux();
 	};
+
+	/* mix down audio */
+	memcpy
+	(
+		_buffers.output.audio[_buffers.pos_render],
+		_buffers.input.audio[_buffers.pos_render][0],
+		_buffers.output.audio_buf_size
+	);
 
 	// restore read buffer
 //	glReadBuffer(read_buffer);
@@ -512,6 +521,34 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 					_buffers.locks[b] = CreateMutex(NULL,FALSE,NULL);
 				GetBuffersInfo(&_buffers);
 
+				/* audio buffers */
+				for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
+				{
+					/* deal with output audio buffers */
+					_buffers.output.audio[b] = VirtualAlloc
+					(
+						NULL, 
+						_buffers.output.audio_buf_size,
+						MEM_COMMIT, 
+						PAGE_READWRITE
+					);
+					VirtualLock(_buffers.output.data[b], _buffers.output.audio_buf_size);
+
+					/* deal with input audio buffers */
+					for(i = 0; i<_buffers.input.channels; i++)
+					{
+						_buffers.input.audio[b][i] = VirtualAlloc
+						(
+							NULL, 
+							_buffers.input.audio_buf_size,
+							MEM_COMMIT, 
+							PAGE_READWRITE
+						);
+						VirtualLock(_buffers.input.audio[b][i], _buffers.input.audio_buf_size);
+					};
+				};
+
+
 				// create framebuffers
 				if(_use_offscreen_buffer)
 				{
@@ -547,7 +584,6 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 				}
 				else
 				{
-
 					/* allocate mem */
 					for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
 					{
@@ -624,6 +660,25 @@ vzOutput::~vzOutput()
 		CloseHandle(_buffers.lock);
 		for(b = 0; b < VZOUTPUT_MAX_BUFS; b++)
 			CloseHandle(_buffers.locks[b]);
+
+		/* free audio buffers */
+		for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
+		{
+			/* deal with output audio buffers */
+			if(_buffers.output.audio[b])
+			{
+				VirtualUnlock(_buffers.output.audio[b], _buffers.output.audio_buf_size);
+				VirtualFree(_buffers.output.audio[b], _buffers.output.audio_buf_size, MEM_RELEASE);
+			};
+
+			/* deal with input audio buffers */
+			for(i = 0; i<_buffers.input.channels; i++)
+				if(_buffers.output.audio[b])
+				{
+					VirtualUnlock(_buffers.input.audio[b], _buffers.input.audio_buf_size);
+					VirtualFree(_buffers.input.audio[b], _buffers.input.audio_buf_size, MEM_RELEASE);
+				};
+		};
 
 		// free framebuffer
 		if(_use_offscreen_buffer)

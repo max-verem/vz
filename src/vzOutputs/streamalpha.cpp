@@ -451,6 +451,7 @@ static unsigned long WINAPI output_loop(void* obj)
 {
 	// framebuffer pointer
 	void **input_buffers, *image_buffer = NULL;
+	void *output_a_buffer, **input_a_buffers;
 
 	vzOutput* tbc = (vzOutput*)obj;
 
@@ -471,7 +472,7 @@ static unsigned long WINAPI output_loop(void* obj)
 // -----------------------------------------------------------------------------------------
 
 		// first, request new framebuffer
-		tbc->lock_io_bufs(&image_buffer, &input_buffers);
+		tbc->lock_io_bufs(&image_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
 // -----------------------------------------------------------------------------------------
 
@@ -510,7 +511,7 @@ static unsigned long WINAPI output_loop(void* obj)
 			);
 
 		// unlock used buffer
-		tbc->unlock_io_bufs(&image_buffer, &input_buffers);
+		tbc->unlock_io_bufs(&image_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
 		// wait for field #1
 		WaitForSingleObject(_fields_event[1], INFINITE);ResetEvent(_fields_event[1]);
