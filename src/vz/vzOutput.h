@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-17:
+		*audio support added.
+		*audio mixer.
+
 	2006-11-26:
 		*Hard sync scheme.
 
@@ -30,7 +34,6 @@ ChangeLog:
 			'vzOutputInitBuffers' - initialization of the 3-frame TBC
 			'vzOuputPostRender' - notify render of frame started
 			'vzOuputPreRender' - notity render of frame compleeted
-			
 
     2005-06-08:
 		*Code cleanup
@@ -55,6 +58,13 @@ typedef void (*frames_counter_proc)();
 #define VZOUTPUT_MAX_BUFS 4
 #define VZOUTPUT_MAX_CHANNELS 4
 #define VZOUTPUT_AUDIO_SAMPLES 1920
+
+struct vzOutputMixerBuffers
+{
+	void** buffers;
+	float* levels;
+	int count;
+};
 
 struct vzOutputBuffers
 {
@@ -108,6 +118,8 @@ struct vzOutputBuffers
 		long height;
 	} input;
 
+	struct vzOutputMixerBuffers mix_queue[2];
+	int mix_current;
 };
 
 
@@ -121,5 +133,6 @@ VZOUTPUT_API void vzOuputPostRender(void* obj);
 VZOUTPUT_API void vzOuputPreRender(void* obj);
 VZOUTPUT_API int vzOuputRenderSlots(void* obj);
 VZOUTPUT_API struct vzOutputBuffers* vzOutputIOBuffers(void);
+VZOUTPUT_API void vzOutputAddMixerLine(float level, void* buffer);
 
 #endif

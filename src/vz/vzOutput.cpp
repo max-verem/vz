@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-17:
+		*audio support added.
+		*audio mixer.
+
 	2006-12-12:
 		*ring buffer jumping should not be so smart :-((( (in future 'QQ'
 		blocks should be deleted.
@@ -72,6 +76,7 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
+#include <math.h>
 #include "vzGlExt.h"
 
 #include "vzOutput.h"
@@ -124,6 +129,39 @@ VZOUTPUT_API void vzOuputPreRender(void* obj)
 VZOUTPUT_API int vzOuputRenderSlots(void* obj)
 {
 	return ((vzOutput*)obj)->render_slots();
+};
+
+VZOUTPUT_API void vzOutputAddMixerLine(float level, void* buffer)
+{
+	/* check if buffers defined */
+	if(!(_global_buffers_info)) return;
+
+	/* find current active mix buffer */
+	struct vzOutputMixerBuffers* m = 
+		&_global_buffers_info->mix_queue[_global_buffers_info->mix_current];
+
+	/* we store in queue #0 */
+
+	/* realloc space for arrays */
+	m->buffers = (void**)realloc(m->buffers, (m->count + 1)*sizeof(void*));
+	m->levels = (float*)realloc(m->levels, (m->count + 1)*sizeof(void*));
+
+	/* allocate mem for new buffer */
+	m->buffers[m->count] = malloc(_global_buffers_info->output.audio_buf_size);
+
+	/* copy mem */
+	memcpy
+	(
+		m->buffers[m->count],
+		buffer,
+		_global_buffers_info->output.audio_buf_size
+	);
+
+	/* copy level */
+	m->levels[m->count] = level;
+
+	/* increment counter */
+	m->count++;
 };
 
 
@@ -285,6 +323,8 @@ void vzOutput::unlock_io_bufs(void** v_output, void*** v_input, void** a_output,
 
 void vzOutput::pre_render()
 {
+	int i, j;
+
 	/* lock buffers head */
 	WaitForSingleObject(_buffers.lock, INFINITE);
 
@@ -367,13 +407,45 @@ void vzOutput::pre_render()
 		post_render_aux();
 	};
 
-	/* mix down audio */
+	/* MIX DOWN AUDIO */
+
+	/* find current active mix buffer */
+	struct vzOutputMixerBuffers* m = 
+		&_buffers.mix_queue[1 - _buffers.mix_current];
+	/* cleanup output buf */
+	memset
+	(
+		_buffers.output.audio[_buffers.pos_render],
+		0,
+		_buffers.output.audio_buf_size
+	);
+	/* multiply level */
+	for(j = 0; j< m->count ; j++)
+	{
+		/* calc k */
+		float k = expf(m->levels[j] * logf(10) / (20.0f));
+
+		/* add line */
+		for(i = 0; i< (_buffers.output.audio_buf_size/2) ; i++)
+			((signed short*)_buffers.output.audio[_buffers.pos_render])[i]
+			+= 
+			((signed short*)m->buffers[j])[i] * k;
+
+		/* free buffer */
+		free(m->buffers[j]);
+	};
+	m->count = 0;
+
+//#define FAKE_MIX
+#ifdef FAKE_MIX
+	/* fake copy */
 	memcpy
 	(
 		_buffers.output.audio[_buffers.pos_render],
 		_buffers.input.audio[_buffers.pos_render][0],
 		_buffers.output.audio_buf_size
 	);
+#endif /* FAKE_MIX */
 
 	// restore read buffer
 //	glReadBuffer(read_buffer);
@@ -427,6 +499,9 @@ void vzOutput::post_render()
 		/* deal with indexes */
 		post_render_aux();
 	};
+
+	/* switch mixer lines */
+	_buffers.mix_current = 1 - _buffers.mix_current;
 };
 
 
@@ -548,6 +623,11 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 					};
 				};
 
+				/* mixer buffers */
+				_buffers.mix_queue[0].buffers = (void**) malloc(0);
+				_buffers.mix_queue[1].buffers = (void**) malloc(0);
+				_buffers.mix_queue[0].levels = (float*) malloc(0);
+				_buffers.mix_queue[1].levels = (float*) malloc(0);
 
 				// create framebuffers
 				if(_use_offscreen_buffer)
@@ -678,6 +758,15 @@ vzOutput::~vzOutput()
 					VirtualUnlock(_buffers.input.audio[b], _buffers.input.audio_buf_size);
 					VirtualFree(_buffers.input.audio[b], _buffers.input.audio_buf_size, MEM_RELEASE);
 				};
+		};
+
+		/* free mixer buffers */
+		for(b = 0; b < 2; b++)
+		{
+			free(_buffers.mix_queue[b].levels);
+			for(i = 0; i< _buffers.mix_queue[b].count; i++)
+				free(_buffers.mix_queue[b].buffers[i]);
+			free(_buffers.mix_queue[b].buffers);
 		};
 
 		// free framebuffer

@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2006-12-16:
+		*audio mixing/support added.
+
 	2006-12-14:
 		*constructor updates, added two parameters 'scene' 'parent_container'
 
@@ -116,6 +119,9 @@ typedef struct
 	long l_flip_h;			/* flip vertical flag */
 	long l_offset_y;		/* texture field dribling */
 	float f_offset_y;		/* coords field dribling */
+// audio 
+	float f_audio_level;	/* level in DB of mixer, 0.0 - do not change */
+	long l_audio_mute;		/* mute audio flag */
 // free transform coords
 	float f_x1;				/* left bottom coner */
 	float f_y1;
@@ -152,6 +158,9 @@ vzPluginData default_value =
 	0,						// long l_flip_h;			/* flip vertical flag */
 	0,						// long l_offset_y;			/* texture field dribling */
 	0.0,					// float f_offset_y;		/* coords field dribling */
+// audio 
+	0.0f,					// float f_audio_level;	/* level in DB of mixer, 0.0 - do not change */
+	0,						// long l_audio_mute;		/* mute audio flag */
 // free transform coords
 	0.0,					// float f_x1;				/* left bottom coner */
 	0.0,					// float f_y1;
@@ -229,6 +238,12 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 
 	{"l_tr_lod",		"Level of triangulation (free transorm mode)", 
 						PLUGIN_PARAMETER_OFFSET(default_value, l_tr_lod)},
+
+	{"l_audio_mute",	"Mute audio flag",
+						PLUGIN_PARAMETER_OFFSET(default_value, l_audio_mute)},
+
+	{"f_audio_level",	"Audio mixer level, db (0.0 - no change)",
+						PLUGIN_PARAMETER_OFFSET(default_value, f_audio_level)},
 
 	{NULL,NULL,0}
 };
@@ -422,6 +437,20 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		{
 			/* something wrong ??? */
 		};
+
+		/* audio add to mixer */
+		if
+		(
+			(0 == session->field)		/* first field */
+			&&							/* and */
+			(!(_DATA->l_audio_mute))	/* not muted */
+		)
+			vzOutputAddMixerLine
+			(
+				_DATA->f_audio_level,
+				_DATA->_buffers->input.audio[_DATA->_buffers->pos_render][_DATA->l_input - 1]
+			);
+
 	};
 
 	// release mutex
