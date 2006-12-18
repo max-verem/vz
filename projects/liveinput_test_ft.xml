@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+-->
+<tree visible="1">
+    <container visible="1">
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+            <function name="liveinput" id="v1">
+                <param name="l_input" value="1"/>
+
+                <param name="L_center" value="_FT_"/>
+                <param name="l_tr_lod" value="250"/>
+
+                <!-- corner #1 -->
+                <param name="f_x1" value="-360.0"/>
+                <param name="f_y1" value="-288.0"/>
+
+                <!-- corner #2 -->
+                <param name="f_x2" value="-360.0"/>
+                <param name="f_y2" value="288.0"/>
+
+                <!-- corner #3 -->
+                <param name="f_x3" value="360.0"/>
+                <param name="f_y3" value="288.0"/>
+
+                <!-- corner #4 -->
+                <param name="f_x4" value="360.0"/>
+                <param name="f_y4" value="-288.0"/>
+            </function>
+        </container>
+    </container>
+</tree>
+<motion>
+
+    <director id="transition1" dur="150" loop="1" pos="0" run="1">
+
+        <param name="tree.function.v1.f_x1">
+            <timeline t1="0" t2="50" y1="50" y2="-360.0" f="1"/>
+            <timeline t1="51" t2="100" y1="-360" y2="-360.0" f="1"/>
+            <timeline t1="101" t2="149" y1="-360" y2="50.0" f="1"/>
+        </param>
+
+        <param name="tree.function.v1.f_x2">
+            <timeline t1="0" t2="50" y1="80" y2="-360.0" f="1"/>
+            <timeline t1="51" t2="100" y1="-360" y2="-360.0" f="1"/>
+            <timeline t1="101" t2="149" y1="-360" y2="80.0" f="1"/>
+        </param>
+
+        <param name="tree.function.v1.f_x3">
+            <timeline t1="0" t2="50" y1="120" y2="360.0" f="1"/>
+            <timeline t1="51" t2="100" y1="360" y2="360.0" f="1"/>
+            <timeline t1="101" t2="149" y1="360" y2="120.0" f="1"/>
+        </param>
+
+        <param name="tree.function.v1.f_x4">
+            <timeline t1="0" t2="50" y1="200" y2="360.0" f="1"/>
+            <timeline t1="51" t2="100" y1="360" y2="360.0" f="1"/>
+            <timeline t1="101" t2="149" y1="360" y2="200.0" f="1"/>
+        </param>
+
+        <param name="tree.function.v1.f_y1">
+            <timeline t1="0" t2="50" y1="-20" y2="-288.0" f="1"/>
+            <timeline t1="51" t2="100" y1="-288.0" y2="-288.0" f="1"/>
+            <timeline t1="101" t2="149" y1="-288.0" y2="-20.0" f="1"/>
+        </param>
+
+        <param name="tree.function.v1.f_y4">
+            <timeline t1="0" t2="50" y1="-120" y2="-288.0" f="1"/>
+            <timeline t1="51" t2="100" y1="-288.0" y2="-288.0" f="1"/>
+            <timeline t1="101" t2="149" y1="-288.0" y2="-120.0" f="1"/>
+        </param>
+
+        <param name="tree.function.v1.f_y2">
+            <timeline t1="0" t2="50" y1="60" y2="288.0" f="1"/>
+            <timeline t1="51" t2="100" y1="288.0" y2="288.0" f="1"/>
+            <timeline t1="101" t2="149" y1="288.0" y2="60.0" f="1"/>
+        </param>
+
+        <param name="tree.function.v1.f_y3">
+            <timeline t1="0" t2="50" y1="200.0" y2="288.0" f="1"/>
+            <timeline t1="51" t2="100" y1="288.0" y2="288.0" f="1"/>
+            <timeline t1="101" t2="149" y1="288.0" y2="200.0" f="1"/>
+        </param>
+
+
+    </director>	
+
+
+</motion>
+</scene>
+

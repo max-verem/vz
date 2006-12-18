@@ -1,0 +1,223 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+scene.tree.motion.director.ab_mix.reset(0)
+scene.tree.motion.director.ab_mix.cont()
+scene.tree.motion.director.ab_mix.reset(77)
+scene.tree.motion.director.ab_mix.cont()
+
+-->
+<tree visible="1">
+
+    <container visible="1">
+
+        <!-- side #1 -->
+        <container visible="1">
+
+            <!-- visibility control -->
+            <function name="ctrl_container" id="show_side_A">
+            </function>
+
+            <!-- programmable offset  -->
+            <function name="translate">
+                <param name="f_x" value="360"/>
+                <param name="f_y" value="288"/>
+            </function>
+
+            <container visible="1">
+                <function name="image" id="side1">
+                    <param name="s_filename" value="./projects/cube/in_a.tga"/>
+                    <param name="L_center" value="_FT_"/>
+                    <param name="l_tr_lod" value="100"/>
+
+                    <!-- corner #1 -->
+                    <param name="f_x1" value="-350.0"/>
+                    <param name="f_y1" value="-278.0"/>
+
+                    <!-- corner #2 -->
+                    <param name="f_x2" value="-350.0"/>
+                    <param name="f_y2" value="278.0"/>
+
+                    <!-- corner #3 -->
+                    <param name="f_x3" value="100.0"/>
+                    <param name="f_y3" value="40.0"/>
+
+                    <!-- corner #4 -->
+                    <param name="f_x4" value="100.0"/>
+                    <param name="f_y4" value="-40.0"/>
+
+                </function>
+            </container>
+
+        </container>
+
+
+        <!-- side #2 -->
+        <container visible="1">
+
+            <!-- programmable offset  -->
+            <function name="translate">
+                <param name="f_x" value="360"/>
+                <param name="f_y" value="288"/>
+            </function>
+
+            <container visible="1">
+                <function name="image" id="side2">
+                    <param name="s_filename" value="./projects/cube/in_b.tga"/>
+                    <param name="L_center" value="_FT_"/>
+                    <param name="l_tr_lod" value="100"/>
+
+                    <!-- corner #1 -->
+                    <param name="f_x1" value="-350.0"/>
+                    <param name="f_y1" value="-278.0"/>
+
+                    <!-- corner #2 -->
+                    <param name="f_x2" value="-350.0"/>
+                    <param name="f_y2" value="278.0"/>
+
+                    <!-- corner #3 -->
+                    <param name="f_x3" value="100.0"/>
+                    <param name="f_y3" value="40.0"/>
+
+                    <!-- corner #4 -->
+                    <param name="f_x4" value="100.0"/>
+                    <param name="f_y4" value="-40.0"/>
+
+                </function>
+            </container>
+
+        </container>
+
+       <!-- point A : only one side -->
+       <function name="trajectory_table" datatarget="side1" id="traceA">
+           <param name="s_filename" value="./projects/cube/p_a.txt"/>
+           <param name="s_map" value="0:f_x2;1:f_y2"/>
+       </function>
+
+       <!-- point B : two sides -->
+       <function name="trajectory_table" datatarget="side1" id="traceB1">
+           <param name="s_filename" value="./projects/cube/p_b.txt"/>
+           <param name="s_map" value="0:f_x3;1:f_y3"/>
+       </function>
+       <function name="trajectory_table" datatarget="side2" id="traceB2">
+           <param name="s_filename" value="./projects/cube/p_b.txt"/>
+           <param name="s_map" value="0:f_x2;1:f_y2"/>
+       </function>
+
+       <!-- point C : two sides -->
+       <function name="trajectory_table" datatarget="side1" id="traceC1">
+           <param name="s_filename" value="./projects/cube/p_c.txt"/>
+           <param name="s_map" value="0:f_x4;1:f_y4"/>
+       </function>
+       <function name="trajectory_table" datatarget="side2" id="traceC2">
+           <param name="s_filename" value="./projects/cube/p_c.txt"/>
+           <param name="s_map" value="0:f_x1;1:f_y1"/>
+       </function>
+
+       <!-- point D : only one side -->
+       <function name="trajectory_table" datatarget="side1" id="traceD">
+           <param name="s_filename" value="./projects/cube/p_d.txt"/>
+           <param name="s_map" value="0:f_x1;1:f_y1"/>
+       </function>
+
+       <!-- point E : only one side -->
+       <function name="trajectory_table" datatarget="side2" id="traceE">
+           <param name="s_filename" value="./projects/cube/p_e.txt"/>
+           <param name="s_map" value="0:f_x3;1:f_y3"/>
+       </function>
+
+       <!-- point F : only one side -->
+       <function name="trajectory_table" datatarget="side2" id="traceF">
+           <param name="s_filename" value="./projects/cube/p_f.txt"/>
+           <param name="s_map" value="0:f_x4;1:f_y4"/>
+       </function>
+
+    </container>
+
+</tree>
+<motion>
+
+    <director id="ab_mix" dur="155" loop="0" pos="0" run="1">
+        <control>
+            <key time="76" enable="1" action="1" value="" id="ab_mix_stop_1" /> 
+            <key time="153" enable="1" action="1" value="" id="ab_mix_stop_2" /> 
+        </control>
+
+        <!-- control visibility of size A -->
+        <param name="tree.function.show_side_A.L_value">
+            <timeline t1="0" t2="55" y1="_VIS" y2="_VIS" f="0"/>
+            <timeline t1="56" t2="76" y1="_INV" y2="_INV" f="0"/>
+
+            <timeline t1="77" t2="132" y1="_VIS" y2="_VIS" f="0"/>
+            <timeline t1="133" t2="153" y1="_INV" y2="_INV" f="0"/>
+        </param>
+
+	<!-- free transoft control -->
+        <param name="tree.function.side2.L_center">
+            <timeline t1="0" t2="0" y1="_CM_" y2="_CM_" f="0"/>
+            <timeline t1="1" t2="75" y1="_FT_" y2="_FT_" f="0"/>
+            <timeline t1="76" t2="76" y1="_CM_" y2="_CM_" f="0"/>
+
+            <timeline t1="77" t2="77" y1="_CM_" y2="_CM_" f="0"/>
+            <timeline t1="78" t2="152" y1="_FT_" y2="_FT_" f="0"/>
+            <timeline t1="153" t2="153" y1="_CM_" y2="_CM_" f="0"/>
+        </param>
+        <param name="tree.function.side1.L_center">
+            <timeline t1="0" t2="0" y1="_CM_" y2="_CM_" f="0"/>
+            <timeline t1="1" t2="75" y1="_FT_" y2="_FT_" f="0"/>
+            <timeline t1="76" t2="76" y1="_CM_" y2="_CM_" f="0"/>
+
+            <timeline t1="77" t2="77" y1="_CM_" y2="_CM_" f="0"/>
+            <timeline t1="78" t2="152" y1="_FT_" y2="_FT_" f="0"/>
+            <timeline t1="153" t2="153" y1="_CM_" y2="_CM_" f="0"/>
+        </param>
+
+
+        <!-- control coordinates of size A and B -->
+        <param name="tree.function.traceA.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+
+        <param name="tree.function.traceB1.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+        <param name="tree.function.traceB2.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+
+        <param name="tree.function.traceC1.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+        <param name="tree.function.traceC2.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+
+        <param name="tree.function.traceD.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+
+        <param name="tree.function.traceD.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+
+        <param name="tree.function.traceE.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+
+        <param name="tree.function.traceF.l_index">
+            <timeline t1="1" t2="75" y1="0" y2="152" f="1"/>
+            <timeline t1="78" t2="152" y1="0" y2="152" f="1"/>
+        </param>
+    </director>	
+
+</motion>
+</scene>
+
