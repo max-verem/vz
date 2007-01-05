@@ -918,15 +918,33 @@ static void bluefish_configure(void)
 		EBlueConnectorPropertySetting routes[2];
 		memset(routes, 0, sizeof(routes));
 
+		EBlueConnectorIdentifier 
+			c_a = BLUE_CONNECTOR_DVID_1,
+			c_b = BLUE_CONNECTOR_DVID_2;
+
+		/* analouge output */
+		{
+			c_b = BLUE_CONNECTOR_ANALOG_VIDEO_1,
+			c_a = BLUE_CONNECTOR_DVID_1;
+//			c_a = BLUE_CONNECTOR_ANALOG_VIDEO_1,
+//			c_b = BLUE_CONNECTOR_ANALOG_VIDEO_2;
+
+			VARIANT v;
+			v.vt = VT_UI4;
+			v.ulVal = (ANALOG_OUTPUTSIGNAL_CVBS_Y_C| ANALOG_OUTPUTSIGNAL_COMPONENT);
+			bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_OUTPUT_SIGNAL_TYPE,v);
+
+		};
+
 
 		/* configure dual output */
 		routes[0].channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;	
-		routes[0].connector = BLUE_CONNECTOR_DVID_1;
+		routes[0].connector = c_a; //BLUE_CONNECTOR_DVID_1;
 		routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_OUTPUT;
 		routes[0].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_1;
 
 		routes[1].channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;	
-		routes[1].connector = BLUE_CONNECTOR_DVID_2;
+		routes[1].connector = c_b; //BLUE_CONNECTOR_DVID_2;
 		routes[1].signaldirection = BLUE_CONNECTOR_SIGNAL_OUTPUT;
 		routes[1].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_2;
 
