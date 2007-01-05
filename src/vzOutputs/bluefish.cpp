@@ -22,6 +22,14 @@
 
 
 ChangeLog:
+	2007-01-05:
+		*'blue_emb_audio_group1_enable' introduced in 5.4.18betta drivers.
+		*decomposing fields into 2 buffers moved into parallel thread.
+		*embedded audio from HANC buffer moved to another async thread.
+		WARNING!:
+		1. audio delayed in 1 frame if embedded into SDI.
+		2. video delayed in 1 frame if fields processing used.
+
 	2006-12-17:
 		*input buffers cleanup.
 		*HANC buffer size decrease.
@@ -61,7 +69,6 @@ ChangeLog:
 
 #define DUPL_LINES_ARCH
 #define DIRECT_FRAME_COPY
-//#define USE_KERNEL_BUFFERS
 
 #define OVERRUN_RECOVERY 7			/* 7 miliseconds is upper limit */
 
@@ -100,6 +107,7 @@ ChangeLog:
 
 #define MAX_HANC_BUFFER_SIZE (64*1024)
 //#define MAX_HANC_BUFFER_SIZE (256*1024)
+#define MAX_INPUTS 2
 
 /* ------------------------------------------------------------------
 
@@ -109,7 +117,8 @@ ChangeLog:
 static int flag_exit = 0;
 static CBlueVelvet4* bluefish[3] = {NULL, NULL, NULL};
 static void* bluefish_obj = NULL;
-static unsigned char* input_mapped_buffers[2] = {NULL, NULL};
+static unsigned char* input_mapped_buffers[MAX_INPUTS][2];
+static unsigned int flip_buffers_index = 0;
 static HANDLE main_io_loop_thread = INVALID_HANDLE_VALUE ;
 
 static void* _config = NULL;
@@ -135,7 +144,7 @@ static int
 	audio_input = 0,
 	audio_input_embed = 0;
 
-static void* input_hanc_buffers[2] = {NULL, NULL};
+static void* input_hanc_buffers[MAX_INPUTS][2];
 
 static unsigned long 
 	video_format, 
@@ -177,6 +186,111 @@ struct io_out_desc
 {
 	void* buffer;
 	void* audio;
+};
+
+static unsigned long WINAPI hanc_decode(void* p)
+{
+	struct io_in_desc* desc = (struct io_in_desc*)p;
+
+	/* audio deals */
+	if(audio_input_embed)
+	{
+		/* clear buffer */
+		memset(desc->audio, 0, 2 * 2 * VZOUTPUT_AUDIO_SAMPLES);
+
+		/* decode embedded audio */
+		int c = emb_audio_decoder
+		(
+			(unsigned int *)input_hanc_buffers[desc->id - 1][1 - flip_buffers_index],
+			desc->audio,
+			VZOUTPUT_AUDIO_SAMPLES,					/* BLUE_UINT32 req_audio_sample_count, */
+			STEREO_PAIR_1,							/* BLUE_UINT32 required_audio_channels, */
+			AUDIO_CHANNEL_LITTLEENDIAN | 
+			AUDIO_CHANNEL_16BIT						/* BLUE_UINT32 sample_type */
+		);
+	};
+	
+	return 0;
+};
+
+
+static unsigned long WINAPI demux_fields(void* p)
+{
+	int i;
+	struct io_in_desc* desc = (struct io_in_desc*)p;
+
+	/* defferent methods for fields and frame mode */
+	if(_buffers_info->input.field_mode)
+	{
+		dump_line;
+
+		/* field mode */
+		long l = _tv->TV_FRAME_WIDTH*4;
+		unsigned char
+			*src = (unsigned char*)input_mapped_buffers[desc->id - 1][1 - flip_buffers_index],
+			*dstA = (unsigned char*)desc->buffers[0],
+			*dstB = (unsigned char*)desc->buffers[1];
+		dump_line;
+		for(i = 0; i < 576; i++)
+		{
+			/* calc case number */
+			int d = 
+				((i&1)?2:0)
+				|
+				((_buffers_info->input.twice_fields)?1:0);
+
+			switch(d)
+			{
+				case 3:
+					/* odd field */
+					/* duplicate fields */
+#ifdef DUPL_LINES_ARCH
+					if(sse_supported)
+						copy_data_twice_sse(dstB, src);
+					else
+						copy_data_twice_mmx(dstB, src);
+					dstB += 2*l;
+#else  /* !DUPL_LINES_ARCH */
+					memcpy(dstB, src, l); dstB += l;
+					memcpy(dstB, src, l); dstB += l;
+#endif /* DUPL_LINES_ARCH */
+					break;
+
+				case 2:
+					/* odd field */
+					/* NO duplication */
+					memcpy(dstB, src, l); dstB += l;
+					break;
+
+				case 1:
+					/* even field */
+					/* duplicate fields */
+#ifdef DUPL_LINES_ARCH
+					if(sse_supported)
+						copy_data_twice_sse(dstA, src);
+					else
+						copy_data_twice_mmx(dstA, src);
+					dstA += 2*l;
+#else  /* !DUPL_LINES_ARCH */
+					memcpy(dstA, src, l); dstA += l;
+					memcpy(dstA, src, l); dstA += l;
+#endif /* DUPL_LINES_ARCH */
+					break;
+
+				case 0:
+					/* even field */
+					/* NO duplication */
+					memcpy(dstA, src, l); dstA += l;
+					break;
+			};
+
+			/* step forward src */
+			src += l;
+		};
+		dump_line;
+	};
+
+	return 0;
 };
 
 static unsigned long WINAPI io_in_a(void* p)
@@ -279,6 +393,7 @@ static unsigned long WINAPI io_out(void* p)
 static unsigned long WINAPI io_in(void* p)
 {
 	struct io_in_desc* desc = (struct io_in_desc*)p;
+	void* buf;
 	int i;
 	
 	unsigned long address, buffer_id, dropped_count, remain_count;
@@ -301,14 +416,12 @@ static unsigned long WINAPI io_in(void* p)
 
 		if (buffer_id  != -1)
 		{
-			/* read from host mem to mapped memmory */
-			void* buf = input_mapped_buffers[desc->id - 1];
-
-#ifdef DIRECT_FRAME_COPY
-			/* if no transoramtion required - directly */
 			if(!(_buffers_info->input.field_mode))
+				/* if no transformation required - directly */
 				buf = desc->buffers[0];
-#endif /* DIRECT_FRAME_COPY */
+			else
+				/* read from host mem to mapped memmory */
+				buf = input_mapped_buffers[desc->id - 1][flip_buffers_index];
 
 			/* read video mem */
 			bluefish[desc->id]->system_buffer_read_async
@@ -323,13 +436,10 @@ static unsigned long WINAPI io_in(void* p)
 			/* audio deals */
 			if(audio_input_embed)
 			{
-				/* clear buffer */
-				memset(desc->audio, 0, 2 * 2 * VZOUTPUT_AUDIO_SAMPLES);
-
 				/* read HANC data */
 				bluefish[desc->id]->system_buffer_read_async
 				(
-					(unsigned char *)input_hanc_buffers[desc->id - 1],
+					(unsigned char *)input_hanc_buffers[desc->id - 1][flip_buffers_index],
 					MAX_HANC_BUFFER_SIZE,
 					NULL,
 					BlueImage_VBI_HANC_DMABuffer
@@ -338,17 +448,6 @@ static unsigned long WINAPI io_in(void* p)
 						BLUE_DATA_HANC
 					)
 				);
-				/* decode embedded audio */
-				int c = emb_audio_decoder
-				(
-					(unsigned int *)input_hanc_buffers[desc->id - 1],
-					desc->audio,
-					VZOUTPUT_AUDIO_SAMPLES,					/* BLUE_UINT32 req_audio_sample_count, */
-					STEREO_PAIR_1,							/* BLUE_UINT32 required_audio_channels, */
-					AUDIO_CHANNEL_LITTLEENDIAN | 
-					AUDIO_CHANNEL_16BIT						/* BLUE_UINT32 sample_type */
-				);
-//fprintf(stderr, "in=%d: c=%d\n", desc->id, c);
 			};
 
 			/* check dropped frames */
@@ -357,95 +456,6 @@ static unsigned long WINAPI io_in(void* p)
 				fprintf(stderr, MODULE_PREFIX "dropped %d frames at [%d]\n", dropped_count, desc->id);
 			}; */
 
-//----------------
-
-			/* defferent methods for fields and frame mode */
-			if(_buffers_info->input.field_mode)
-			{
-				dump_line;
-
-				/* field mode */
-				long l = _tv->TV_FRAME_WIDTH*4;
-				unsigned char
-					*src = (unsigned char*)input_mapped_buffers[desc->id - 1],
-					*dstA = (unsigned char*)desc->buffers[0],
-					*dstB = (unsigned char*)desc->buffers[1];
-				dump_line;
-				for(i = 0; i < 576; i++)
-				{
-					/* calc case number */
-					int d = 
-						((i&1)?2:0)
-						|
-						((_buffers_info->input.twice_fields)?1:0);
-
-					switch(d)
-					{
-						case 3:
-							/* odd field */
-							/* duplicate fields */
-#ifdef DUPL_LINES_ARCH
-							if(sse_supported)
-								copy_data_twice_sse(dstB, src);
-							else
-								copy_data_twice_mmx(dstB, src);
-							dstB += 2*l;
-#else  /* !DUPL_LINES_ARCH */
-							memcpy(dstB, src, l); dstB += l;
-							memcpy(dstB, src, l); dstB += l;
-#endif /* DUPL_LINES_ARCH */
-							break;
-
-						case 2:
-							/* odd field */
-							/* NO duplication */
-							memcpy(dstB, src, l); dstB += l;
-							break;
-
-						case 1:
-							/* even field */
-							/* duplicate fields */
-#ifdef DUPL_LINES_ARCH
-							if(sse_supported)
-								copy_data_twice_sse(dstA, src);
-							else
-								copy_data_twice_mmx(dstA, src);
-							dstA += 2*l;
-#else  /* !DUPL_LINES_ARCH */
-							memcpy(dstA, src, l); dstA += l;
-							memcpy(dstA, src, l); dstA += l;
-#endif /* DUPL_LINES_ARCH */
-							break;
-
-						case 0:
-							/* even field */
-							/* NO duplication */
-							memcpy(dstA, src, l); dstA += l;
-							break;
-					};
-
-					/* step forward src */
-					src += l;
-				};
-				dump_line;
-			}
-			else
-			{
-#ifndef DIRECT_FRAME_COPY
-				dump_line;
-				/* frame mode */
-				memcpy
-				(
-					desc->buffers[0],
-					input_mapped_buffers[desc->id - 1],
-					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*4
-				);
-				dump_line;
-#endif /* !DIRECT_FRAME_COPY */
-			};
-
-//----------------
-			dump_line;
 		}
 		else
 		{
@@ -473,9 +483,13 @@ static unsigned long WINAPI main_io_loop(void* p)
 	struct io_out_desc out_main;
 
 	unsigned long f1;
-	HANDLE io_ops[4] = {INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE};
-	unsigned long io_ops_id[4];
+	HANDLE io_ops[8];
+	unsigned long io_ops_id[8];
 	int r, i;
+
+	/* clear thread handles values */
+	for(i = 0; i<8 ; i++)
+		io_ops[i] = INVALID_HANDLE_VALUE;
 
 #ifdef OVERRUN_RECOVERY
 	int skip_wait_sync = 0;
@@ -485,36 +499,36 @@ static unsigned long WINAPI main_io_loop(void* p)
 	/* map buffers for input */
 	if(inputs_count)
 	{
-#ifdef USE_KERNEL_BUFFERS
-		bluefish[1]->system_buffer_map((void**)&input_mapped_buffers[0], BUFFER_ID_VIDEO0);
-#else /* !USE_KERNEL_BUFFERS */
-		input_mapped_buffers[0] = (unsigned char*)VirtualAlloc
-		(
-			NULL, 
-			buffers_golden,
-			MEM_COMMIT, 
-			PAGE_READWRITE
-		);
-		VirtualLock(input_mapped_buffers[0], buffers_golden);
-#endif /* USE_KERNEL_BUFFERS */
-
-		if(inputs_count > 1)
+		for(i = 0; i<2; i++)
 		{
-#ifdef USE_KERNEL_BUFFERS
-			bluefish[2]->system_buffer_map((void**)&input_mapped_buffers[1], BUFFER_ID_VIDEO1);
-#else /* !USE_KERNEL_BUFFERS */
-			input_mapped_buffers[1] = (unsigned char*)VirtualAlloc
+			input_mapped_buffers[0][i] = (unsigned char*)VirtualAlloc
 			(
 				NULL, 
 				buffers_golden,
 				MEM_COMMIT, 
 				PAGE_READWRITE
 			);
-			VirtualLock(input_mapped_buffers[1], buffers_golden);
-#endif /* USE_KERNEL_BUFFERS */
+			VirtualLock(input_mapped_buffers[0][i], buffers_golden);
+		};
+
+		if(inputs_count > 1)
+		{
+			for(i = 0; i<2; i++)
+			{
+				input_mapped_buffers[1][i] = (unsigned char*)VirtualAlloc
+				(
+					NULL, 
+					buffers_golden,
+					MEM_COMMIT, 
+					PAGE_READWRITE
+				);
+				VirtualLock(input_mapped_buffers[1][i], buffers_golden);
+			};
 		};
 	};
-	fprintf(stdout, MODULE_PREFIX "input buffers: 0x%.8X, 0x%.8X\n", (unsigned long)input_mapped_buffers[0], (unsigned long)input_mapped_buffers[1]);
+	fprintf(stdout, MODULE_PREFIX "input buffers: 0x%.8X/0x%.8X, 0x%.8X/0x%.8X\n", 
+		(unsigned long)input_mapped_buffers[0][0], (unsigned long)input_mapped_buffers[0][1],
+		(unsigned long)input_mapped_buffers[1][0], (unsigned long)input_mapped_buffers[1][1]);
 	
 	/* check if mapped buffer is OK */
 	if
@@ -522,13 +536,21 @@ static unsigned long WINAPI main_io_loop(void* p)
 		(
 			(inputs_count)
 			&&
-			(NULL == input_mapped_buffers[0])
+			(
+				(NULL == input_mapped_buffers[0][0])
+				||
+				(NULL == input_mapped_buffers[0][1])
+			)
 		)
 		||
 		(
 			(inputs_count > 1)
 			&&
-			(NULL == input_mapped_buffers[1])
+			(
+				(NULL == input_mapped_buffers[1][0])
+				||
+				(NULL == input_mapped_buffers[1][1])
+			)
 		)
 	)
 	{
@@ -559,7 +581,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 			bluefish[0]->InitAudioCaptureMode();
 			{
 				VARIANT v;
-				v.ulVal= 2; /* 0 - AES, 1 - Analouge, 2 - SDI A, 3 - SDI B */
+				v.ulVal= 0; /* 0 - AES, 1 - Analouge, 2 - SDI A, 3 - SDI B */
 				v.vt = VT_UI4;
 				bluefish[0]->SetCardProperty(AUDIO_INPUT_PROP,v);
 			}
@@ -587,6 +609,9 @@ static unsigned long WINAPI main_io_loop(void* p)
 #endif /* OVERRUN_RECOVERY */
 		/* wait output vertical sync */
 		bluefish[0]->wait_output_video_synch(update_format, f1);
+
+		/* flip buffers index */
+		flip_buffers_index = 1 - flip_buffers_index;
 		
 		/* fix time */
 		C1 = (A = timeGetTime());
@@ -632,12 +657,18 @@ static unsigned long WINAPI main_io_loop(void* p)
 		/* start inputs */
 		io_ops[1] = INVALID_HANDLE_VALUE;
 		io_ops[2] = INVALID_HANDLE_VALUE;
+		io_ops[4] = INVALID_HANDLE_VALUE;
+		io_ops[5] = INVALID_HANDLE_VALUE;
+		io_ops[6] = INVALID_HANDLE_VALUE;
+		io_ops[7] = INVALID_HANDLE_VALUE;
 		if(inputs_count)
 		{
 			in1.id = 1;
 			in1.buffers = &input_buffers[0];
 			in1.audio = input_a_buffers[0];
 			io_ops[1] = CreateThread(0, 0, io_in,  &in1 , 0, &io_ops_id[1]);
+			io_ops[4] = CreateThread(0, 0, demux_fields,  &in1 , 0, &io_ops_id[4]);
+			io_ops[6] = CreateThread(0, 0, hanc_decode,  &in1 , 0, &io_ops_id[6]);
 
 			if(inputs_count > 1)
 			{
@@ -645,11 +676,13 @@ static unsigned long WINAPI main_io_loop(void* p)
 				in2.buffers = &input_buffers[ (_buffers_info->input.field_mode)?2:1 ];
 				in2.audio = input_a_buffers[1];
 				io_ops[2] = CreateThread(0, 0, io_in,  &in2 , 0, &io_ops_id[2]);
+				io_ops[5] = CreateThread(0, 0, demux_fields,  &in2 , 0, &io_ops_id[5]);
+				io_ops[7] = CreateThread(0, 0, hanc_decode,  &in2 , 0, &io_ops_id[7]);
 			}
 		};
 
 		/* wait for thread ends */
-		for(i = 0; i<4; i++)
+		for(i = 0; i<8; i++)
 			if(INVALID_HANDLE_VALUE != io_ops[i])
 			{
 				WaitForSingleObject(io_ops[i], INFINITE);
@@ -721,21 +754,19 @@ static unsigned long WINAPI main_io_loop(void* p)
 	/* unmap drivers buffer */
 	if(inputs_count)
 	{
-#ifdef USE_KERNEL_BUFFERS
-		bluefish[1]->system_buffer_unmap(input_mapped_buffers[0]);
-#else /* USE_KERNEL_BUFFERS */
-		VirtualUnlock(input_mapped_buffers[0], buffers_golden);
-		VirtualFree(input_mapped_buffers[0], buffers_golden, MEM_RELEASE);
-#endif /* !USE_KERNEL_BUFFERS */
+		for(i = 0; i<2 ;i++)
+		{
+			VirtualUnlock(input_mapped_buffers[0][i], buffers_golden);
+			VirtualFree(input_mapped_buffers[0][i], buffers_golden, MEM_RELEASE);
+		};
 
 		if(inputs_count > 1)
 		{
-#ifdef USE_KERNEL_BUFFERS
-			bluefish[2]->system_buffer_unmap(input_mapped_buffers[1]);
-#else /* USE_KERNEL_BUFFERS */
-			VirtualUnlock(input_mapped_buffers[1], buffers_golden);
-			VirtualFree(input_mapped_buffers[1], buffers_golden, MEM_RELEASE);
-#endif /* !USE_KERNEL_BUFFERS */
+			for(i = 0; i<2 ;i++)
+			{
+				VirtualUnlock(input_mapped_buffers[1][i], buffers_golden);
+				VirtualFree(input_mapped_buffers[1][i], buffers_golden, MEM_RELEASE);
+			};
 		};
 
 	};
@@ -1176,7 +1207,7 @@ BOOL APIENTRY DllMain
     LPVOID lpReserved
 )
 {
-	int i;
+	int i, j;
 
     switch (ul_reason_for_call)
 	{
@@ -1184,18 +1215,23 @@ BOOL APIENTRY DllMain
 
 			timeBeginPeriod(1);
 
+			/* clean vars */
+			memset(input_mapped_buffers, 0, sizeof(input_mapped_buffers));
+			memset(input_hanc_buffers, 0, sizeof(input_hanc_buffers));
+
 			/* init HANC buffers */
-			for(i = 0; i<2; i++)
-			{
-				input_hanc_buffers[i] = VirtualAlloc
-				(
-					NULL, 
-					MAX_HANC_BUFFER_SIZE,
-					MEM_COMMIT, 
-					PAGE_READWRITE
-				);
-				VirtualLock(input_hanc_buffers[i], MAX_HANC_BUFFER_SIZE);
-			};
+			for(i = 0; i < MAX_INPUTS; i++)
+				for(j = 0; j< 2; j++)
+				{
+					input_hanc_buffers[i][j] = VirtualAlloc
+					(
+						NULL, 
+						MAX_HANC_BUFFER_SIZE,
+						MEM_COMMIT, 
+						PAGE_READWRITE
+					);
+					VirtualLock(input_hanc_buffers[i][j], MAX_HANC_BUFFER_SIZE);
+				};
 
 			/* init board */
 			if(0 == bluefish_init(device_id))
@@ -1236,11 +1272,12 @@ BOOL APIENTRY DllMain
 			bluefish_destroy();
 
 			/* free HANC buffers */
-			for(i = 0; i< 2; i++)
-			{
-				VirtualUnlock(input_hanc_buffers[i], MAX_HANC_BUFFER_SIZE);
-				VirtualFree(input_hanc_buffers[i], MAX_HANC_BUFFER_SIZE, MEM_RELEASE);
-			};
+			for(i = 0; i < MAX_INPUTS; i++)
+				for(j = 0; j< 2; j++)
+				{
+					VirtualUnlock(input_hanc_buffers[i][j], MAX_HANC_BUFFER_SIZE);
+					VirtualFree(input_hanc_buffers[i][j], MAX_HANC_BUFFER_SIZE, MEM_RELEASE);
+				};
 
 
 			break;
