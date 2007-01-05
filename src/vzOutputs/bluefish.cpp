@@ -923,19 +923,19 @@ static void bluefish_configure(void)
 			c_b = BLUE_CONNECTOR_DVID_2;
 
 		/* analouge output */
+#ifdef TRY_ANALOUGE_OUTPUT
 		{
-			c_b = BLUE_CONNECTOR_ANALOG_VIDEO_1,
-			c_a = BLUE_CONNECTOR_DVID_1;
-//			c_a = BLUE_CONNECTOR_ANALOG_VIDEO_1,
-//			c_b = BLUE_CONNECTOR_ANALOG_VIDEO_2;
+//			c_b = BLUE_CONNECTOR_ANALOG_VIDEO_1,
+//			c_a = BLUE_CONNECTOR_DVID_1;
+			c_a = BLUE_CONNECTOR_ANALOG_VIDEO_1,
+			c_b = BLUE_CONNECTOR_ANALOG_VIDEO_2;
 
 			VARIANT v;
 			v.vt = VT_UI4;
-			v.ulVal = (ANALOG_OUTPUTSIGNAL_CVBS_Y_C| ANALOG_OUTPUTSIGNAL_COMPONENT);
+			v.ulVal = ( /* ANALOG_OUTPUTSIGNAL_CVBS_Y_C| */ ANALOG_OUTPUTSIGNAL_COMPONENT);
 			bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_OUTPUT_SIGNAL_TYPE,v);
-
 		};
-
+#endif /* TRY_ANALOUGE_OUTPUT */
 
 		/* configure dual output */
 		routes[0].channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;	
