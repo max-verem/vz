@@ -1009,10 +1009,14 @@ static void bluefish_configure(void)
 			prop.value.ulVal = 
 				(audio_output_embed)
 				?
-				(blue_auto_aes_to_emb_audio_encoder | blue_emb_audio_enable)
+				(blue_auto_aes_to_emb_audio_encoder | blue_emb_audio_enable | blue_emb_audio_group1_enable)
 				:
 				0;
-			r = blue_set_video_property(bluefish_obj, 1, &prop);
+			printf
+			(
+				MODULE_PREFIX "Enabling SDI embedded output (err=%d)\n",
+				r = blue_set_video_property(bluefish_obj, 1, &prop)
+			);
 		};
 	};
 
