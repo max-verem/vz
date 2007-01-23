@@ -57,11 +57,13 @@ vzContainerFunction::vzContainerFunction(DOMNode* parent_node,vzFunctions* funct
 		{
 			// register function
 			if(_id = _attributes->find("id"))
+			{
 				scene->register_function(_id,this);
 
-			// register datasource
-			if(_datatarget = _attributes->find("datatarget"))
-				scene->register_datasource(_id,this);
+				// register datasource
+				if(_datatarget = _attributes->find("datatarget"))
+					scene->register_datasource(_id,this);
+			};
 
 			// create data object
 			_data = _function->constructor(scene, parent_container);
