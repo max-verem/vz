@@ -105,8 +105,8 @@ ChangeLog:
 #define O_AUDIO_INPUT_ENABLE	"AUDIO_INPUT_ENABLE"
 #define O_AUDIO_INPUT_EMBED		"AUDIO_INPUT_EMBED"
 
-#define MAX_HANC_BUFFER_SIZE (64*1024)
-//#define MAX_HANC_BUFFER_SIZE (256*1024)
+#define MAX_HANC_BUFFER_READ (64*1024)
+#define MAX_HANC_BUFFER_SIZE (256*1024)
 #define MAX_INPUTS 2
 
 /* ------------------------------------------------------------------
@@ -440,7 +440,7 @@ static unsigned long WINAPI io_in(void* p)
 				bluefish[desc->id]->system_buffer_read_async
 				(
 					(unsigned char *)input_hanc_buffers[desc->id - 1][flip_buffers_index],
-					MAX_HANC_BUFFER_SIZE,
+					MAX_HANC_BUFFER_READ,
 					NULL,
 					BlueImage_VBI_HANC_DMABuffer
 					(
@@ -1249,6 +1249,7 @@ BOOL APIENTRY DllMain
 						PAGE_READWRITE
 					);
 					VirtualLock(input_hanc_buffers[i][j], MAX_HANC_BUFFER_SIZE);
+					memset(input_hanc_buffers[i][j], 0, MAX_HANC_BUFFER_SIZE);
 				};
 
 			/* init board */
