@@ -268,6 +268,27 @@ static void vz_glut_display(void)
 		if(output_module)
 			vzOuputPostRender(output_module);
 
+#ifdef RENDER_TO_AUX_BUFFERS
+		/* fist case */
+		if(1 == rendered_frames)
+		{glReadBuffer (GL_AUX0); glDrawBuffer (GL_AUX1);};
+
+		/* copy pixels */
+		int b1,b2;
+
+		glGetIntegerv(GL_DRAW_BUFFER, &b1);
+		glGetIntegerv(GL_READ_BUFFER, &b2);
+
+		/* copy to front */
+		glReadBuffer (b1); glDrawBuffer (GL_FRONT); 
+		glClear(GL_COLOR_BUFFER_BIT); glCopyPixels (0,0,tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT,GL_COLOR);
+
+		/* swap buffers */
+		glDrawBuffer (b2);
+		glReadBuffer (b1); 
+
+#endif /* RENDER_TO_AUX_BUFFERS */
+
 		// and swap buffers
 		glutSwapBuffers();
 
