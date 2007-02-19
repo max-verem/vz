@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-02-19:
+		*binary coded command execution added.
+
 	2006-11-26:
 		OpenGL extension scheme load changes.
 
@@ -94,6 +97,7 @@ ChangeLog:
 #include <stdio.h>
 #include <windows.h>
 #include "vzGlExt.h"
+#include "vz_cmd/vz_cmd.h"
 
 static const unsigned short tag_tree[] = {'t', 'r', 'e', 'e',0};
 static const unsigned short tag_motion[] = {'m', 'o', 't', 'i', 'o', 'n',0};
@@ -865,4 +869,131 @@ int vzScene::command(char* cmd,char** error_log)
 
 	ReleaseMutex(_lock_for_command);
 	return 0;
+};
+
+int vzScene::command(int cmd, int index, void* buf)
+{
+	int r = 0;
+
+	WaitForSingleObject(_lock_for_command,INFINITE);
+
+	switch(cmd)
+	{
+		/* function field set */
+		case VZ_CMD_SET:
+		{
+			char* function_id;
+			char* field_name;
+			char* field_value;
+
+			/* map params */
+			if
+			(
+				0 
+				==
+				vz_serial_cmd_parseNmap
+				(
+					buf,
+					index,
+					&function_id,
+					&field_name,
+					&field_value
+				)
+			)
+			{
+				printf("('%s', '%s', '%s')\n", function_id, field_name, field_value);
+				vzContainerFunction* func = _id_functions.find(function_id);
+				if(func)
+					func->set_data_param_fromtext(field_name, field_value);
+				else
+					r = -2;
+			}
+			else
+				r = -1;
+		};		
+		break;
+
+		/* container visibility */
+		case VZ_CMD_CONTAINER_VISIBLE:
+		{
+			char* container_id;
+			int* v;
+
+			/* map params */
+			if
+			(
+				0 
+				==
+				vz_serial_cmd_parseNmap
+				(
+					buf,
+					index,
+					&container_id,
+					&v
+				)
+			)
+			{
+				printf("('%s', '%d')\n", container_id, *v);
+				vzContainer* container = _id_containers.find(container_id);
+				if(container)
+					container->visible(*v);
+				else
+					r = -2;
+			}
+			else
+				r = -1;
+		};
+		break;
+
+		/* director control */
+		case VZ_CMD_START_DIRECTOR:
+		case VZ_CMD_RESET_DIRECTOR:
+		case VZ_CMD_CONTINUE_DIRECTOR:
+		case VZ_CMD_STOP_DIRECTOR:
+		{
+			char* director_id;
+			int* frame = NULL;
+
+			if
+			(
+				0 
+				==
+				vz_serial_cmd_parseNmap
+				(
+					buf,
+					index,
+					&director_id,
+					&frame
+				)
+			)
+			{
+				printf("('%s', '%d')\n", director_id, (frame)?*frame:-1);
+				vzMotionDirector* director = _id_directors.find(director_id);
+				if(director)
+				{
+					char frame_str[128] = ""; 
+					if(frame)
+						sprintf(frame_str, "%d", *frame);
+
+					switch(cmd)
+					{
+						case VZ_CMD_START_DIRECTOR:		director->start(frame_str);	break;
+						case VZ_CMD_RESET_DIRECTOR:		director->reset(frame_str);	break;
+						case VZ_CMD_CONTINUE_DIRECTOR:	director->cont(frame_str);	break;
+						case VZ_CMD_STOP_DIRECTOR:		director->stop(frame_str);	break;
+					};
+				}
+				else
+					r = -2;
+			}
+			else
+				r = -1;
+		}
+		break;
+
+	};
+
+	ReleaseMutex(_lock_for_command);
+
+	return r;
 };

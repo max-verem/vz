@@ -98,6 +98,7 @@ public:
 
 	// processor method describing
 	int command(char* cmd,char** error_log);
+	int command(int cmd, int index, void* buf);
 
 #ifdef _DEBUG
 	void list_registred();

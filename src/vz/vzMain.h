@@ -60,6 +60,7 @@ VZMAIN_API void* vzMainSceneNew(void* functions,void* config,void* tv);
 VZMAIN_API void vzMainSceneFree(void* &scene);
 VZMAIN_API int vzMainSceneLoad(void* scene, char* filename);
 VZMAIN_API int vzMainSceneCommand(void* scene, char* cmd, char** error_log);
+VZMAIN_API int vzMainSceneCommand(void* scene, int cmd, int index, void* buf);
 VZMAIN_API void vzMainSceneDisplay(void* scene, long frame);
 
 // config interface

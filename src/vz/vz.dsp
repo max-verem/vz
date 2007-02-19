@@ -93,7 +93,23 @@ SOURCE=.\main.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\serserver.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\tcpserver.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\vz_cmd\vz_cmd.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\vz_cmd\vz_cmd_serial.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\vz_cmd\vz_cmd_shell.c
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -101,7 +117,19 @@ SOURCE=.\tcpserver.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
+SOURCE=.\serserver.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\tcpserver.h
+# End Source File
+# Begin Source File
+
+SOURCE=".\vz_cmd\vz_cmd-private.h"
+# End Source File
+# Begin Source File
+
+SOURCE=.\vz_cmd\vz_cmd.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

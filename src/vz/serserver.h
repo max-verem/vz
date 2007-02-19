@@ -2,9 +2,9 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2005 Maksym Veremeyenko.
+    Copyright (C) 2007 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2005.
+    Contributed by Maksym Veremeyenko, verem@m1.tv, 2007.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,14 +21,15 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
-    2005-06-08: Code cleanup
+    2007-02-19:
+		*new version start
 
 
 */
 
-#ifndef TCPSERVER_H
-#define TCPSERVER_H
+#ifndef SERSERVER_H
+#define SERSERVER_H
 
-unsigned long WINAPI tcpserver(void* _socket);
+unsigned long WINAPI serserver(void* _config);
 
-#endif // TCPSERVER_H
+#endif // SERSERVER_H

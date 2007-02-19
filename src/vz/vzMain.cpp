@@ -117,6 +117,11 @@ VZMAIN_API int vzMainSceneCommand(void* scene, char* cmd,char** error_log)
 	return ((vzScene*)scene)->command(cmd,error_log);
 };
 
+VZMAIN_API int vzMainSceneCommand(void* scene, int cmd, int index, void* buf)
+{
+	return ((vzScene*)scene)->command(cmd, index, buf);
+};
+
 VZMAIN_API void vzMainSceneDisplay(void* scene, long frame)
 {
 	((vzScene*)scene)->display(frame);

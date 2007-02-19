@@ -60,6 +60,7 @@ ChangeLog:
 #endif
 
 #include "tcpserver.h"
+#include "serserver.h"
 
 /*
 ----------------------------------------------------------
@@ -587,6 +588,7 @@ int main(int argc, char** argv)
 	// start tcpserver
 	unsigned long thread;
 	HANDLE tcpserver_handle = CreateThread(0, 0, tcpserver, config, 0, &thread);
+	HANDLE serserver_handle = CreateThread(0, 0, serserver, config, 0, &thread);
 
 	/* exit handler */
 	atexit(vz_exit);
