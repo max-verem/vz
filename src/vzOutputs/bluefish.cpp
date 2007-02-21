@@ -99,6 +99,8 @@ ChangeLog:
 #define O_SOFT_FIELD_MODE		"SOFT_FIELD_MODE"
 #define O_SOFT_TWICE_FIELDS		"SOFT_TWICE_FIELDS"
 #define O_SWAP_INPUT_CONNECTORS	"SWAP_INPUT_CONNECTORS"
+#define O_ANALOG_INPUT			"ANALOG_INPUT"
+#define O_ANALOG_OUTPUT			"ANALOG_OUTPUT"
 
 #define O_AUDIO_OUTPUT_EMBED	"AUDIO_OUTPUT_EMBED"
 #define O_AUDIO_OUTPUT_ENABLE	"AUDIO_OUTPUT_ENABLE"
@@ -952,23 +954,48 @@ static void bluefish_configure(void)
 
 		if(inputs_count)
 		{
+			/* use analog input if defined */
+			EBlueConnectorIdentifier 
+				connector_ch_A = BLUE_CONNECTOR_DVID_3,
+				connector_ch_B = BLUE_CONNECTOR_DVID_4;
+
+			/* if defined analog input usage */
+			if(NULL != CONFIG_O(O_ANALOG_INPUT))
+			{
+				if(!(CONFIG_O(O_SWAP_INPUT_CONNECTORS)))
+					connector_ch_A = BLUE_CONNECTOR_ANALOG_VIDEO_1;
+				else
+					connector_ch_B = BLUE_CONNECTOR_ANALOG_VIDEO_1;
+			};
+
 			/* first input for channel A */
 			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_A;
-			routes[0].connector = BLUE_CONNECTOR_DVID_3;
+			routes[0].connector = connector_ch_A;
 			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
 			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 			r = blue_set_connector_property(bluefish_obj, 1, routes);
 
-			if(inputs_count > 1)
+			/* second input for channel B */
+			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_B;
+			routes[0].connector = connector_ch_B;
+			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
+			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
+			r = blue_set_connector_property(bluefish_obj, 1, routes);
+
+			/* setup analoge video input properties*/
+			if(NULL != CONFIG_O(O_ANALOG_INPUT))
 			{
-				/* second input for channel B */
-				routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_B;
-				routes[0].connector = BLUE_CONNECTOR_DVID_4;
-				routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
-				routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
-				r = blue_set_connector_property(bluefish_obj, 1, routes);
+				VARIANT value;
+				value.vt = VT_UI4;
+				switch(atol(CONFIG_O(O_ANALOG_INPUT)))
+				{
+					/* 0 - Composite, 1 - S-Video, 2 - Component */
+					case 1:		value.ulVal = ANALOG_VIDEO_INPUT_Y_C_AIN3_AIN6; break;
+					case 2:		value.ulVal = ANALOG_VIDEO_INPUT_YUV_AIN2_AIN3_AIN6; break;
+					default:	value.ulVal = ANALOG_VIDEO_INPUT_CVBS_AIN2; break;
+				};
+				bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_INPUT_CONNECTOR, value);
 			};
-		
 		};
 	};
 
