@@ -186,12 +186,12 @@ unsigned long WINAPI serserver(void* _config)
 			char* filename;
 			int cmd = vz_serial_cmd_id(buf, i);
 			char* cmd_name = vz_cmd_get_name(cmd);
-			printf("serserver: %s", cmd_name);
+			printf("serserver: %s\n", cmd_name);
 
 			switch(cmd)
 			{
 				case VZ_CMD_PING:
-					printf("\n");
+//					printf("\n");
 					break;
 
 				case VZ_CMD_LOAD_SCENE:
@@ -200,7 +200,7 @@ unsigned long WINAPI serserver(void* _config)
 					vz_serial_cmd_parseNmap(buf, i, &filename);
 
 					/* notify */
-					printf("('%s')\n", filename);
+					printf("\t*('%s')\n", filename);
 
 					// lock scene
 					WaitForSingleObject(scene_lock,INFINITE);
@@ -228,7 +228,7 @@ unsigned long WINAPI serserver(void* _config)
 					vz_serial_cmd_parseNmap(buf, i, &filename);
 					
 					/* notify */
-					printf("('%s')\n", filename);
+					printf("\t*('%s')\n", filename);
 
 					// lock scene
 					WaitForSingleObject(scene_lock, INFINITE);

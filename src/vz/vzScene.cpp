@@ -901,7 +901,7 @@ int vzScene::command(int cmd, int index, void* buf)
 				)
 			)
 			{
-				printf("('%s', '%s', '%s')\n", function_id, field_name, field_value);
+				printf("\t*('%s', '%s', '%s')\n", function_id, field_name, field_value);
 				vzContainerFunction* func = _id_functions.find(function_id);
 				if(func)
 					func->set_data_param_fromtext(field_name, field_value);
@@ -933,7 +933,7 @@ int vzScene::command(int cmd, int index, void* buf)
 				)
 			)
 			{
-				printf("('%s', '%d')\n", container_id, *v);
+				printf("\t*('%s', '%d')\n", container_id, *v);
 				vzContainer* container = _id_containers.find(container_id);
 				if(container)
 					container->visible(*v);
@@ -967,7 +967,7 @@ int vzScene::command(int cmd, int index, void* buf)
 				)
 			)
 			{
-				printf("('%s', '%d')\n", director_id, (frame)?*frame:-1);
+				printf("\t*('%s', '%d')\n", director_id, (frame)?*frame:-1);
 				vzMotionDirector* director = _id_directors.find(director_id);
 				if(director)
 				{
