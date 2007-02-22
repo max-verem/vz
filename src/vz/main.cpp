@@ -589,6 +589,8 @@ int main(int argc, char** argv)
 	unsigned long thread;
 	HANDLE tcpserver_handle = CreateThread(0, 0, tcpserver, config, 0, &thread);
 	HANDLE serserver_handle = CreateThread(0, 0, serserver, config, 0, &thread);
+	SetThreadPriority(tcpserver_handle , THREAD_PRIORITY_LOWEST);
+	SetThreadPriority(serserver_handle , THREAD_PRIORITY_LOWEST);
 
 	/* exit handler */
 	atexit(vz_exit);
