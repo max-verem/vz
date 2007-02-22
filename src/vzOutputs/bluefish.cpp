@@ -962,10 +962,31 @@ static void bluefish_configure(void)
 			/* if defined analog input usage */
 			if(NULL != CONFIG_O(O_ANALOG_INPUT))
 			{
+				unsigned long av_i_use;
+
 				if(!(CONFIG_O(O_SWAP_INPUT_CONNECTORS)))
+				{
 					connector_ch_A = BLUE_CONNECTOR_ANALOG_VIDEO_1;
+					av_i_use = ANALOG_VIDEO_INPUT_USE_SDI_A;
+				}
 				else
+				{
 					connector_ch_B = BLUE_CONNECTOR_ANALOG_VIDEO_1;
+					av_i_use = ANALOG_VIDEO_INPUT_USE_SDI_B;
+				};
+
+				/* setup analoge video input properties*/
+				VARIANT value;
+				value.vt = VT_UI4;
+				switch(atol(CONFIG_O(O_ANALOG_INPUT)))
+				{
+					/* 0 - Composite, 1 - S-Video, 2 - Component */
+					case 1:		value.ulVal = ANALOG_VIDEO_INPUT_Y_C_AIN3_AIN6; break;
+					case 2:		value.ulVal = ANALOG_VIDEO_INPUT_YUV_AIN2_AIN3_AIN6; break;
+					default:	value.ulVal = ANALOG_VIDEO_INPUT_CVBS_AIN2; break;
+				};
+				value.ulVal += av_i_use;
+				bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_INPUT_CONNECTOR, value);
 			};
 
 			/* first input for channel A */
@@ -982,19 +1003,10 @@ static void bluefish_configure(void)
 			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 			r = blue_set_connector_property(bluefish_obj, 1, routes);
 
-			/* setup analoge video input properties*/
+			
 			if(NULL != CONFIG_O(O_ANALOG_INPUT))
 			{
-				VARIANT value;
-				value.vt = VT_UI4;
-				switch(atol(CONFIG_O(O_ANALOG_INPUT)))
-				{
-					/* 0 - Composite, 1 - S-Video, 2 - Component */
-					case 1:		value.ulVal = ANALOG_VIDEO_INPUT_Y_C_AIN3_AIN6; break;
-					case 2:		value.ulVal = ANALOG_VIDEO_INPUT_YUV_AIN2_AIN3_AIN6; break;
-					default:	value.ulVal = ANALOG_VIDEO_INPUT_CVBS_AIN2; break;
-				};
-				bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_INPUT_CONNECTOR, value);
+
 			};
 		};
 	};
