@@ -51,15 +51,50 @@ BOOL APIENTRY DllMain
 }
 
 // strings for automated loading
+#define GL_REG_EXT(EXT_NAME, FUNC_NAME) {EXT_NAME, #FUNC_NAME, &FUNC_NAME}
+#define GL_REG_EXT_FBO(FUNC_NAME) GL_REG_EXT("GL_EXT_framebuffer_object", FUNC_NAME)
+#define GL_REG_EXT_PBO(FUNC_NAME) GL_REG_EXT("GL_EXT_pixel_buffer_object", FUNC_NAME)
 static void* _gl_extensions_list[][3] = 
 {
+	/*
+		http://oss.sgi.com/projects/ogl-sample/registry/EXT/blend_func_separate.txt
+	*/
 	{"GL_EXT_blend_func_separate","glBlendFuncSeparateEXT",&glBlendFuncSeparateEXT},
-	{"GL_EXT_pixel_buffer_object","glBindBuffer",&glBindBuffer},
-	{"GL_EXT_pixel_buffer_object","glUnmapBuffer",&glUnmapBuffer},
-	{"GL_EXT_pixel_buffer_object","glMapBuffer", &glMapBuffer},
-	{"GL_EXT_pixel_buffer_object","glGenBuffers",&glGenBuffers},
-	{"GL_EXT_pixel_buffer_object","glDeleteBuffers",&glDeleteBuffers},
-	{"GL_EXT_pixel_buffer_object","glBufferData",&glBufferData},
+
+	/* 
+		pixel buffer extensions:
+		http://oss.sgi.com/projects/ogl-sample/registry/EXT/pixel_buffer_object.txt
+	*/
+	GL_REG_EXT_PBO(glBindBuffer),
+	GL_REG_EXT_PBO(glUnmapBuffer),
+	GL_REG_EXT_PBO(glMapBuffer),
+	GL_REG_EXT_PBO(glGenBuffers),
+	GL_REG_EXT_PBO(glDeleteBuffers),
+	GL_REG_EXT_PBO(glBufferData),
+
+	/*
+		framebuffer buffer extensions:
+		http://oss.sgi.com/projects/ogl-sample/registry/EXT/framebuffer_object.txt
+	*/
+	GL_REG_EXT_FBO(glIsRenderbufferEXT),
+	GL_REG_EXT_FBO(glBindRenderbufferEXT),
+	GL_REG_EXT_FBO(glDeleteRenderbuffersEXT),
+	GL_REG_EXT_FBO(glGenRenderbuffersEXT),
+	GL_REG_EXT_FBO(glRenderbufferStorageEXT),
+	GL_REG_EXT_FBO(glGetRenderbufferParameterivEXT),
+	GL_REG_EXT_FBO(glIsFramebufferEXT),
+	GL_REG_EXT_FBO(glBindFramebufferEXT),
+	GL_REG_EXT_FBO(glDeleteFramebuffersEXT),
+	GL_REG_EXT_FBO(glGenFramebuffersEXT),
+	GL_REG_EXT_FBO(glCheckFramebufferStatusEXT),
+	GL_REG_EXT_FBO(glFramebufferTexture1DEXT),
+	GL_REG_EXT_FBO(glFramebufferTexture2DEXT),
+	GL_REG_EXT_FBO(glFramebufferTexture3DEXT),
+	GL_REG_EXT_FBO(glFramebufferRenderbufferEXT),
+	GL_REG_EXT_FBO(glGetFramebufferAttachmentParameterivEXT),
+	GL_REG_EXT_FBO(glGenerateMipmapEXT),
+
+	/* stop list */
 	{NULL,NULL,NULL}
 };
 
@@ -71,7 +106,23 @@ VZGLEXT_API void (WINAPI *glDeleteBuffers)(GLsizei, GLuint *) = NULL;
 VZGLEXT_API unsigned char (WINAPI *glUnmapBuffer)(GLenum) = NULL;
 VZGLEXT_API void (WINAPI *glBufferData)(GLenum, GLuint , const GLvoid *, GLenum) = NULL;
 VZGLEXT_API GLvoid* (WINAPI * glMapBuffer)(GLenum, GLenum) = NULL;
-
+VZGLEXT_API GLuint  (WINAPI *glIsRenderbufferEXT)(GLuint renderbuffer) = NULL;
+VZGLEXT_API void (WINAPI *glBindRenderbufferEXT)(GLenum target, GLuint renderbuffer) = NULL;
+VZGLEXT_API void (WINAPI *glDeleteRenderbuffersEXT)(GLsizei n, GLenum, GLuint *renderbuffers) = NULL;
+VZGLEXT_API void (WINAPI *glGenRenderbuffersEXT)(GLsizei n, GLuint *renderbuffers) = NULL;
+VZGLEXT_API void (WINAPI *glRenderbufferStorageEXT)(GLenum target, GLenum internalformat, GLsizei width, GLsizei height) = NULL;
+VZGLEXT_API void (WINAPI *glGetRenderbufferParameterivEXT)(GLenum target, GLenum pname, int *params) = NULL;
+VZGLEXT_API GLuint (WINAPI *glIsFramebufferEXT)(GLuint framebuffer) = NULL;
+VZGLEXT_API void (WINAPI *glBindFramebufferEXT)(GLenum target, GLuint framebuffer) = NULL;
+VZGLEXT_API void (WINAPI *glDeleteFramebuffersEXT)(GLsizei n, const GLuint *framebuffers) = NULL;
+VZGLEXT_API void (WINAPI *glGenFramebuffersEXT)(GLsizei n, GLuint *framebuffers) = NULL;
+VZGLEXT_API GLuint  (WINAPI *glCheckFramebufferStatusEXT)(GLenum target) = NULL;
+VZGLEXT_API void (WINAPI *glFramebufferTexture1DEXT)(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, int level) = NULL;
+VZGLEXT_API void (WINAPI *glFramebufferTexture2DEXT)(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, int level) = NULL;
+VZGLEXT_API void (WINAPI *glFramebufferTexture3DEXT)(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, int level, int zoffset) = NULL;
+VZGLEXT_API void (WINAPI *glFramebufferRenderbufferEXT)(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer) = NULL;
+VZGLEXT_API void (WINAPI *glGetFramebufferAttachmentParameterivEXT)(GLenum target, GLenum attachment, GLenum pname, int *params) = NULL;
+VZGLEXT_API void (WINAPI *glGenerateMipmapEXT)(GLenum target) = NULL;
 
 // function
 VZGLEXT_API void vzGlExtInit()

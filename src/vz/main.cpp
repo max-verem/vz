@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-02-24:
+		*FBO using.
+
 	2006-12-04:
 		*screenshot dumping feature reintroducing.
 
@@ -199,10 +202,136 @@ static unsigned long WINAPI sync_render(void* data)
 	};
 };
 
+#define RENDER_TO_FBO
+
+#ifdef RENDER_TO_FBO
+static unsigned int fbo_index, fbo_fb, fbo_stencil_rb, fbo_color_tex[2], 
+	fbo_depth_rb, fbo_stencil_depth_rb, fbo_bg_tex, fbo_blend_dst_alpha;
+#include "fb_bg_text_data.h"
+void init_fbo()
+{	
+/*
+	http://developer.apple.com/documentation/GraphicsImaging/Conceptual/OpenGL-MacProgGuide/opengl_offscreen/chapter_5_section_5.html
+	http://www.gamedev.net/community/forums/topic.asp?topic_id=356364&whichpage=1&#2337640
+	http://www.gamedev.ru/community/opengl/articles/framebuffer_object?page=3
+	http://www.opengl.org/registry/specs/EXT/packed_depth_stencil.txt
+*/
+	
+//#define CHECKSTATUS 
+#ifndef CHECKSTATUS
+	int status;
+	int er;
+#define CHECKSTATUS er = glGetError(); status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+#endif /* CHECKSTATUS */
+
+	glGenFramebuffersEXT(1, &fbo_fb);
+
+	CHECKSTATUS;
+
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_fb);
+
+	// initialize color texture
+	for(int i = 0; i<2; i++)
+	{
+
+		glGenTextures(1, &fbo_color_tex[i]);
+		glBindTexture(GL_TEXTURE_2D, fbo_color_tex[i]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexImage2D
+		(
+			GL_TEXTURE_2D, 
+			0, 
+			GL_RGBA8, 
+			1024, 1024, 
+			0, 
+			GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
+			NULL
+		);
+		CHECKSTATUS;
+
+		glFramebufferTexture2DEXT
+		(
+			GL_FRAMEBUFFER_EXT, 
+			GL_COLOR_ATTACHMENT0_EXT + i, 
+			GL_TEXTURE_2D, 
+			fbo_color_tex[i], 
+			0
+		);
+		CHECKSTATUS;
+	};
+
+	CHECKSTATUS;
+
+	glGenRenderbuffersEXT(1, &fbo_stencil_depth_rb);
+	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo_stencil_depth_rb);
+	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, 1024, 1024);
+	CHECKSTATUS;
+	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,  GL_RENDERBUFFER_EXT, fbo_stencil_depth_rb);
+	CHECKSTATUS;
+	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_stencil_depth_rb);
+	CHECKSTATUS;
+
+/*
+	glGenTextures(1, &fbo_stencil_depth_rb);
+	glBindTexture(GL_TEXTURE_2D, fbo_stencil_depth_rb);
+	glTexImage2D
+	(
+		GL_TEXTURE_2D, 
+		0, 
+		GL_DEPTH24_STENCIL8_EXT, 
+		1024, 1024, 
+		0, 
+		GL_DEPTH_STENCIL_EXT, 
+		GL_UNSIGNED_INT_24_8_EXT, 
+		NULL
+	);
+	CHECKSTATUS;
+	// connect a depth stencil texture
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT , fbo_stencil_depth_rb, 0);
+	CHECKSTATUS; 
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT , fbo_stencil_depth_rb, 0);
+	CHECKSTATUS;
+*/
+
+
+	/* create background texture */
+	glGenTextures(1, &fbo_bg_tex);
+	glBindTexture(GL_TEXTURE_2D, fbo_bg_tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D
+	(
+		GL_TEXTURE_2D, 
+		0, 
+		GL_RGBA8, 
+		16, 16, 
+		0, 
+		GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
+		fb_bg_text_data
+	);
+
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	fbo_index = 0;
+	glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo_index) );
+	glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo_index) );
+
+	CHECKSTATUS;
+
+	/* save rendering order */
+	fbo_blend_dst_alpha = (vzConfigParam(config,"vzMain","blend_dst_alpha"))?1:0;
+};
+#endif /* RENDER_TO_FBO */
+
 
 /*----------------------------------------------------------
 	GLUT operatives
 ----------------------------------------------------------*/
+
 static long render_time = 0;
 static long rendered_frames = 0;
 static long last_title_update = 0;
@@ -231,7 +360,6 @@ static void vz_glut_display(void)
 		)
 	)
 		force_render = 1;
-
 
 	while(force_render)
 	{
@@ -269,29 +397,105 @@ static void vz_glut_display(void)
 		if(output_module)
 			vzOuputPostRender(output_module);
 
-#ifdef RENDER_TO_AUX_BUFFERS
-		/* fist case */
-		if(1 == rendered_frames)
-		{glReadBuffer (GL_AUX0); glDrawBuffer (GL_AUX1);};
+#ifdef RENDER_TO_FBO
 
-		/* copy pixels */
-		int b1,b2;
+		/* unbind buffer */
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-		glGetIntegerv(GL_DRAW_BUFFER, &b1);
-		glGetIntegerv(GL_READ_BUFFER, &b2);
+		/* draw front */
+//		glDrawBuffer (GL_BACK);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT /*| GL_STENCIL_BUFFER_BIT */); 
+		
+		/* draw texture */
+		{
+			float X, Y;
 
-		/* copy to front */
-		glReadBuffer (b1); glDrawBuffer (GL_FRONT); 
-		glClear(GL_COLOR_BUFFER_BIT); glCopyPixels (0,0,tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT,GL_COLOR);
+			// begin drawing
+			glEnable(GL_TEXTURE_2D);
 
-		/* swap buffers */
-		glDrawBuffer (b2);
-		glReadBuffer (b1); 
+			for(int j = 0; j<2; j++)
+			{
+				if
+				(
+					(0 == j)&&(0 != fbo_blend_dst_alpha)
+					||
+					(0 != j)&&(0 == fbo_blend_dst_alpha)
+				)
+				{
+					/* draw rendered image */
 
-#endif /* RENDER_TO_AUX_BUFFERS */
+					X = 0.0f, Y = 0.0f;
+					glBindTexture(GL_TEXTURE_2D, fbo_color_tex[fbo_index]);
+
+					// Draw a quad (ie a square)
+					glBegin(GL_QUADS);
+
+					glColor4f(1.0f,1.0f,1.0f,1.0f);
+
+					glTexCoord2f(0.0f, 0.0f);
+					glVertex3f(X, Y, 0.0f);
+
+					glTexCoord2f(0.0f, 1.0f);
+					glVertex3f(X, Y + 1024.0f, 0.0f);
+
+					glTexCoord2f(1.0f, 1.0f);
+					glVertex3f(X + 1024.0f, Y + 1024.0f, 0.0f);
+
+					glTexCoord2f(1.0f, 0.0f);
+					glVertex3f(X + 1024.0f, Y, 0.0f);
+
+					glEnd(); // Stop drawing QUADS
+
+					glBindTexture(GL_TEXTURE_2D, 0);
+				}
+				else
+				{	
+					/* draw background */
+
+					X = 0.0f, Y = 0.0f;
+					glBindTexture(GL_TEXTURE_2D, fbo_bg_tex);
+
+					// Draw a quad (ie a square)
+					glBegin(GL_QUADS);
+
+					glColor4f(1.0f,1.0f,1.0f,1.0f);
+
+					glTexCoord2f(0.0f, 0.0f);
+					glVertex3f(X, Y, 0.0f);
+
+					glTexCoord2f(0.0f, 576.0f / 16.0f);
+					glVertex3f(X, Y + 576.0f, 0.0f);
+
+					glTexCoord2f(720.0f / 16.0f, 576.0f / 16.0f);
+					glVertex3f(X + 720.0f, Y + 576.0f, 0.0f);
+
+					glTexCoord2f(720.0f / 16.0f, 0.0f);
+					glVertex3f(X + 720.0f, Y, 0.0f);
+
+					glEnd(); // Stop drawing QUADS
+
+					glBindTexture(GL_TEXTURE_2D, 0);
+				};
+			};
+
+			glDisable(GL_TEXTURE_2D);
+		};
 
 		// and swap buffers
 		glutSwapBuffers();
+
+		/* swap buffers */
+		fbo_index = 1 - fbo_index;
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_fb);
+		glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo_index) );
+		glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo_index) );
+
+#else /* RENDER_TO_FBO */
+
+		// and swap buffers
+		glutSwapBuffers();
+
+#endif /* RENDER_TO_FBO */
 
 		// save time of draw start
 		long draw_stop_time = timeGetTime();
@@ -403,7 +607,14 @@ static void vz_glut_start(int argc, char** argv)
 	printf("main: Initialization GLUT...\n");
 
 	glutInit(&argc, argv);
-	glutInitDisplayMode (GLUT_RGBA | GLUT_DOUBLE | GLUT_STENCIL | GLUT_ALPHA | ((multisampling)?GLUT_MULTISAMPLE:0) );
+	glutInitDisplayMode
+	(
+		GLUT_RGBA 
+		| GLUT_DOUBLE
+		| GLUT_STENCIL 
+		| GLUT_ALPHA 
+		| ((multisampling)?GLUT_MULTISAMPLE:0) 
+	);
 
 	glutInitWindowSize (tv.TV_FRAME_WIDTH, tv.TV_FRAME_HEIGHT); 
 	glutInitWindowPosition (10, 10);
@@ -447,6 +658,12 @@ static void vz_glut_start(int argc, char** argv)
 	glutKeyboardFunc(vz_glut_keyboard);
 	glutIdleFunc(vz_glut_idle);
 	printf("OK\n");
+
+#ifdef RENDER_TO_FBO
+	/* check if need to init fbo */
+	init_fbo();
+#endif /* RENDER_TO_FBO */
+
 
 	printf("Main Loop starting...\n");
 

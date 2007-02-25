@@ -535,7 +535,6 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			glBegin(GL_QUADS);
 			glColor4f(1.0f,1.0f,1.0f,session->f_alpha);
 
-
 			/* (0,0) */
 			glTexCoord2f
 			(

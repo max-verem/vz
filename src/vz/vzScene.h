@@ -74,8 +74,7 @@ class vzScene
 
 	// use fields based
 	long _fields;
-	int _GL_AUX_BUFFERS;
-	void* _stencil;
+	long _stencil_done;
 
 	void draw(long frame,long field,long fill,long key,long order);
 

@@ -102,6 +102,7 @@ ChangeLog:
 static const unsigned short tag_tree[] = {'t', 'r', 'e', 'e',0};
 static const unsigned short tag_motion[] = {'m', 'o', 't', 'i', 'o', 'n',0};
 
+static unsigned int _stencil_tex;
 
 vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 {
@@ -111,32 +112,13 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 	_tree = NULL;
 	_motion = NULL;
 	_lock_for_command = CreateMutex(NULL,FALSE,NULL);
-	_GL_AUX_BUFFERS = -1;
+	_stencil_done = 0;
 
 	// parameters from config
 	_enable_glBlendFuncSeparateEXT = (_config->param("vzMain","enable_glBlendFuncSeparateEXT"))?1:0;
 	_enable_GL_SRC_ALPHA_SATURATE = (_config->param("vzMain","enable_GL_SRC_ALPHA_SATURATE"))?1:0;
 	_blend_dst_alpha = (_config->param("vzMain","blend_dst_alpha"))?1:0;
 	_fields = (_config->param("vzMain","fields"))?1:0;
-	_stencil = malloc(_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
-
-	// build 8-bit stencil buffers
-	if(_fields)
-	{
-		// prepare interlaced 8-bit stencil buffer
-		for(int i=0,f=1 - _tv->TV_FRAME_1ST;i<_tv->TV_FRAME_HEIGHT;i++,f=1-f)
-			memset
-			(
-				((unsigned char*)_stencil) + i*_tv->TV_FRAME_WIDTH,
-				1<<f,
-				_tv->TV_FRAME_WIDTH
-			);
-	}	 
-	else
-	{
-		// prepare non interlaces
-		memset(_stencil,1 ,_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT);
-	};
 };
 
 
@@ -237,7 +219,6 @@ vzScene::~vzScene()
 	CloseHandle(_lock_for_command);
 	if(_tree) delete _tree;
 	if(_motion) delete _motion;
-	if(_stencil) free(_stencil);
 };
 
 
@@ -248,9 +229,9 @@ void vzScene::display(long frame)
 
 
 	// Clear The Screen And The Depth Buffer
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glClearColor(0.0, 0.0, 0.0, 0.0);
-  //  glClearStencil( 0x1 );
+
 	// Reset The View
 	glLoadIdentity();										
 
@@ -264,21 +245,76 @@ void vzScene::display(long frame)
 	glEnable(GL_ALPHA_TEST);
 	glAlphaFunc(GL_NOTEQUAL,0);//glAlphaFunc(GL_LEQUAL,1);
 
-	// setup base stencil buffer
-	if(_stencil)
+
+	/* setup stencil */
+	if(0 == _fields)
 	{
+		/* setup stencil buffer if no fields */
 		glStencilMask(0xFF);
-		// set stencil buffer from memmory
-		glDrawPixels
-		(
-			_tv->TV_FRAME_WIDTH,
-			_tv->TV_FRAME_HEIGHT,
-			GL_STENCIL_INDEX,
-			GL_UNSIGNED_BYTE,
-			_stencil
-		);
-		free(_stencil);
-		_stencil = NULL;
+		glClearStencil( 0x00 );
+		glClear(GL_STENCIL_BUFFER_BIT);
+	}
+	else
+	{
+		// setup interlaced stencil buffer
+		if(!(_stencil_done))
+		{
+			glStencilMask(0xFF);
+			glClearStencil( 2 - _tv->TV_FRAME_1ST );
+			glClear(GL_STENCIL_BUFFER_BIT);
+
+			glStencilFunc(GL_NEVER, 1 + _tv->TV_FRAME_1ST, 3);
+			glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
+
+			unsigned int tex, tex_data = 0xFFFFFFFF;
+
+			glGenTextures(1, &tex);
+			glBindTexture(GL_TEXTURE_2D, tex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexImage2D
+			(
+				GL_TEXTURE_2D, 
+				0, 
+				GL_RGBA8, 
+				1, 1, 
+				0, 
+				GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
+				&tex_data
+			);
+
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, tex);
+
+			for(float X = 0.0f, Y = 1.0f , W = 1024.0f, H = 1.0f; Y < 720.0f; Y += 2)
+			{
+
+				// Draw a quad (ie a square)
+				glBegin(GL_QUADS);
+
+				glTexCoord2f(0.0f, 0.0f);
+				glVertex3f(X, Y , 0.0f);
+
+				glTexCoord2f(0.0f, 1.0f);
+				glVertex3f(X, Y + H, 0.0f);
+
+				glTexCoord2f(1.0f, 1.0f);
+				glVertex3f(X + W, Y + H, 0.0f);
+
+				glTexCoord2f(1.0f, 0.0f);
+				glVertex3f(X + W, Y, 0.0f);
+
+				glEnd(); // Stop drawing QUADS
+			};
+
+			glDisable(GL_TEXTURE_2D);
+
+			glDeleteTextures(1, &tex);
+
+			_stencil_done = 1;
+		};
 	};
 
 	// draw fields/frame
