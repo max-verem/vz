@@ -202,11 +202,8 @@ static unsigned long WINAPI sync_render(void* data)
 	};
 };
 
-#define RENDER_TO_FBO
-
-#ifdef RENDER_TO_FBO
 static unsigned int fbo_index, fbo_fb, fbo_stencil_rb, fbo_color_tex[2], 
-	fbo_depth_rb, fbo_stencil_depth_rb, fbo_bg_tex, fbo_blend_dst_alpha;
+	fbo_depth_rb, fbo_stencil_depth_rb, fbo_bg_tex;
 #include "fb_bg_text_data.h"
 void init_fbo()
 {	
@@ -272,29 +269,6 @@ void init_fbo()
 	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_stencil_depth_rb);
 	CHECKSTATUS;
 
-/*
-	glGenTextures(1, &fbo_stencil_depth_rb);
-	glBindTexture(GL_TEXTURE_2D, fbo_stencil_depth_rb);
-	glTexImage2D
-	(
-		GL_TEXTURE_2D, 
-		0, 
-		GL_DEPTH24_STENCIL8_EXT, 
-		1024, 1024, 
-		0, 
-		GL_DEPTH_STENCIL_EXT, 
-		GL_UNSIGNED_INT_24_8_EXT, 
-		NULL
-	);
-	CHECKSTATUS;
-	// connect a depth stencil texture
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT , fbo_stencil_depth_rb, 0);
-	CHECKSTATUS; 
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT , fbo_stencil_depth_rb, 0);
-	CHECKSTATUS;
-*/
-
-
 	/* create background texture */
 	glGenTextures(1, &fbo_bg_tex);
 	glBindTexture(GL_TEXTURE_2D, fbo_bg_tex);
@@ -321,11 +295,8 @@ void init_fbo()
 	glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo_index) );
 
 	CHECKSTATUS;
-
-	/* save rendering order */
-	fbo_blend_dst_alpha = (vzConfigParam(config,"vzMain","blend_dst_alpha"))?1:0;
 };
-#endif /* RENDER_TO_FBO */
+
 
 
 /*----------------------------------------------------------
@@ -397,8 +368,6 @@ static void vz_glut_display(void)
 		if(output_module)
 			vzOuputPostRender(output_module);
 
-#ifdef RENDER_TO_FBO
-
 		/* unbind buffer */
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
@@ -413,72 +382,65 @@ static void vz_glut_display(void)
 			// begin drawing
 			glEnable(GL_TEXTURE_2D);
 
-			for(int j = 0; j<2; j++)
-			{
-				if
-				(
-					(0 == j)&&(0 != fbo_blend_dst_alpha)
-					||
-					(0 != j)&&(0 == fbo_blend_dst_alpha)
-				)
-				{
-					/* draw rendered image */
 
-					X = 0.0f, Y = 0.0f;
-					glBindTexture(GL_TEXTURE_2D, fbo_color_tex[fbo_index]);
+			/* draw rendered image */
 
-					// Draw a quad (ie a square)
-					glBegin(GL_QUADS);
+			X = 0.0f, Y = 0.0f;
+			glBindTexture(GL_TEXTURE_2D, fbo_color_tex[fbo_index]);
 
-					glColor4f(1.0f,1.0f,1.0f,1.0f);
+			// Draw a quad (ie a square)
+			glBegin(GL_QUADS);
 
-					glTexCoord2f(0.0f, 0.0f);
-					glVertex3f(X, Y, 0.0f);
+			glColor4f(1.0f,1.0f,1.0f,1.0f);
 
-					glTexCoord2f(0.0f, 1.0f);
-					glVertex3f(X, Y + 1024.0f, 0.0f);
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex3f(X, Y, 0.0f);
 
-					glTexCoord2f(1.0f, 1.0f);
-					glVertex3f(X + 1024.0f, Y + 1024.0f, 0.0f);
+			glTexCoord2f(0.0f, 1.0f);
+			glVertex3f(X, Y + 1024.0f, 0.0f);
 
-					glTexCoord2f(1.0f, 0.0f);
-					glVertex3f(X + 1024.0f, Y, 0.0f);
+			glTexCoord2f(1.0f, 1.0f);
+			glVertex3f(X + 1024.0f, Y + 1024.0f, 0.0f);
 
-					glEnd(); // Stop drawing QUADS
+			glTexCoord2f(1.0f, 0.0f);
+			glVertex3f(X + 1024.0f, Y, 0.0f);
 
-					glBindTexture(GL_TEXTURE_2D, 0);
-				}
-				else
-				{	
-					/* draw background */
+			glEnd(); // Stop drawing QUADS 
 
-					X = 0.0f, Y = 0.0f;
-					glBindTexture(GL_TEXTURE_2D, fbo_bg_tex);
+			glBindTexture(GL_TEXTURE_2D, 0);
 
-					// Draw a quad (ie a square)
-					glBegin(GL_QUADS);
 
-					glColor4f(1.0f,1.0f,1.0f,1.0f);
+			/* draw background */
 
-					glTexCoord2f(0.0f, 0.0f);
-					glVertex3f(X, Y, 0.0f);
+			X = 0.0f, Y = 0.0f;
+			glBindTexture(GL_TEXTURE_2D, fbo_bg_tex);
 
-					glTexCoord2f(0.0f, 576.0f / 16.0f);
-					glVertex3f(X, Y + 576.0f, 0.0f);
+			// Draw a quad (ie a square)
+			glBegin(GL_QUADS);
 
-					glTexCoord2f(720.0f / 16.0f, 576.0f / 16.0f);
-					glVertex3f(X + 720.0f, Y + 576.0f, 0.0f);
+			glColor4f(1.0f,1.0f,1.0f,1.0f);
 
-					glTexCoord2f(720.0f / 16.0f, 0.0f);
-					glVertex3f(X + 720.0f, Y, 0.0f);
+			glTexCoord2f(0.0f, 0.0f);
+			glVertex3f(X, Y, 0.0f);
 
-					glEnd(); // Stop drawing QUADS
+			glTexCoord2f(0.0f, 576.0f / 16.0f);
+			glVertex3f(X, Y + 576.0f, 0.0f);
 
-					glBindTexture(GL_TEXTURE_2D, 0);
-				};
-			};
+			glTexCoord2f(720.0f / 16.0f, 576.0f / 16.0f);
+			glVertex3f(X + 720.0f, Y + 576.0f, 0.0f);
+
+			glTexCoord2f(720.0f / 16.0f, 0.0f);
+			glVertex3f(X + 720.0f, Y, 0.0f);
+
+			glEnd(); // Stop drawing QUADS
+
+			glBindTexture(GL_TEXTURE_2D, 0);
+
+
+
 
 			glDisable(GL_TEXTURE_2D);
+
 		};
 
 		// and swap buffers
@@ -489,13 +451,6 @@ static void vz_glut_display(void)
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_fb);
 		glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo_index) );
 		glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo_index) );
-
-#else /* RENDER_TO_FBO */
-
-		// and swap buffers
-		glutSwapBuffers();
-
-#endif /* RENDER_TO_FBO */
 
 		// save time of draw start
 		long draw_stop_time = timeGetTime();
@@ -659,11 +614,8 @@ static void vz_glut_start(int argc, char** argv)
 	glutIdleFunc(vz_glut_idle);
 	printf("OK\n");
 
-#ifdef RENDER_TO_FBO
 	/* check if need to init fbo */
 	init_fbo();
-#endif /* RENDER_TO_FBO */
-
 
 	printf("Main Loop starting...\n");
 

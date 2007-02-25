@@ -21,6 +21,11 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-02-25:
+		*interlaced stencil buffer has new scheme to build.
+		*dropped variants about 'blend_dst_alpha', 'enable_glBlendFuncSeparateEXT'.
+		GL_SRC_ALPHA_SATURATE options is under investigation.
+
 	2007-02-19:
 		*binary coded command execution added.
 
@@ -115,9 +120,7 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 	_stencil_done = 0;
 
 	// parameters from config
-	_enable_glBlendFuncSeparateEXT = (_config->param("vzMain","enable_glBlendFuncSeparateEXT"))?1:0;
 	_enable_GL_SRC_ALPHA_SATURATE = (_config->param("vzMain","enable_GL_SRC_ALPHA_SATURATE"))?1:0;
-	_blend_dst_alpha = (_config->param("vzMain","blend_dst_alpha"))?1:0;
 	_fields = (_config->param("vzMain","fields"))?1:0;
 };
 
@@ -251,7 +254,7 @@ void vzScene::display(long frame)
 	{
 		/* setup stencil buffer if no fields */
 		glStencilMask(0xFF);
-		glClearStencil( 0x00 );
+		glClearStencil( 0x03 );
 		glClear(GL_STENCIL_BUFFER_BIT);
 	}
 	else
@@ -344,96 +347,37 @@ void vzScene::display(long frame)
 
 		// DRAW FRAME
 
-		// if Separate function supported
-		if ((glBlendFuncSeparateEXT) && (_enable_glBlendFuncSeparateEXT))
+		/* configure blending function */
+		if(!(_enable_GL_SRC_ALPHA_SATURATE))
 		{
-			// Separate function supported
-			// change blending mode!
-			if (!(_blend_dst_alpha))
-			{
-				glBlendFuncSeparateEXT
-				(
-					GL_SRC_ALPHA,
-					GL_ONE_MINUS_SRC_ALPHA,
-					GL_SRC_ALPHA_SATURATE,
-					GL_ONE
-				);
-			}
-			else
-			{
-				if(!(_enable_GL_SRC_ALPHA_SATURATE))
-				{
-					/*	BEST #1 */
-					glBlendFuncSeparateEXT
-					(
-						GL_ONE_MINUS_DST_ALPHA,
-						GL_DST_ALPHA,
-						GL_ONE_MINUS_DST_ALPHA,
-						GL_ONE
-					);
-				}
-				else
-				{
-					/* BEST #2 */
-					glBlendFuncSeparateEXT
-					(
-						GL_ONE_MINUS_DST_ALPHA,
-						GL_DST_ALPHA,
-						GL_SRC_ALPHA_SATURATE,
-						GL_ONE
-					);
-				};
-			};
-			// draw
-			draw(frame,field,1,1,(_blend_dst_alpha)?0:1);
+			/*	BEST #1 */
+			glBlendFuncSeparateEXT
+			(
+				GL_ONE_MINUS_DST_ALPHA,
+				GL_DST_ALPHA,
+				GL_ONE_MINUS_DST_ALPHA,
+				GL_ONE
+			);
 		}
 		else
 		{
-			// separate function not supported
-			// draw separate alpha and fill
-
-			if (!(_blend_dst_alpha))
-			{	
-				// source alpha
-				glBlendFunc(GL_SRC_ALPHA_SATURATE, GL_ONE);
-				glColorMask(0,0,0,1); 
-				draw(frame,field,0,1,1);
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				glColorMask(1,1,1,0);
-				draw(frame,field,1,0,1);
-				glColorMask(1,1,1,1);
-			}
-			else
-			{
-
-				// draw with destination
-				glColorMask(1,1,1,1);
-				glClearColor(0.0, 0.0, 0.0, 0.0);
-				glClear(GL_COLOR_BUFFER_BIT);
-				glBlendFunc(GL_ONE_MINUS_DST_ALPHA,GL_DST_ALPHA);
-				draw(frame,field,1,1,0);
-				// clear rendered alpha
-				glColorMask(0,0,0,1);
-				glClearColor(0.0, 0.0, 0.0, 0.0);
-				glClear(GL_COLOR_BUFFER_BIT);
-				// draw alpha lpha channel
-				glBlendFunc(GL_SRC_ALPHA_SATURATE, GL_ONE);
-				draw(frame,field,0,1,0);
-				glColorMask(1,1,1,1);
-			};
+			/* BEST #2 */
+			glBlendFuncSeparateEXT
+			(
+				GL_ONE_MINUS_DST_ALPHA,
+				GL_DST_ALPHA,
+				GL_SRC_ALPHA_SATURATE,
+				GL_ONE
+			);
 		};
+		
+		/* draw */
+		draw(frame,field,1,1, 0);
 	};
 
 	// disable some features
 	glDisable( GL_STENCIL_TEST );
 	glDisable( GL_ALPHA_TEST );
-
-
-	// flush all
-//    glFlush();
-
-	// and swap pages
-//	glutSwapBuffers();
 
 	ReleaseMutex(_lock_for_command);
 };
