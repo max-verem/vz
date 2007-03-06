@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-03-06:
+		*GLUT goodbye!
+
 	2007-02-24:
 		*FBO using.
 
@@ -65,6 +68,9 @@ ChangeLog:
 #include "tcpserver.h"
 #include "serserver.h"
 
+
+#pragma comment(lib, "winmm.lib")
+
 /*
 ----------------------------------------------------------
 	Main Program Info
@@ -92,9 +98,9 @@ void* functions = NULL; // list of loaded function
 void* output_module = NULL; // output module
 char start_path[1024];
 char* application;
-//int main_stage;
 char screenshot_file[1024];
-//int use_offscreen_buffer = 0;
+
+/* -------------------------------------------------------- */
 
 static void timestamp_screenshot()
 {
@@ -120,11 +126,26 @@ static void timestamp_screenshot()
 /* ----------------------------------------------------------
 	Sync rendering & frame counting
 ---------------------------------------------------------- */
+
+static struct
+{
+	HINSTANCE instance;
+	HDC hdc;
+	HWND wnd;
+	HGLRC glrc;
+	HANDLE lock;
+	int f_exit;
+} vz_window_desc;
+
 static HANDLE global_frame_event;
 static unsigned long global_frame_no = 0;
 //static unsigned long stop_global_frames_counter = 0;
 static long skip_draw = 0;
 static long not_first_at = 0;
+
+/*----------------------------------------------------------
+	sync srcs
+----------------------------------------------------------*/
 static unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
 {
 	frames_counter_proc fc = (frames_counter_proc)fc_proc_addr;
@@ -135,10 +156,6 @@ static unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
 		// sleep
 		Sleep(tv.TV_FRAME_DUR_MS);
 
-#ifdef DEBUG_HARD_SYNC
-		printf("[%-10d] internal_sync_generator\n", timeGetTime());
-#endif /* DEBUG_HARD_SYNC */
-
 		// call frame counter
 		if (fc) fc();
 	};
@@ -146,10 +163,6 @@ static unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
 
 static void frames_counter()
 {
-#ifdef DEBUG_HARD_SYNC
-printf("[%-10d] frames_counter\n", timeGetTime());
-#endif /* DEBUG_HARD_SYNC */
-
 	// reset event
 	ResetEvent(global_frame_event);
 
@@ -160,51 +173,51 @@ printf("[%-10d] frames_counter\n", timeGetTime());
 	PulseEvent(global_frame_event);
 };
 
+/*----------------------------------------------------------
+	render loop
+----------------------------------------------------------*/
+static void vz_scene_render(void);
+static void vz_scene_display(void);
 static unsigned long WINAPI sync_render(void* data)
 {
-	int r,p;
-
-	while(1)
+	while(!vz_window_desc.f_exit)
 	{
-		p = 0;
-		r = WaitForSingleObject(global_frame_event, 15) ;/* INFINITE); */
-		if(WAIT_OBJECT_0 == r)
-			p = 1;
-		else
+		if(WAIT_OBJECT_0 == WaitForSingleObject(global_frame_event, INFINITE))
 		{
-			if
-			(
-				(NULL != output_module)
-				&&
-				(vzOuputRenderSlots(output_module) > 0)
-			)
-				p = 1;
-		};
-
-		/* check if we need to pulse */
-		if(p)
-		{
-			ResetEvent(global_frame_event);
-
-#ifdef DEBUG_HARD_SYNC
-			printf("[%-10d] sync_render\n", timeGetTime());
-#endif /* DEBUG_HARD_SYNC */
-
+			/* render picture */
 			if(not_first_at)
 			{
 				// reset flag of forcing redraw
 				skip_draw = 0;
 
 				// notify about redisplay
-				glutPostRedisplay();
+				vz_scene_render();
 			};
+
+			/* notify to redraw bg or direct render screen */
+			vz_scene_display();
 		};
 	};
+
+	return 0;
 };
 
-static unsigned int fbo_index, fbo_fb, fbo_stencil_rb, fbo_color_tex[2], 
-	fbo_depth_rb, fbo_stencil_depth_rb, fbo_bg_tex;
+/*----------------------------------------------------------
+	FBO init/setup
+----------------------------------------------------------*/
 #include "fb_bg_text_data.h"
+
+static struct
+{
+	unsigned int index;
+	unsigned int fb;
+	unsigned int stencil_rb;
+	unsigned int color_tex[2];
+	unsigned int depth_rb;
+	unsigned int stencil_depth_rb;
+	unsigned int bg_tex;
+} fbo;
+
 void init_fbo()
 {	
 /*
@@ -214,25 +227,16 @@ void init_fbo()
 	http://www.opengl.org/registry/specs/EXT/packed_depth_stencil.txt
 */
 	
-//#define CHECKSTATUS 
-#ifndef CHECKSTATUS
-	int status;
-	int er;
-#define CHECKSTATUS er = glGetError(); status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-#endif /* CHECKSTATUS */
+	glGenFramebuffersEXT(1, &fbo.fb);
 
-	glGenFramebuffersEXT(1, &fbo_fb);
-
-	CHECKSTATUS;
-
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_fb);
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb);
 
 	// initialize color texture
 	for(int i = 0; i<2; i++)
 	{
 
-		glGenTextures(1, &fbo_color_tex[i]);
-		glBindTexture(GL_TEXTURE_2D, fbo_color_tex[i]);
+		glGenTextures(1, &fbo.color_tex[i]);
+		glBindTexture(GL_TEXTURE_2D, fbo.color_tex[i]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexImage2D
@@ -245,33 +249,26 @@ void init_fbo()
 			GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
 			NULL
 		);
-		CHECKSTATUS;
 
 		glFramebufferTexture2DEXT
 		(
 			GL_FRAMEBUFFER_EXT, 
 			GL_COLOR_ATTACHMENT0_EXT + i, 
 			GL_TEXTURE_2D, 
-			fbo_color_tex[i], 
+			fbo.color_tex[i], 
 			0
 		);
-		CHECKSTATUS;
 	};
 
-	CHECKSTATUS;
-
-	glGenRenderbuffersEXT(1, &fbo_stencil_depth_rb);
-	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo_stencil_depth_rb);
+	glGenRenderbuffersEXT(1, &fbo.stencil_depth_rb);
+	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
 	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, 1024, 1024);
-	CHECKSTATUS;
-	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,  GL_RENDERBUFFER_EXT, fbo_stencil_depth_rb);
-	CHECKSTATUS;
-	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_stencil_depth_rb);
-	CHECKSTATUS;
+	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,  GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
+	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
 
 	/* create background texture */
-	glGenTextures(1, &fbo_bg_tex);
-	glBindTexture(GL_TEXTURE_2D, fbo_bg_tex);
+	glGenTextures(1, &fbo.bg_tex);
+	glBindTexture(GL_TEXTURE_2D, fbo.bg_tex);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -290,31 +287,42 @@ void init_fbo()
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	fbo_index = 0;
-	glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo_index) );
-	glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo_index) );
-
-	CHECKSTATUS;
+	fbo.index = 0;
+	glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) );
+	glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) );
 };
 
 
-
 /*----------------------------------------------------------
-	GLUT operatives
+	main OpenGL operations
 ----------------------------------------------------------*/
 
 static long render_time = 0;
 static long rendered_frames = 0;
 static long last_title_update = 0;
 
-static void vz_glut_display(void)
+static void vz_scene_render(void)
 {
 	int force_render = 0, force_rendered = 0;
+
+	/* check if extensions loaded */
+	if(!(glExtInitDone)) 
+		return;
 
 	// check if redraw should processed
 	// by internal needs
 	if (skip_draw)
 		return;
+
+	WaitForSingleObject(vz_window_desc.lock, INFINITE);
+	if(0 == wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc))
+	{
+		DWORD err = GetLastError();
+		wglMakeCurrent(NULL, NULL);
+		ReleaseMutex(vz_window_desc.lock);
+		return;
+	};
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb);
 
 	// scene redrawed
 	skip_draw = 1;
@@ -341,10 +349,6 @@ static void vz_glut_display(void)
 		// save time of draw start
 		long draw_start_time = timeGetTime();
 
-#ifdef DEBUG_HARD_SYNC
-		printf("[%-10d] vz_glut_display\n", timeGetTime());
-#endif /* DEBUG_HARD_SYNC */
-
 		// output module tricks
 		if(output_module)
 			vzOuputPreRender(output_module);
@@ -368,103 +372,9 @@ static void vz_glut_display(void)
 		if(output_module)
 			vzOuputPostRender(output_module);
 
-		/* unbind buffer */
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-		/* draw front */
-//		glDrawBuffer (GL_BACK);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT /*| GL_STENCIL_BUFFER_BIT */); 
-		
-		/* draw texture */
-		{
-			float X, Y;
-
-			// begin drawing
-			glEnable(GL_TEXTURE_2D);
-
-
-			/* draw rendered image */
-
-			X = 0.0f, Y = 0.0f;
-			glBindTexture(GL_TEXTURE_2D, fbo_color_tex[fbo_index]);
-
-			// Draw a quad (ie a square)
-			glBegin(GL_QUADS);
-
-			glColor4f(1.0f,1.0f,1.0f,1.0f);
-
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex3f(X, Y, 0.0f);
-
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex3f(X, Y + 1024.0f, 0.0f);
-
-			glTexCoord2f(1.0f, 1.0f);
-			glVertex3f(X + 1024.0f, Y + 1024.0f, 0.0f);
-
-			glTexCoord2f(1.0f, 0.0f);
-			glVertex3f(X + 1024.0f, Y, 0.0f);
-
-			glEnd(); // Stop drawing QUADS 
-
-			glBindTexture(GL_TEXTURE_2D, 0);
-
-
-			/* draw background */
-
-			X = 0.0f, Y = 0.0f;
-			glBindTexture(GL_TEXTURE_2D, fbo_bg_tex);
-
-			// Draw a quad (ie a square)
-			glBegin(GL_QUADS);
-
-			glColor4f(1.0f,1.0f,1.0f,1.0f);
-
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex3f(X, Y, 0.0f);
-
-			glTexCoord2f(0.0f, 576.0f / 16.0f);
-			glVertex3f(X, Y + 576.0f, 0.0f);
-
-			glTexCoord2f(720.0f / 16.0f, 576.0f / 16.0f);
-			glVertex3f(X + 720.0f, Y + 576.0f, 0.0f);
-
-			glTexCoord2f(720.0f / 16.0f, 0.0f);
-			glVertex3f(X + 720.0f, Y, 0.0f);
-
-			glEnd(); // Stop drawing QUADS
-
-			glBindTexture(GL_TEXTURE_2D, 0);
-
-
-
-
-			glDisable(GL_TEXTURE_2D);
-
-		};
-
-		// and swap buffers
-		glutSwapBuffers();
-
-		/* swap buffers */
-		fbo_index = 1 - fbo_index;
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo_fb);
-		glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo_index) );
-		glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo_index) );
-
 		// save time of draw start
 		long draw_stop_time = timeGetTime();
 		render_time = draw_stop_time - draw_start_time;
-
-		// check if we need to make a screenshot
-		if(*screenshot_file)
-		{
-			char* error_log;
-			vzImage* screenshot = vzImageNewFromVB(tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT);
-			vzImageSaveTGA(screenshot_file,screenshot,&error_log);
-			*screenshot_file = 0;
-			vzImageFree(screenshot);
-		};
 
 		ReleaseMutex(scene_lock);
 
@@ -480,15 +390,152 @@ static void vz_glut_display(void)
 		/* check if we need to terminate this loop */
 		if(force_rendered > VZOUTPUT_MAX_BUFS)
 			force_rendered = 0;
+
+		fbo.index = 1 - fbo.index;
+		glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) );
+		glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) );
 	};
+
+	/* unbind conext */
+	wglMakeCurrent(NULL, NULL);
+	ReleaseMutex(vz_window_desc.lock);
+};
+
+static void vz_scene_display(void)
+{
+	float X, Y;
+
+	/* check if extensions loaded */
+	if(!(glExtInitDone)) 
+		return;
+
+	WaitForSingleObject(vz_window_desc.lock, INFINITE);
+	if(0 == wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc))
+	{
+		DWORD err = GetLastError();
+		wglMakeCurrent(NULL, NULL);
+		ReleaseMutex(vz_window_desc.lock);
+		return;
+	};
+
+	/* unbind offscreen buffer */
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+	/* clear */
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT /*| GL_STENCIL_BUFFER_BIT */); 
+
+	/* draw safe areas markers */
+	{
+		static int 
+			safe_offsets_x[2] = {33, 71},
+			safe_offsets_y[2] = {28, 57};
+
+		for(int i = 0; i<2; i++)
+		{
+			if(0 == i)
+				/* red */
+				glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
+			else
+				/* green */
+				glColor4f(0.0f, 0.0f, 1.0f, 1.0f);
+
+			glBegin(GL_LINE_LOOP);
+
+			glVertex3i(safe_offsets_x[i], safe_offsets_y[i], 0);
+			glVertex3i(tv.TV_FRAME_WIDTH - safe_offsets_x[i], safe_offsets_y[i], 0);
+			glVertex3i(tv.TV_FRAME_WIDTH - safe_offsets_x[i], tv.TV_FRAME_HEIGHT - safe_offsets_y[i], 0);
+			glVertex3i(safe_offsets_x[i], tv.TV_FRAME_HEIGHT - safe_offsets_y[i], 0);
+
+			glEnd();
+		};
+	};
+
+
+	/* draw texture */
+	{
+		// begin drawing
+		glEnable(GL_TEXTURE_2D);
+
+
+		// draw rendered image
+
+		X = 0.0f, Y = 0.0f;
+		glBindTexture(GL_TEXTURE_2D, fbo.color_tex[fbo.index]);
+
+		// Draw a quad (ie a square)
+		glBegin(GL_QUADS);
+
+		glColor4f(1.0f,1.0f,1.0f,1.0f);
+
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(X, Y, 0.0f);
+
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex3f(X, Y + 1024.0f, 0.0f);
+
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(X + 1024.0f, Y + 1024.0f, 0.0f);
+
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex3f(X + 1024.0f, Y, 0.0f);
+
+		glEnd(); // Stop drawing QUADS 
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+	};
+
+	/* draw background */
+	{
+		X = 0.0f, Y = 0.0f;
+		glBindTexture(GL_TEXTURE_2D, fbo.bg_tex);
+
+		// Draw a quad (ie a square)
+		glBegin(GL_QUADS);
+
+		glColor4f(1.0f,1.0f,1.0f,1.0f);
+
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex3f(X, Y, 0.0f);
+
+		glTexCoord2f(0.0f, 576.0f / 16.0f);
+		glVertex3f(X, Y + 576.0f, 0.0f);
+
+		glTexCoord2f(720.0f / 16.0f, 576.0f / 16.0f);
+		glVertex3f(X + 720.0f, Y + 576.0f, 0.0f);
+
+		glTexCoord2f(720.0f / 16.0f, 0.0f);
+		glVertex3f(X + 720.0f, Y, 0.0f);
+
+		glEnd(); // Stop drawing QUADS
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		glDisable(GL_TEXTURE_2D);
+
+	};
+
+	// and swap buffers
+	glFlush();
+	SwapBuffers(vz_window_desc.hdc);
 
 	// mark flag about first frame
 	not_first_at = 1;
-};
 
-static void vz_glut_idle()
-{
-	// check if we need to update frames rendering info
+	// check if we need to make a screenshot
+	if(*screenshot_file)
+	{
+		char* error_log;
+		vzImage* screenshot = vzImageNewFromVB(tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT);
+		vzImageSaveTGA(screenshot_file,screenshot,&error_log);
+		*screenshot_file = 0;
+		vzImageFree(screenshot);
+	};
+
+	/* unbind conext */
+	wglMakeCurrent(NULL, NULL);
+	ReleaseMutex(vz_window_desc.lock);
+
+	/* check if we need to update frames rendering info */
 	if((global_frame_no - last_title_update) > tv.TV_FRAME_PS)
 	{
 		char buf[100];
@@ -500,17 +547,19 @@ static void vz_glut_idle()
 			render_time,
 			global_frame_no - rendered_frames
 		);
-		glutSetWindowTitle(buf);
 		last_title_update = global_frame_no;
+		SetWindowText(vz_window_desc.wnd, buf);
 	};
-
-	Sleep(1);
 };
 
+/* --------------------------------------------------------------------------
 
-static void vz_glut_reshape(int w, int h)
+	OpenGL window
+
+-------------------------------------------------------------------------- */
+static void vz_window_reshape(int w, int h)
 {
-	w = tv.TV_FRAME_WIDTH, h = tv.TV_FRAME_HEIGHT;
+	w = tv.TV_FRAME_WIDTH; h = tv.TV_FRAME_HEIGHT;
 	glViewport (0, 0, (GLsizei) w, (GLsizei) h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -519,115 +568,234 @@ static void vz_glut_reshape(int w, int h)
 	glLoadIdentity();
 };
 
-static void vz_glut_mouse(int button, int state, int x, int y)
+static int vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-};
-
-static void vz_glut_keyboard(unsigned char key, int x, int y)
-{
-	switch(key)
+	switch (message)
 	{
-		case 'c':
-		case 'C':
-			//  Alarm scene clear !!!!!
-
-			// lock scene
-			WaitForSingleObject(scene_lock,INFINITE);
-
-			if(scene)
-				vzMainSceneFree(scene);
-			scene = NULL;
-
-			// unlock scene
-			ReleaseMutex(scene_lock);
-
+		case WM_ERASEBKGND:
+			return 1;
 			break;
 
-		case 's':
-		case 'S':
-			/* create a screen shot */
-			WaitForSingleObject(scene_lock,INFINITE);
-			if(scene)
-				timestamp_screenshot();
-			ReleaseMutex(scene_lock);
+		case WM_PAINT:
 			break;
+
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			break;
+
+		case WM_COMMAND: 
+//			switch ( LOWORD ( wparam ) )
+//			{
+//			};
+			break;
+
+		case WM_KEYDOWN:
+			switch (wparam)
+			{
+				case 'c':
+				case 'C':
+					//  Alarm scene clear !!!!!
+
+					// lock scene
+					WaitForSingleObject(scene_lock,INFINITE);
+
+					if(scene)
+						vzMainSceneFree(scene);
+					scene = NULL;
+
+					// unlock scene
+					ReleaseMutex(scene_lock);
+
+					break;
+
+				case 's':
+				case 'S':
+					/* create a screen shot */
+					WaitForSingleObject(scene_lock,INFINITE);
+					if(scene)
+						timestamp_screenshot();
+					ReleaseMutex(scene_lock);
+					break;
+				};
+			break;
+		
+		case WM_SIZE: 
+			/* Resize the window with the new width and height. */
+			WaitForSingleObject(vz_window_desc.lock, INFINITE);
+			wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
+			vz_window_reshape(LOWORD(lparam), HIWORD(lparam));
+			wglMakeCurrent(NULL, NULL);
+			ReleaseMutex(vz_window_desc.lock);
+			break;
+
+		default:
+			return DefWindowProc(hwnd, message, wparam, lparam);
 	};
+	return 0;
 };
 
-
-static void vz_glut_start(int argc, char** argv)
+static int vz_destroy_window()
 {
-	char *multisampling = vzConfigParam(config,"vzMain","multisampling");
+	return 0;
+};
 
-	printf("main: Initialization GLUT...\n");
+static int vz_create_window()
+{
+	vz_window_desc.instance = GetModuleHandle(NULL);
 
-	glutInit(&argc, argv);
-	glutInitDisplayMode
+	/* prepare window class */
+	WNDCLASSEX wndClass;
+	ZeroMemory              ( &wndClass, sizeof(wndClass) ); // Clear the window class structure.
+	wndClass.cbSize         = sizeof(WNDCLASSEX); 
+	wndClass.style          = /* CS_HREDRAW | CS_VREDRAW | */ CS_OWNDC;
+	wndClass.lpfnWndProc    = (WNDPROC)vz_window_proc;
+	wndClass.cbClsExtra     = 0;
+	wndClass.cbWndExtra     = 0;
+	wndClass.hInstance      = vz_window_desc.instance;
+	wndClass.hIcon          = 0;
+	wndClass.hCursor        = LoadCursor(NULL, IDC_ARROW);
+	wndClass.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
+	wndClass.lpszMenuName   = 0;
+	wndClass.lpszClassName  = VZ_TITLE;
+	wndClass.hIconSm        = 0;
+
+	/* register the window class */
+	if (RegisterClassEx(&wndClass) == 0)
+	{
+		fprintf(stderr, "ERROR: Failed to register the window class!\n");
+		return -1;
+	};
+
+	/* preapre styles */
+	DWORD dwStyle = 
+		WS_CAPTION | WS_SYSMENU |
+		WS_OVERLAPPED |								// Creates an overlapping window
+		WS_CLIPCHILDREN |							// Doesn't draw within child windows
+		WS_CLIPSIBLINGS;							// Doesn't draw within sibling windows
+	DWORD dwExStyle = 
+		WS_EX_APPWINDOW |							// Top level window
+        WS_EX_WINDOWEDGE;							// Border with a raised edge
+   
+	/* prepare dimensions */
+	RECT rMain;
+	rMain.left		= 0;
+	rMain.right     = tv.TV_FRAME_WIDTH;
+	rMain.top       = 0;
+	rMain.bottom    = tv.TV_FRAME_HEIGHT;  
+	AdjustWindowRect ( &rMain, dwStyle, 0);
+
+	/* Attempt to create the actual window. */
+	vz_window_desc.wnd = CreateWindowEx
 	(
-		GLUT_RGBA 
-		| GLUT_DOUBLE
-		| GLUT_STENCIL 
-		| GLUT_ALPHA 
-		| ((multisampling)?GLUT_MULTISAMPLE:0) 
-	);
+		dwExStyle,									// Extended window styles
+		VZ_TITLE,									// Class name
+		VZ_TITLE,									// Window title (caption)
+		dwStyle,									// Window styles
+		0, 0,										// Window position
+		rMain.right - rMain.left,
+		rMain.bottom - rMain.top,					// Size of window
+		0,											// No parent window
+		NULL,										// Menu
+		vz_window_desc.instance,					// Instance
+		0											// Pass nothing to WM_CREATE
+	);					
+	if(0 == vz_window_desc.wnd ) 
+    {
+		fprintf(stderr, "ERROR: Unable to create window! [%d]\n", GetLastError());
+		vz_destroy_window();
+		return -2;
+    };
 
-	glutInitWindowSize (tv.TV_FRAME_WIDTH, tv.TV_FRAME_HEIGHT); 
-	glutInitWindowPosition (10, 10);
-	glutCreateWindow (argv[0]);
+	/* Try to get a device context. */
+	vz_window_desc.hdc = GetDC(vz_window_desc.wnd);
+	if (!vz_window_desc.hdc ) 
+    {
+		vz_destroy_window();
+		fprintf( stderr, "ERROR: Unable to get a device context!\n");
+		return -3;
+    };
 
-	printf("main: GLUT created window\n");
+	/* Settings for the OpenGL window. */
+	PIXELFORMATDESCRIPTOR pfd; 
+	ZeroMemory (&pfd, sizeof(pfd));
+	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);		// Size Of This Pixel Format Descriptor
+	pfd.nVersion     = 1;							// The version of this data structure
+	pfd.dwFlags      = 
+		PFD_DRAW_TO_WINDOW |						// Buffer supports drawing to window
+		PFD_SUPPORT_OPENGL |						// Buffer supports OpenGL drawing
+		PFD_DOUBLEBUFFER;							// Supports double buffering
+	pfd.dwLayerMask  = PFD_MAIN_PLANE;				// We want the standard mask (this is ignored anyway)
+	pfd.iPixelType   = PFD_TYPE_RGBA;				// RGBA color format
+	pfd.cColorBits   = 32;							// OpenGL color depth
+	pfd.cAlphaBits   = 8;
+	pfd.cDepthBits   = 16;							// Specifies the depth of the depth buffer
+	pfd.iLayerType   = PFD_MAIN_PLANE;				// Ignored
+	pfd.cAccumBits   = 0;							// No special bitplanes needed
+	pfd.cStencilBits = 8;							// We desire 8 stencil bits
 
-	// request extensions
+	/* Attempts to find the pixel format supported by a 
+	device context that is the best match 
+	to a given pixel format specification. */
+	GLuint PixelFormat = ChoosePixelFormat(vz_window_desc.hdc, &pfd);
+	if(0 == PixelFormat)
+	{
+		vz_destroy_window();
+		fprintf( stderr, "ERROR: Unable to find a suitable pixel format\n");
+		return -4;
+    };
+
+	/* Sets the specified device context's pixel format to 
+	the format specified by the PixelFormat. */
+	if(!SetPixelFormat(vz_window_desc.hdc, PixelFormat, &pfd))
+    {
+		vz_destroy_window();
+		fprintf( stderr, "ERROR: Unable to set the pixel format\n");
+		return -5;
+    };
+
+	/* Create an OpenGL rendering context. */
+	vz_window_desc.glrc = wglCreateContext(vz_window_desc.hdc);
+	if(0 == vz_window_desc.glrc)
+    {
+		vz_destroy_window();
+		fprintf( stderr, "Unable to create an OpenGL rendering context\n");
+		return -6;
+    };
+
+	/* Makes the specified OpenGL rendering context the calling thread's current rendering context. */
+	if(!wglMakeCurrent (vz_window_desc.hdc, vz_window_desc.glrc))
+    {
+		vz_destroy_window();
+		fprintf( stderr, "Unable to activate OpenGL rendering context");
+		return -7;
+    };
+
+	/* load opengl Extensions */
 	vzGlExtInit();
 
-	// init OpenGL features
-	glClearColor (0.0, 0.0, 0.0, 0.0);
-//	glShadeModel (GL_FLAT);
-	glShadeModel(GL_SMOOTH);
-
-	// enable alpha function
-	glEnable(GL_ALPHA_TEST);
-
-	// enable depth tests
-	glEnable(GL_DEPTH_TEST);
-
-	// enable blending
-	glEnable (GL_BLEND);
-
-	/* check/show multisampling */
-	{
-		int m,s,b;
-		m = glIsEnabled(GL_MULTISAMPLE);
-		glGetIntegerv(GL_SAMPLES, &s);
-		glGetIntegerv(GL_SAMPLE_BUFFERS, &b);
-		printf("GL_MULTISAMPLE=%d GL_SAMPLES=%d, GL_SAMPLE_BUFFERS=%d\n", m, s, b);
-	};
-
-	glShadeModel(GL_SMOOTH);
-
-	// GLUT prep
-	printf("Assigning GLUT functions... ");
-	glutDisplayFunc(vz_glut_display); 
-	glutReshapeFunc(vz_glut_reshape); 
-	glutMouseFunc(vz_glut_mouse);
-	glutKeyboardFunc(vz_glut_keyboard);
-	glutIdleFunc(vz_glut_idle);
-	printf("OK\n");
-
-	/* check if need to init fbo */
+	/* init FBO */
 	init_fbo();
 
-	printf("Main Loop starting...\n");
+	/* clear */
+	glClearColor (0.0, 0.0, 0.0, 0.0);
+	glShadeModel(GL_SMOOTH);
+	glEnable(GL_ALPHA_TEST);
+	glEnable (GL_BLEND);
+	glShadeModel(GL_SMOOTH);
 
-	glutMainLoop();
+	/* reshape window */
+	vz_window_reshape(0, 0);
 
+	/* Settings to ensure that the window is the topmost window. */
+	ShowWindow(vz_window_desc.wnd, SW_SHOW);
+	SetForegroundWindow(vz_window_desc.wnd);
+	SetFocus(vz_window_desc.wnd);
+
+	/* unbind gl */
+	wglMakeCurrent(NULL, NULL);
+
+	return 0;
 };
-
-static void vz_exit(void)
-{
-	printf("Main loop finished");
-};
-
 
 /*
 ----------------------------------------------------------
@@ -663,7 +831,7 @@ int main(int argc, char** argv)
 		}
 		else if ( (strcmp(*argv,"-h") == 0) || (strcmp(*argv,"/?") == 0) )
 		{
-			printf("Usage: vz.exe [ -f <scene file> ] [-c <config file> ] [GLUT parameters ....]\n");
+			printf("Usage: vz.exe [ -f <scene file> ] [-c <config file> ]\n");
 			return 0;
 		}
 		else
@@ -681,14 +849,6 @@ int main(int argc, char** argv)
 	// setting tv system
 	vzConfigTVSpec(config,"tvspec", &tv);
 
-	// syncs
-	global_frame_event = CreateEvent(NULL, TRUE, FALSE, NULL);
-	ResetEvent(global_frame_event);
-	scene_lock = CreateMutex(NULL,FALSE,NULL);
-
-	// init functions
-	functions = vzMainNewFunctionsList(config);
-
 	// init output module
 	char *output_module_name = vzConfigParam(config,"main","output");
 	if(output_module_name)
@@ -704,6 +864,19 @@ int main(int argc, char** argv)
 			printf("OK\n");
 	};
 
+	/* create output window */
+	if(0 != vz_create_window())
+		return -1;
+	/* create gl lock */
+	vz_window_desc.lock = CreateMutex(NULL,FALSE,NULL);
+
+	// syncs
+	global_frame_event = CreateEvent(NULL, TRUE, FALSE, NULL);
+	ResetEvent(global_frame_event);
+	scene_lock = CreateMutex(NULL,FALSE,NULL);
+
+	// init functions
+	functions = vzMainNewFunctionsList(config);
 
 	// try to create sync thread in output module
 	int output_module_sync = 0;
@@ -761,16 +934,24 @@ int main(int argc, char** argv)
 	SetThreadPriority(tcpserver_handle , THREAD_PRIORITY_LOWEST);
 	SetThreadPriority(serserver_handle , THREAD_PRIORITY_LOWEST);
 
-	/* exit handler */
-	atexit(vz_exit);
+	/* event loop */
+	MSG msg;
+	int f_exit = 0;
+	while (!f_exit)
+	{
+		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+        {
+			if (msg.message == WM_QUIT)
+				f_exit = 1;
+			else
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+            };
+		};
+    };
 
-	// start glut loop
-	argc++;
-	argv--;*argv = application;
-	vz_glut_start(argc,argv);
-
-	// is it ever finished?
-	// need to read about this
+	/* cleanup */
 
 	return 0;
 };

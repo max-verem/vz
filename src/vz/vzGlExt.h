@@ -21,6 +21,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-03-06:
+		*GLUT goodbye!
 
 	2006-11-26:
 		Code start.
@@ -30,11 +32,6 @@ ChangeLog:
 #ifndef VZGLEXT_H
 #define VZGLEXT_H
 
-//#define USE_OPENGLUT
-//#define USE_OPENGLUT_STATIC
-//#define USE_FREEGLUT
-//#define USE_FREEGLUT_STATIC
-
 
 #ifdef VZGLEXT_EXPORTS
 #define VZGLEXT_API __declspec(dllexport)
@@ -43,29 +40,10 @@ ChangeLog:
 #pragma comment(lib, "vzGlExt.lib") 
 #endif
 
-#if ((!defined(USE_OPENGLUT)) && (!defined(USE_FREEGLUT)) && (!defined(USE_OPENGLUT_STATIC)) && (!defined(USE_FREEGLUT_STATIC)))
-#include <GL/glut.h>
-#else /* USE_XXXXGLUT */
-
-#if defined(USE_OPENGLUT) || defined(USE_OPENGLUT_STATIC)
-#include <GL/openglut.h>
-#ifdef USE_OPENGLUT_STATIC
-#pragma comment(lib, "openGLUT_static.lib") 
-#else /* !USE_OPENGLUT_STATIC */
-#pragma comment(lib, "openGLUT.lib") 
-#endif /* USE_OPENGLUT_STATIC */
-#endif /* USE_OPENGLUT || USE_OPENGLUT_STATIC */
-
-#if defined(USE_FREEGLUT) || defined(USE_FREEGLUT_STATIC)
-#include <GL/freeglut.h>
-#ifdef USE_FREEGLUT_STATIC
-#pragma comment(lib, "freeGLUT_static.lib") 
-#else /* !USE_FREEGLUT_STATIC */
-#pragma comment(lib, "freeGLUT.lib") 
-#endif /* USE_FREEGLUT_STATIC */
-#endif /* USE_FREEGLUT || USE_FREEGLUT_STATIC */
-
-#endif /* USE_XXXXGLUT */
+#include <gl/gl.h>
+#include <gl/glu.h>
+#pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "glu32.lib")
 
 /* 
 http://oss.sgi.com/projects/ogl-sample/ABI/glext.h
@@ -198,6 +176,7 @@ extern VZGLEXT_API void (WINAPI *glFramebufferTexture3DEXT)(GLenum target, GLenu
 extern VZGLEXT_API void (WINAPI *glFramebufferRenderbufferEXT)(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
 extern VZGLEXT_API void (WINAPI *glGetFramebufferAttachmentParameterivEXT)(GLenum target, GLenum attachment, GLenum pname, int *params);
 extern VZGLEXT_API void (WINAPI *glGenerateMipmapEXT)(GLenum target);
+extern VZGLEXT_API int  glExtInitDone;
 
 /* init function */
 VZGLEXT_API void vzGlExtInit();

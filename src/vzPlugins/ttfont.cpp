@@ -50,6 +50,8 @@ static char* _plugin_notes =
 #include "../templates/hash.hpp"
 #include "../vz/vzTTFont.h"
 
+#pragma comment(lib, "winmm.lib")
+
 #include <process.h>
 #include <stdio.h>
 

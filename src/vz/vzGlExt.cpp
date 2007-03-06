@@ -124,6 +124,8 @@ VZGLEXT_API void (WINAPI *glFramebufferRenderbufferEXT)(GLenum target, GLenum at
 VZGLEXT_API void (WINAPI *glGetFramebufferAttachmentParameterivEXT)(GLenum target, GLenum attachment, GLenum pname, int *params) = NULL;
 VZGLEXT_API void (WINAPI *glGenerateMipmapEXT)(GLenum target) = NULL;
 
+VZGLEXT_API int  glExtInitDone = 0;;
+
 // function
 VZGLEXT_API void vzGlExtInit()
 {
@@ -155,6 +157,8 @@ VZGLEXT_API void vzGlExtInit()
 			printf("not supported");
 		printf("\n");
 	};
+
+	glExtInitDone = 1;
 };
 
 
