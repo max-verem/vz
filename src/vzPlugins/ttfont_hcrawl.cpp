@@ -204,22 +204,20 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"l_width", 
 		"Font width", 
 		PLUGIN_PARAMETER_OFFSET(default_value,font_params.width)},
-	{"l_stroke_radius", 
+	{"f_stroke_radius", 
 		"Font stroke radius", 
 		PLUGIN_PARAMETER_OFFSET(default_value,font_params.stroke_radius)},
 	{"l_stroke_line_cap", 
 		"Font stroke line cap style:\n"
-		"\t0 - The end of lines is rendered as a full stop on the last point itself;\n"
-		"\t1 - The end of lines is rendered as a half-circle around the last point;\n"
-		"\t2 - The end of lines is rendered as a square around the last point;"
-		, 
+		"\t0 - The end of lines is rendered as a full stop on the last point itself [FT_STROKER_LINECAP_BUTT];\n"
+		"\t1 - The end of lines is rendered as a half-circle around the last point [FT_STROKER_LINECAP_ROUND];\n"
+		"\t2 - The end of lines is rendered as a square around the last point [FT_STROKER_LINECAP_SQUARE];", 
 		PLUGIN_PARAMETER_OFFSET(default_value,font_params.stroke_line_cap)},
 	{"l_stroke_line_join",
 		"Font line join style:\n"
-		"\t0 - Used to render rounded line joins. Circular arcs are used to join two lines smoothly;\n"
-		"\t1 - Used to render beveled line joins; i.e., the two joining lines are extended until they intersect;\n"
-		"\t2 - Same as beveled rendering, except that an additional line break is added if the angle between the two joining lines is too closed (this is useful to avoid unpleasant spikes in beveled rendering);"
-		,
+		"\t0 - Used to render rounded line joins. Circular arcs are used to join two lines smoothly [FT_STROKER_LINEJOIN_ROUND];\n"
+		"\t1 - Used to render beveled line joins; i.e., the two joining lines are extended until they intersect [FT_STROKER_LINEJOIN_BEVEL];\n"
+		"\t2 - Same as beveled rendering, except that an additional line break is added if the angle between the two joining lines is too closed (this is useful to avoid unpleasant spikes in beveled rendering) [FT_STROKER_LINEJOIN_MITER];",
 		PLUGIN_PARAMETER_OFFSET(default_value,font_params.stroke_line_join)},
 
 	{NULL,NULL,0}

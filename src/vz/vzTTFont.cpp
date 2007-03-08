@@ -155,7 +155,7 @@ VZTTFONT_API vzTTFont::vzTTFont(char* name, struct vzTTFontParams* params)
 	    FT_Stroker_Set
 		(
 			(FT_Stroker)_font_stroker, 
-			_params.stroke_radius, 
+			(unsigned long)(_params.stroke_radius * 16.0),
 			(FT_Stroker_LineCap)_params.stroke_line_cap, 
 			(FT_Stroker_LineJoin)_params.stroke_line_join, 
 			0x20000
@@ -803,17 +803,17 @@ inline void blit_glyph(unsigned long* dst, long dst_width, unsigned char* src, l
 #define _cA(V) ((unsigned long)((V & 0xFF000000) >> 24))
 #define _cR(V) ((unsigned long)((V & 0x00FF0000) >> 16))
 #define _cG(V) ((unsigned long)((V & 0x0000FF00) >> 8))
-#define _cB(V) ((unsigned long)((V & 0x0000FF00) >> 0))
+#define _cB(V) ((unsigned long)((V & 0x000000FF) >> 0))
 
-#define _Ta _cA(*dst + i)
-#define _T1 _cR(*dst + i)
-#define _T2 _cG(*dst + i)
-#define _T3 _cB(*dst + i)
+#define _Ba _cA(bg)
+#define _B1 _cR(bg)
+#define _B2 _cG(bg)
+#define _B3 _cB(bg)
 
-#define _Ba ((unsigned long)src[i])
-unsigned long _B1 = _cR(colour);
-unsigned long _B2 = _cG(colour);
-unsigned long _B3 = _cB(colour);
+
+unsigned long _T1 = _cR(colour);
+unsigned long _T2 = _cG(colour);
+unsigned long _T3 = _cB(colour);
 
 	for
 	(
@@ -835,33 +835,46 @@ unsigned long _B3 = _cB(colour);
 			}
 			else
 			{
-#endif
+#else /* !_DEBUG */
+			{
+#endif /* _DEBUG */
+				/* multiply glyph alpha with colour alpha */
 
-			/* Alpha */
-//			(((_Ba*(255 - Ta))>>8) + Ta)
+				unsigned long _Ta = (((unsigned long)src[i])*_cA(colour)) >> 8;
+				unsigned long bg = *(dst + i);
+			
+				*(dst + i) = 
+				/* Alpha */
+				((((_Ta*(255 - _Ba))>>8) + _Ba) << 24)		|
+				
+				/* Colour components */ 
+				(( (_Ta*_T1 + (255 - _Ta)*_B1) & 0x0000FF00) << 8)		|
+				(( (_Ta*_T2 + (255 - _Ta)*_B2) & 0x0000FF00) << 0)		| 
+				(( (_Ta*_T3 + (255 - _Ta)*_B3) & 0x0000FF00) >> 8)		; 
 
-			/* Colour components */
 
-
-
-			*(dst + i) |= (colour & 0x00FFFFFF) | ((unsigned long)(src[i]))<<24;
+/////				*(dst + i) |= (colour & 0x00FFFFFF) | ((unsigned long)(src[i]))<<24;
 #ifdef _DEBUG
 			}
-#endif
+#else /* !_DEBUG */
+			}
+#endif /* _DEBUG */
 		};
 }
 
 
 VZTTFONT_API void vzTTFont::render_to(vzImage* image, long x , long y, long text_id, long font_colour, long stroke_colour)
 {
-	int l = 0;
-
 	/* get symbol */
 	WaitForSingleObject((HANDLE)_symbols_lock,INFINITE);
 	vzTTFontSymbols *symbols = ((vzTTFontSymbols **)_symbols)[text_id];
 	ReleaseMutex((HANDLE)_symbols_lock);	
 
 	if (symbols == NULL) return;
+
+	/* check length of sequence */
+	if (0 == symbols->length) return;
+
 
 #ifdef _DEBUG
 // critical section... some times seem something wrong happens
@@ -870,6 +883,7 @@ try
 #endif
 
 	// draw into surface
+	for(int l = 0; (l<2) && (NULL != symbols->data[0].layers[l].bmp); l++)
 	for(int i_text=0;i_text<symbols->length;i_text++)
 	{
 		// check if glyph is present
@@ -915,7 +929,7 @@ try
 			/* glyph width */
 			symbols->data[i_text].layers[l].bmp->bitmap.width,
 			/* colour */
-			font_colour
+			(0 == l)?font_colour:stroke_colour
 #ifdef _DEBUG
 			, (unsigned long* )image->surface + image->width*image->height
 #endif

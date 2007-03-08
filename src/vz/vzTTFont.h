@@ -66,7 +66,7 @@ struct vzTTFontParams
 {
 	long height;
 	long width;
-	long stroke_radius;
+	float stroke_radius;
 	long stroke_line_cap;
 	long stroke_line_join;
 };
@@ -75,7 +75,7 @@ struct vzTTFontParams
 {											\
 	0,		/* height				*/		\
 	0,		/* width				*/		\
-	0,		/* stroke_radius		*/		\
+	0.0,	/* stroke_radius		*/		\
 	0,		/* stroke_line_cap		*/		\
 	0		/* stroke_line_join		*/		\
 }
