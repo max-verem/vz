@@ -800,21 +800,6 @@ inline void blit_glyph(unsigned long* dst, long dst_width, unsigned char* src, l
 #endif
 )
 {
-#define _cA(V) ((unsigned long)((V & 0xFF000000) >> 24))
-#define _cR(V) ((unsigned long)((V & 0x00FF0000) >> 16))
-#define _cG(V) ((unsigned long)((V & 0x0000FF00) >> 8))
-#define _cB(V) ((unsigned long)((V & 0x000000FF) >> 0))
-
-#define _Ba _cA(bg)
-#define _B1 _cR(bg)
-#define _B2 _cG(bg)
-#define _B3 _cB(bg)
-
-
-unsigned long _T1 = _cR(colour);
-unsigned long _T2 = _cG(colour);
-unsigned long _T3 = _cB(colour);
-
 	for
 	(
 		int j=0,c=0;
@@ -838,20 +823,39 @@ unsigned long _T3 = _cB(colour);
 #else /* !_DEBUG */
 			{
 #endif /* _DEBUG */
+
+#define _cA(V) ((unsigned long)((V & 0xFF000000) >> 24))
+#define _cR(V) ((unsigned long)((V & 0x00FF0000) >> 16))
+#define _cG(V) ((unsigned long)((V & 0x0000FF00) >> 8))
+#define _cB(V) ((unsigned long)((V & 0x000000FF) >> 0))
+
 				/* multiply glyph alpha with colour alpha */
-
 				unsigned long _Ta = (((unsigned long)src[i])*_cA(colour)) >> 8;
-				unsigned long bg = *(dst + i);
-			
-				*(dst + i) = 
-				/* Alpha */
-				((((_Ta*(255 - _Ba))>>8) + _Ba) << 24)		|
 				
-				/* Colour components */ 
-				(( (_Ta*_T1 + (255 - _Ta)*_B1) & 0x0000FF00) << 8)		|
-				(( (_Ta*_T2 + (255 - _Ta)*_B2) & 0x0000FF00) << 0)		| 
-				(( (_Ta*_T3 + (255 - _Ta)*_B3) & 0x0000FF00) >> 8)		; 
+				/* for more information see BLENDING file */
+				if(_Ta > 3)
+				{
+					unsigned long _B = *(dst + i);
+					unsigned long _Ba = _cA(_B);
+					unsigned long t1 = (0x100 - _Ta)*_Ba + (_Ta<<8);
+					unsigned long _Ra = t1 >> 8;
+					if(t1)
+					{
+						unsigned long
+							t2r = (0x100 - _Ta)*_cR(_B)*_Ba + ((_cR(colour)*_Ta)<<8),
+							t2g = (0x100 - _Ta)*_cG(_B)*_Ba + ((_cG(colour)*_Ta)<<8),
+							t2b = (0x100 - _Ta)*_cB(_B)*_Ba + ((_cB(colour)*_Ta)<<8);
 
+						*(dst + i) = 
+							(_Ra << 24) |
+							((t2r / t1 ) << 16) |
+							((t2g / t1 ) << 8) |
+							((t2b / t1 ) << 0);
+					}
+					else
+						*(dst + i) = 0;
+
+				};
 
 /////				*(dst + i) |= (colour & 0x00FFFFFF) | ((unsigned long)(src[i]))<<24;
 #ifdef _DEBUG

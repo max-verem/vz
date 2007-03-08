@@ -1,0 +1,189 @@
+BLENDING semitransparent layers
+===============================
+
+INTRO
+-----
+
+Main problem with current software i worked with is blending operation
+performed by ignores either top layer transparency or bottom.
+
+I found how correctly calculate resulted color and alpha value for pixel.
+
+I found this method multiple times and did not described in more 
+comprehensible way, that why each time i was need reinvent this method again
+and again. I decided to explain to future myself some details of this method.
+
+
+DESCRIPTION
+-----
+
+OK! Imagine system that contains layer that light stream X throw the 
+semitransparent layer:
+
+          <0> eye
+
+           ^
+  result   |  X*(1-Alpha) + C*Alpha
+           |
+===================================   Semitransparent layer ( C, Alpha)
+           ^
+           |  X (light stream)
+           |
+___________________________________
+///////////////////////////////////   Lighting layer
+
+According to this scheme function is:
+
+F(x) = x*(1-Alpha) + C*Alpha                                    [1]
+
+This linear function describe show dependence resulting light value 
+after crossing semitransparent object. 
+
+Linear function could be describe as F(x)=k*x + b, where k,b parameters.
+As result we could find semitransparent layers parameters from function:
+
+/
+|
+| Alpha =  1 - k
+|
+| --
+| |         b     
+| |  C = --------, if Alpha <> 0;                               [2]
+| |       Alpha
+| |
+| |  C = 0, if Alpha = 0;
+| |
+| --
+|
+\
+
+Let make our task more complex - add another one semitransparent layer to 
+system. This configuration could be described by four static parameters
+(two for each layer): 
+
+    Ct - Color (lighting) of TOP layer
+    At - Alpha (transparency) of TOP layer
+
+    Cb - Color (lighting) of BOTTOM layer
+    Ab - Alpha (transparency) of BOTTOM layer
+
+Resulting figure should look like this:
+
+          <0> eye
+
+           ^
+  result2  |  (X*(1-Ab) + C*Ab)*(1-At) + Ct*At
+           |
+===================================   Top semitransparent layer (Ct, At)
+           ^
+  result1  |  X*(1-Ab) + C*Ab
+           |
+===================================   Bottom semitransparent layer (Cb, Ab)
+           ^
+           |  X (light stream)
+           |
+___________________________________
+///////////////////////////////////   Lighting layer
+
+As resulting function we got:
+
+F(x) = (X*(1-Ab) + C*Ab)*(1-At) + Ct*At 
+
+Try to simply function statement:
+
+F(x) = (x - x*Ab + Cb*Ab)(1 - At) + Ct*At
+     = x - x*Ab + Cb*Ab - At*x + x*Ab*At - Cb*Ab*At + Ct*At
+     = x*(1 - Ab - At + At*Ab) + Cb*Ab + Ct*At - Cb*Ab*At
+     = x*(1 - Ab)(1 - At) + Cb*Ab + Ct*At - Cb*Ab*At
+
+As final:
+
+F(x) = x*(1 - Ab)(1 - At) + Cb*Ab + Ct*At - Cb*Ab*At            [3]
+
+Where linear function's parameters are:
+
+k = (1 - Ab)(1 - At)
+b = Cb*Ab + Ct*At - Cb*Ab*At
+
+According to [2] we could determinate system properties like it was consists
+only one semitransparent layer:
+
+/
+|
+| Ar = 1 - (1 - Ab)(1 - At)
+|
+|       Cb*Ab + Ct*At - Cb*Ab*At
+| Cr = ---------------------------- , Ar <> 0                   [4]
+|                Ar
+|
+\    
+   Cr - resulting color
+   Ar - resulting transparency
+
+
+
+APPLYING
+--------
+
+We found some mathematical equations that describe two layers system like one.
+Actually that is what we need - merge layer by layer and find resulting
+"picture". This computation performed for each pixel and for each color 
+component of pixel. 
+
+In my case i use 32bit RGBA color space: 8 bit per color component and alpha
+channel. For function we need to use normalized. Equation [4] should look:
+
+/
+|
+|                   Ab          At
+| Ar = ( 1 - (1 - -----)*(1 - -----) ) * 255
+|                  255         255
+|
+|                                                               [5]
+|              Ab           At            At
+|       Cb * ----- * (1 - -----) + Ct * -----
+|             255          255           255
+| Cr = ---------------------------------------
+|                      Ar
+|
+|
+\
+
+After simplifying [5] we have:
+
+/
+|
+|      (Ab + At)*255 - Ab*At   Ab*(255 - At) + 255*At
+| Ar = --------------------- = ----------------------
+|              255                      255
+|
+|
+|      Cb*Ab*(255 - At) + Ct*At*255
+| Cr = ----------------------------
+|        Ab*(255 - At) + 255*At
+|
+\
+
+To avoid some 'mul' and 'div' operations we could modify base from 255 to 256
+and resulting equation should looks like:
+
+/
+|
+|  t1 = (0x100 - At)*Ab + At<<8
+|  
+|  Ar = t >> 8
+|  
+|  t2 = (0x100 - At)*Cb*Ab + (Ct*At)<<8                         [6]
+|  
+|       /
+|       | 0,  if t1=0
+|  Cr = |
+|       | t2
+|       | --, if t1<>0
+|       | t1
+|       \
+|  
+\
+
+Next optimization could be provided on CPU level, using vector registers.
+
