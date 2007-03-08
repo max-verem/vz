@@ -21,7 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
-	2006-12-14:
+	2007-03-07:
+		*migration to wider TTFont parameters list;
+
+    2006-12-14:
 		*constructor updates, added two parameters 'scene' 'parent_container'
 
 	2006-09-28:
@@ -115,18 +118,20 @@ struct text_params
 {
 	char* s_text;
 	char* s_font;
-	long l_height;
-	long h_colour;
+	struct vzTTFontParams font_params;
+	long h_font_colour;
+	long h_stroke_colour;
 	struct vzTTFontLayoutConf layout;
 };
 
-#define default_text_params \
-{			\
-	NULL,	\
-	NULL,	\
-	0,		\
-	0,		\
-	vzTTFontLayoutConfDefaultData	\
+#define default_text_params													\
+{																			\
+	NULL,																	\
+	NULL,																	\
+	vzTTFontParamsDefault,													\
+	0,																		\
+	0,																		\
+	vzTTFontLayoutConfDefaultData											\
 }
 
 // internal structure of plugin
@@ -188,13 +193,40 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"s_font", "Font name", PLUGIN_PARAMETER_OFFSET(default_value,params.s_font)},
 	{"s_text", "Text content", PLUGIN_PARAMETER_OFFSET(default_value,params.s_text)},
 	{"L_center", "Center of image", PLUGIN_PARAMETER_OFFSET(default_value,L_center)},
-	{"l_height", "Font height", PLUGIN_PARAMETER_OFFSET(default_value,params.l_height)},
-	{"h_colour", "Text's colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value,params.h_colour)},
+	{"h_colour", "Text's colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value,params.h_font_colour)},
+	{"h_colour", "Text's stroke colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value,params.h_font_colour)},
 	{"f_line_space", "Line space multiplier", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.line_space)},
 	{"l_limit_width", "Limit width of text to expected", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.limit_width)},
 	{"l_limit_height", "Limit height of text", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.limit_height)},
 	{"l_break_word", "Break words during wrapping (flag)", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.break_word)},
 	{"l_fixed_kerning", "Fixed kerning width (0 if not used)", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.fixed_kerning)},
+	{"f_advance_ratio", "Advance ratio (char dist mult.)", PLUGIN_PARAMETER_OFFSET(default_value,params.layout.advance_ratio)},
+
+	{"l_height", 
+		"Font height", 
+		PLUGIN_PARAMETER_OFFSET(default_value,params.font_params.height)},
+	{"l_width", 
+		"Font width", 
+		PLUGIN_PARAMETER_OFFSET(default_value,params.font_params.width)},
+	{"l_stroke_radius", 
+		"Font stroke radius", 
+		PLUGIN_PARAMETER_OFFSET(default_value,params.font_params.stroke_radius)},
+	{"l_stroke_line_cap", 
+		"Font stroke line cap style:\n"
+		"\t0 - The end of lines is rendered as a full stop on the last point itself;\n"
+		"\t1 - The end of lines is rendered as a half-circle around the last point;\n"
+		"\t2 - The end of lines is rendered as a square around the last point;"
+		, 
+		PLUGIN_PARAMETER_OFFSET(default_value,params.font_params.stroke_line_cap)},
+	{"l_stroke_line_join",
+		"Font line join style:\n"
+		"\t0 - Used to render rounded line joins. Circular arcs are used to join two lines smoothly;\n"
+		"\t1 - Used to render beveled line joins; i.e., the two joining lines are extended until they intersect;\n"
+		"\t2 - Same as beveled rendering, except that an additional line break is added if the angle between the two joining lines is too closed (this is useful to avoid unpleasant spikes in beveled rendering);"
+		,
+		PLUGIN_PARAMETER_OFFSET(default_value,params.font_params.stroke_line_join)},
+
+	
 	{NULL,NULL,0}
 };
 
@@ -253,7 +285,7 @@ static unsigned long WINAPI _async_renderer(void* data)
 					font = get_font
 					(
 						_DATA->_async_renderer_queue[0]->s_font,
-						_DATA->_async_renderer_queue[0]->l_height
+						&_DATA->_async_renderer_queue[0]->font_params
 					)
 				)
 			)
@@ -265,7 +297,8 @@ static unsigned long WINAPI _async_renderer(void* data)
 				image = font->render
 				(
 					_DATA->_async_renderer_queue[0]->s_text,
-					_DATA->_async_renderer_queue[0]->h_colour,
+					_DATA->_async_renderer_queue[0]->h_font_colour,
+					_DATA->_async_renderer_queue[0]->h_stroke_colour,
 					&_DATA->_async_renderer_queue[0]->layout
 				);
 

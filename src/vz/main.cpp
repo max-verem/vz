@@ -810,6 +810,13 @@ int main(int argc, char** argv)
 	/* init timer period */
 	timeBeginPeriod(1);
 
+#ifdef _DEBUG
+{
+	vzTTFont* temp = new vzTTFont("m1-h", NULL);
+	delete temp;
+}
+#endif /* _DEBUG */
+
 	// hello message
 	printf("%s (vz-%.2f-%s) [controller]\n",VZ_TITLE, VZ_VERSION_NUMBER,VZ_VERSION_SUFFIX);
 

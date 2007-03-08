@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-03-07:
+		*migration to wider TTFont parameters list;
+
 	2006-12-14:
 		*constructor updates, added two parameters 'scene' 'parent_container'
 
@@ -120,8 +123,10 @@ typedef struct
 {
 	/* PUBLIC params */
 	char* s_font;
-	long l_height;
-	long h_colour;
+	struct vzTTFontParams font_params;
+	struct vzTTFontLayoutConf font_layout;
+	long h_font_colour;
+	long h_stroke_colour;
 	long l_box_width;
 	long l_loop;
 	long l_interval;
@@ -141,7 +146,7 @@ typedef struct
 
 	char* _s_trig_append;				/* state change detection */
 	long _l_box_width;
-	long _l_height;
+	struct vzTTFontParams _font_params;
 	char* _s_font;
 
 } vzPluginData;
@@ -151,8 +156,10 @@ vzPluginData default_value =
 {
 	/* PUBLIC params */
 	NULL,					/* char* s_font; */
-	0,						/* long l_height; */
-	0,						/* long h_colour; */
+	vzTTFontParamsDefault,	/* struct vzTTFontParams font_params; */
+	vzTTFontLayoutConfDefaultData, /* struct vzTTFontLayoutConf layout; */
+	0,						/* long h_font_colour; */
+	0,						/* long h_stroke_colour; */
 	0,						/* long l_box_width; */
 	0,						/* long l_loop; */
 	0,						/* long l_interval; */
@@ -172,21 +179,49 @@ vzPluginData default_value =
 
 	NULL,					/* char* _s_trig_append; */
 	0,						/* long _l_box_width */
-	0,						/* long _l_height; */
+	vzTTFontParamsDefault,	/* struct vzTTFontParams _font_params; */
 	NULL					/* char* _s_font; */
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
 {
 	{"s_font", "Font name", PLUGIN_PARAMETER_OFFSET(default_value,s_font)},
-	{"l_height", "Font height", PLUGIN_PARAMETER_OFFSET(default_value,l_height)},
-	{"h_colour", "Text's colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value,h_colour)},
+	{"h_colour", "Text's colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value, h_font_colour)},
+	{"h_stroke_colour", "Text's stroke colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value, h_stroke_colour)},
 	{"l_box_width", "Line space multiplier", PLUGIN_PARAMETER_OFFSET(default_value,l_box_width)},
 	{"l_loop", "Inicated loop operation (1 - enable)", PLUGIN_PARAMETER_OFFSET(default_value,l_loop)},
 	{"l_interval", "Interval (px) between text messages", PLUGIN_PARAMETER_OFFSET(default_value,l_interval)},
 	{"f_speed", "Speed of moving left blocks (px/field)", PLUGIN_PARAMETER_OFFSET(default_value,f_speed)},
 	{"s_trig_append", "Append string to crawl", PLUGIN_PARAMETER_OFFSET(default_value,s_trig_append)},
 	{"l_reset", "Reset currently layouted objects", PLUGIN_PARAMETER_OFFSET(default_value,l_reset)},
+
+	{"l_fixed_kerning", "Fixed kerning width (0 if not used)", PLUGIN_PARAMETER_OFFSET(default_value, font_layout.fixed_kerning)},
+	{"f_advance_ratio", "Advance ratio (char dist mult.)", PLUGIN_PARAMETER_OFFSET(default_value, font_layout.advance_ratio)},
+
+	{"l_height", 
+		"Font height", 
+		PLUGIN_PARAMETER_OFFSET(default_value,font_params.height)},
+	{"l_width", 
+		"Font width", 
+		PLUGIN_PARAMETER_OFFSET(default_value,font_params.width)},
+	{"l_stroke_radius", 
+		"Font stroke radius", 
+		PLUGIN_PARAMETER_OFFSET(default_value,font_params.stroke_radius)},
+	{"l_stroke_line_cap", 
+		"Font stroke line cap style:\n"
+		"\t0 - The end of lines is rendered as a full stop on the last point itself;\n"
+		"\t1 - The end of lines is rendered as a half-circle around the last point;\n"
+		"\t2 - The end of lines is rendered as a square around the last point;"
+		, 
+		PLUGIN_PARAMETER_OFFSET(default_value,font_params.stroke_line_cap)},
+	{"l_stroke_line_join",
+		"Font line join style:\n"
+		"\t0 - Used to render rounded line joins. Circular arcs are used to join two lines smoothly;\n"
+		"\t1 - Used to render beveled line joins; i.e., the two joining lines are extended until they intersect;\n"
+		"\t2 - Same as beveled rendering, except that an additional line break is added if the angle between the two joining lines is too closed (this is useful to avoid unpleasant spikes in beveled rendering);"
+		,
+		PLUGIN_PARAMETER_OFFSET(default_value,font_params.stroke_line_join)},
+
 	{NULL,NULL,0}
 };
 
@@ -421,7 +456,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		return;
 
 	/* check if width and height setted */
-	if ( (_DATA->l_height == 0) || (_DATA->l_box_width == 0) || (_DATA->_font == NULL)) 
+	if ( (_DATA->font_params.height == 0) || (_DATA->l_box_width == 0) || (_DATA->_font == NULL)) 
 	{
 		ReleaseMutex(_DATA->_lock_update);
 		return;
@@ -430,7 +465,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	// --------------------------------------------------------------------
 	/* create texture */
 	long w = POT(_DATA->l_box_width);
-	long h = POT(_DATA->l_height*2);
+	long h = POT(_DATA->font_params.height*2);
 	if(!(_DATA->_texture_initialized))
 	{
 		// generate new texture id
@@ -474,8 +509,8 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	vzImage* image = vzImageNew
 	(
 		_DATA->l_box_width, 
-		_DATA->l_height*2, 
-		4*_DATA->l_box_width*(_DATA->l_height*2)
+		_DATA->font_params.height*2, 
+		4*_DATA->l_box_width*(_DATA->font_params.height*2)
 	);
 
 	/* blit texts according to plugin logic */
@@ -485,7 +520,8 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			image, 
 			_DATA->_txt_msg[i]->pos, 0, 
 			_DATA->_txt_msg[i]->id,
-			_DATA->h_colour
+			_DATA->h_font_colour,
+			_DATA->h_stroke_colour
 		);
 	vzImageFlipVertical(image);
 
@@ -506,7 +542,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		(w - _DATA->l_box_width)/2, // GLint xoffset,
 		0,						// GLint yoffset,
 		_DATA->l_box_width,		// GLsizei width,
-		_DATA->l_height*2,		// GLsizei height,
+		_DATA->font_params.height*2, // GLsizei height,
 		GL_BGRA_EXT,			// GLenum format,
 		GL_UNSIGNED_BYTE,		// GLenum type,
 		image->surface			// const GLvoid *pixels 
@@ -530,7 +566,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	glVertex3f
 	(
 		(float)(-w/2),
-		(float)_DATA->l_height, 
+		(float)_DATA->font_params.height, 
 		0.0f
 	);
 
@@ -539,7 +575,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	glVertex3f
 	(
 		(float)(-w/2), 
-		(float)(_DATA->l_height - h), 
+		(float)(_DATA->font_params.height - h), 
 		0.0f
 	);
 
@@ -548,7 +584,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	glVertex3f
 	(
 		(float)(w - w/2), 
-		(float)(_DATA->l_height - h), 
+		(float)(_DATA->font_params.height - h), 
 		0.0f
 	);
 
@@ -557,7 +593,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	glVertex3f
 	(
 		(float)(w - w/2), 
-		(float)_DATA->l_height, 
+		(float)_DATA->font_params.height, 
 		0.0f
 	);
 
@@ -587,7 +623,7 @@ unsigned long WINAPI _msg_layouter(void* param)
 	if(font)
 	{
 		/* compose */
-		txt_msg->id = font->compose(txt_msg->buffer);
+		txt_msg->id = font->compose(txt_msg->buffer, &_DATA->font_layout);
 		txt_msg->width = font->get_symbol_width(txt_msg->id);
 #ifdef _DEBUG
 		fprintf(stderr, DEBUG_LINE_ARG 
@@ -624,7 +660,16 @@ PLUGIN_EXPORT void notify(void* data)
 	/* texture param changed */
 	if
 	(
-		(_DATA->l_height != _DATA->_l_height)
+		(
+			0 
+			!= 
+			memcpy
+			(
+				&_DATA->font_params, 
+				&_DATA->_font_params, 
+				sizeof(struct vzTTFontParams)
+			)
+		)
 		||
 		(_DATA->_l_box_width != _DATA->l_box_width)
 	)
@@ -644,7 +689,16 @@ PLUGIN_EXPORT void notify(void* data)
 	/* check if font data changed */
 	if
 	(
-		(_DATA->l_height != _DATA->_l_height)
+		(
+			0 
+			!= 
+			memcpy
+			(
+				&_DATA->font_params, 
+				&_DATA->_font_params, 
+				sizeof(struct vzTTFontParams)
+			)
+		)
 		|| 
 		(_DATA->s_font != _DATA->_s_font) 
 	)
@@ -667,10 +721,10 @@ PLUGIN_EXPORT void notify(void* data)
 
 		/* sync font */
 		_DATA->_s_font = _DATA->s_font;
-		_DATA->_l_height = _DATA->l_height;
+		_DATA->_font_params = _DATA->font_params;
 
 		/* setup new font */
-		_DATA->_font = get_font(_DATA->s_font,_DATA->l_height);
+		_DATA->_font = get_font(_DATA->s_font, &_DATA->font_params);
 	};
 
 	/* appending message check */

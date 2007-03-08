@@ -36,9 +36,9 @@ ChangeLog:
 #ifdef VZTTFONT_EXPORTS
 #define VZTTFONT_API __declspec(dllexport)
 #ifdef _DEBUG
-#pragma comment(lib, "freetype221_D.lib") 
+#pragma comment(lib, "freetype231_D.lib") 
 #else
-#pragma comment(lib, "freetype221.lib") 
+#pragma comment(lib, "freetype231.lib") 
 #endif
 //#pragma comment(lib, "freetype.lib") 
 //#pragma comment(lib, "libfreetype.lib") 
@@ -49,6 +49,8 @@ ChangeLog:
 
 #include "../vz/vzImage.h"
 
+#define VZTTFONT_MAX_GLYPHS 65536
+
 struct vzTTFontLayoutConf
 {
 	float line_space;
@@ -57,7 +59,26 @@ struct vzTTFontLayoutConf
 	long limit_height;
 	long fixed_kerning;
 	long fixed_kerning_align; /* 0 - left, 1 - center, 2 - right */
+	float advance_ratio;
 };
+
+struct vzTTFontParams
+{
+	long height;
+	long width;
+	long stroke_radius;
+	long stroke_line_cap;
+	long stroke_line_join;
+};
+
+#define vzTTFontParamsDefault				\
+{											\
+	0,		/* height				*/		\
+	0,		/* width				*/		\
+	0,		/* stroke_radius		*/		\
+	0,		/* stroke_line_cap		*/		\
+	0		/* stroke_line_join		*/		\
+}
 
 #define vzTTFontLayoutConfDefaultData		\
 {											\
@@ -66,7 +87,8 @@ struct vzTTFontLayoutConf
 	-1,		/* limit_width			*/		\
 	-1,		/* limit_height			*/		\
 	0,		/* fixed_kerning		*/		\
-	1		/* fixed_kerning_align	*/		\
+	1,		/* fixed_kerning_align	*/		\
+	1.0		/* advance_ratio		*/		\
 }
 
 
@@ -76,20 +98,22 @@ class VZTTFONT_API vzTTFont
 {
 	// freetype font face
 	void* _font_face;
+	void* _font_stroker;
 
 	// caches
-	void* _glyphs_cache[65536];
-	long _glyphs_indexes[65536];
+	void* _glyphs_cache[VZTTFONT_MAX_GLYPHS];
+	void* _strokes_cache[VZTTFONT_MAX_GLYPHS];
+	long _glyphs_indexes[VZTTFONT_MAX_GLYPHS];
 
 	// font file name
 	char _file_name[128];
 
+	struct vzTTFontParams _params;
+
 	// geoms
-	long _height;
-	long _width;
 	long _baseline;
-	long _limit_width;
-	long _limit_height;
+//	long _limit_width;
+//	long _limit_height;
 
 	// try to lock
 	void* lock;
@@ -104,15 +128,15 @@ class VZTTFONT_API vzTTFont
 	long insert_symbols(void *new_symbols);
 
 public:
-	void* _get_glyph(unsigned short char_code);
+	int _get_glyph(unsigned short char_code, void** font_glyph, void** stroke_glyph);
 
-	vzTTFont(char* name,int height,int width = 0);
+	vzTTFont(char* name, struct vzTTFontParams* params);
 	long ready();
-	vzImage* render(char* text, long colour, struct vzTTFontLayoutConf* l = 0);
+	vzImage* render(char* text, long font_colour, long stroke_colour, struct vzTTFontLayoutConf* l = 0);
 
 	void delete_symbols(long id);
 	long compose(char* string_utf8, struct vzTTFontLayoutConf* l = 0);
-	void render_to(vzImage* image, long x , long y, long text_id, long colour);
+	void render_to(vzImage* image, long x , long y, long text_id, long font_colour, long stroke_colour);
 	long get_symbol_width(long id);
 	long get_symbol_height(long id);
 
