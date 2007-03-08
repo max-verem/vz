@@ -46,9 +46,13 @@ Connection closed by foreign host.
 			<function name="ttfont" id="text_1">
 				<param name="s_text" value="TEST MESSAGE #1"/>
 				<param name="s_font" value="m1-hb"/>
-				<param name="l_height" value="24"/>
+				<param name="l_height" value="22"/>
 				<param name="h_colour" value="0xFFDCDCDC"/>
 				<param name="L_center" value="_LM_"/>
+                                <param name="h_stroke_colour" value="0xFF202020"/>
+                                <param name="f_stroke_radius" value="2.0"/>
+				<param name="f_advance_ratio" value="1.05"/>
+				<param name="l_stroke_line_cap" value="1"/>
 			</function>
 		</container>
 
@@ -59,12 +63,35 @@ Connection closed by foreign host.
 			</function>
 			<function name="ttfont" id="text_2">
 				<param name="s_text" value="TEST MESSAGE #2"/>
-				<param name="s_font" value="m1-hb"/>
-				<param name="l_height" value="15"/>
-				<param name="h_colour" value="0xFFDCDCDC"/>
+				<param name="s_font" value="tahomabd"/>
+				<param name="l_height" value="20"/>
+				<param name="h_colour" value="0xFFE6E6E6"/>
 				<param name="L_center" value="_LM_"/>
+				<param name="f_advance_ratio" value="1.1"/>
+                                <param name="h_stroke_colour" value="0xFF202020"/>
+                                <param name="f_stroke_radius" value="2.0"/>
+				<param name="l_stroke_line_cap" value="1"/>
 			</function>
 		</container>
+
+		<container visible="1">
+			<function name="translate">
+				<param name="f_x" value="400"/>
+				<param name="f_y" value="78"/>
+			</function>
+			<function name="ttfont" id="text_2">
+				<param name="s_text" value="TEST MESSAGE #3"/>
+				<param name="s_font" value="tahomabd"/>
+				<param name="l_height" value="20"/>
+				<param name="h_colour" value="0xFFE6E6E6"/>
+				<param name="L_center" value="_LM_"/>
+				<param name="f_advance_ratio" value="1.1"/>
+                                <param name="h_stroke_colour" value="0xFF202020"/>
+                                <param name="f_stroke_radius" value="2.0"/>
+				<param name="l_stroke_line_cap" value="1"/>
+			</function>
+		</container>
+
 
 	</container>
 
@@ -150,7 +177,8 @@ Connection closed by foreign host.
 </tree>
 
 <motion>
-	<director id="main" dur="72" loop="1" pos="0" run="1">
+<!--	<director id="main" dur="72" loop="1" pos="0" run="1"> -->
+	<director id="main" dur="72" loop="0" pos="37" run="0">
 		<control>
 <!--			<key time="36" enable="1" action="1" value="" id="stop_1" /> -->
 		</control>
