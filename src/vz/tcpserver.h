@@ -30,5 +30,6 @@ ChangeLog:
 #define TCPSERVER_H
 
 unsigned long WINAPI tcpserver(void* _socket);
+void tcpserver_kill();
 
 #endif // TCPSERVER_H

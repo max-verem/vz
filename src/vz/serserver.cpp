@@ -43,6 +43,7 @@ extern vzTVSpec tv;
 extern int main_stage;
 extern char screenshot_file[1024];
 extern void* config;
+extern int f_exit;
 
 #define SERIAL_BUF_SIZE 65536
 
@@ -120,7 +121,7 @@ unsigned long WINAPI serserver(void* _config)
 
 	/* "endless" loop */
 	int nak = 0;
-	for(;;)
+	for(;0 == f_exit;)
 	{
 		HRESULT h;
 		unsigned long r_bytes;
@@ -249,4 +250,6 @@ unsigned long WINAPI serserver(void* _config)
 		};
 		nak = 0x04;
 	};
+
+	return 0;
 };

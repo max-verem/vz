@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-03-10:
+		*exiting from threads fixed
+
     2005-06-08:
 		* Code cleanup.
 		* Added configuration throw the global config. Parameters TCPSERVER_PORT
@@ -36,6 +39,7 @@ ChangeLog:
 #include "vzImage.h"
 #include "vzTVSpec.h"
 
+extern int f_exit;
 extern void* scene;	// scene loaded
 extern HANDLE scene_lock;
 extern void* functions;
@@ -342,7 +346,20 @@ static unsigned long WINAPI tcpserver_client(void* _socket)
 };
 
 
-static HANDLE clients_threads[MAX_CLIENTS];
+static struct
+{
+	HANDLE thread;
+	SOCKET socket;
+} 
+srv_clients[MAX_CLIENTS];
+
+static SOCKET socket_listen = INVALID_SOCKET;
+
+void tcpserver_kill()
+{
+	shutdown(socket_listen, SD_BOTH);
+	closesocket(socket_listen);
+};
 
 unsigned long WINAPI tcpserver(void* _config)
 {
@@ -351,7 +368,7 @@ unsigned long WINAPI tcpserver(void* _config)
 	unsigned long r;
 
 	// cleanup handles array
-	for(j=0;j<MAX_CLIENTS;j++) clients_threads[j] = INVALID_HANDLE_VALUE;
+	for(j=0;j<MAX_CLIENTS;j++) srv_clients[j].thread = INVALID_HANDLE_VALUE;
 
 	// check if server is enabled
 	if(!vzConfigParam(_config,"tcpserver","enable"))
@@ -378,8 +395,7 @@ unsigned long WINAPI tcpserver(void* _config)
 	};
 
 	// create socket
-	SOCKET socket_listen = socket(AF_INET, SOCK_STREAM, 0);
-	if (socket_listen == INVALID_SOCKET)
+	if (INVALID_SOCKET == (socket_listen = socket(AF_INET, SOCK_STREAM, 0)))
 	{
 		printf("tcpserver: socket() failed\n");
 		ExitThread(0);
@@ -404,7 +420,7 @@ unsigned long WINAPI tcpserver(void* _config)
 	listen(socket_listen, SOMAXCONN);
 
 	// endless loop for server listener
-	for(;;)
+	for(;0 == f_exit;)
 	{
 		sockaddr_in s_remote;
 		int s_remote_size = sizeof(s_remote);
@@ -416,35 +432,53 @@ unsigned long WINAPI tcpserver(void* _config)
 		if(socket_incoming == INVALID_SOCKET)
 		{
 			printf("tcpserver: accept() failed\n");
-			ExitThread(0);
-			return 0;
-		};
-
-		// notify system about incoming connection
-		printf("tcpserver: accepted connection from %s:%ld\n",inet_ntoa(s_remote.sin_addr),s_remote.sin_port);
-
-		// create thread for client operation
-		for(j=0;j<MAX_CLIENTS;j++)
-		{
-			// cleanup hanldes
-			if(clients_threads[j] != INVALID_HANDLE_VALUE)
-				if(GetExitCodeThread(clients_threads[j], &r))
-					if(r != STILL_ACTIVE)
-					{
-						CloseHandle(clients_threads[j]);
-						clients_threads[j] = INVALID_HANDLE_VALUE;
-					};
-
-			if(clients_threads[j] == INVALID_HANDLE_VALUE)
-			{
-				clients_threads[j] = CreateThread(0, 0, tcpserver_client, (void*)socket_incoming, 0, NULL);
-				j = MAX_CLIENTS + 1;
-			};
 		}
-		// all slots are busy
-		if(j == MAX_CLIENTS)
-			closesocket(socket_incoming);
+		else
+		{
+			// notify system about incoming connection
+			printf("tcpserver: accepted connection from %s:%ld\n",inet_ntoa(s_remote.sin_addr),s_remote.sin_port);
+
+			// create thread for client operation
+			for(j=0;j<MAX_CLIENTS;j++)
+			{
+				// cleanup hanldes
+				if(srv_clients[j].thread != INVALID_HANDLE_VALUE)
+					if(GetExitCodeThread(srv_clients[j].thread, &r))
+						if(r != STILL_ACTIVE)
+						{
+							CloseHandle(srv_clients[j].thread);
+							srv_clients[j].thread = INVALID_HANDLE_VALUE;
+						};
+
+				if(srv_clients[j].thread == INVALID_HANDLE_VALUE)
+				{
+					srv_clients[j].socket = socket_incoming;
+					srv_clients[j].thread = CreateThread(0, 0, tcpserver_client, (void*)srv_clients, 0, NULL);
+					j = MAX_CLIENTS + 1;
+				};
+			}
+			
+			// all slots are busy
+			if(j == MAX_CLIENTS)
+				closesocket(socket_incoming);
+		};
 	};
 
+	/* try to close all threads */
+	for(j=0;j<MAX_CLIENTS;j++)
+		if(srv_clients[j].thread != INVALID_HANDLE_VALUE)
+		{
+			/* force shutdown socket */
+			shutdown(srv_clients[j].socket, SD_BOTH);
+			closesocket(srv_clients[j].socket);
+
+			/* wait for thread ends */
+			WaitForSingleObject(srv_clients[j].thread, INFINITE);
+			CloseHandle(srv_clients[j].thread);
+		};
+
+	closesocket(socket_listen);
+
+	return 0;
 };
 

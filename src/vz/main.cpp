@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-03-10:
+		*FBO support leak detect
+		*more gracefull cleanup
+
 	2007-03-06:
 		*GLUT goodbye!
 
@@ -87,6 +91,8 @@ vzTVSpec tv;
 
 ----------------------------------------------------------
 */
+int f_exit = 0;;
+
 void* scene = NULL;	// scene loaded
 char* scene_file = NULL;
 
@@ -134,7 +140,6 @@ static struct
 	HWND wnd;
 	HGLRC glrc;
 	HANDLE lock;
-	int f_exit;
 } vz_window_desc;
 
 static HANDLE global_frame_event;
@@ -146,12 +151,16 @@ static long not_first_at = 0;
 /*----------------------------------------------------------
 	sync srcs
 ----------------------------------------------------------*/
+
+static HANDLE sync_render_handle = INVALID_HANDLE_VALUE;
+static HANDLE internal_sync_generator_handle = INVALID_HANDLE_VALUE;
+
 static unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
 {
 	frames_counter_proc fc = (frames_counter_proc)fc_proc_addr;
 	
 	// endless loop
-	while(1)
+	while(0 == f_exit)
 	{
 		// sleep
 		Sleep(tv.TV_FRAME_DUR_MS);
@@ -159,6 +168,8 @@ static unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
 		// call frame counter
 		if (fc) fc();
 	};
+
+	return 0;
 };
 
 static void frames_counter()
@@ -180,7 +191,7 @@ static void vz_scene_render(void);
 static void vz_scene_display(void);
 static unsigned long WINAPI sync_render(void* data)
 {
-	while(!vz_window_desc.f_exit)
+	while(0 == f_exit)
 	{
 		if(WAIT_OBJECT_0 == WaitForSingleObject(global_frame_event, INFINITE))
 		{
@@ -218,7 +229,7 @@ static struct
 	unsigned int bg_tex;
 } fbo;
 
-void init_fbo()
+static int init_fbo()
 {	
 /*
 	http://developer.apple.com/documentation/GraphicsImaging/Conceptual/OpenGL-MacProgGuide/opengl_offscreen/chapter_5_section_5.html
@@ -227,6 +238,11 @@ void init_fbo()
 	http://www.opengl.org/registry/specs/EXT/packed_depth_stencil.txt
 */
 	
+	/* check if FBO supported (extensions loaded) */
+	if (NULL == glGenFramebuffersEXT)
+		return -1;
+
+	/* generate framebuffer */
 	glGenFramebuffersEXT(1, &fbo.fb);
 
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb);
@@ -290,6 +306,8 @@ void init_fbo()
 	fbo.index = 0;
 	glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) );
 	glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) );
+
+	return 0;
 };
 
 
@@ -418,6 +436,16 @@ static void vz_scene_display(void)
 		return;
 	};
 
+	// check if we need to make a screenshot
+	if(*screenshot_file)
+	{
+		char* error_log;
+		vzImage* screenshot = vzImageNewFromVB(tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT);
+		vzImageSaveTGA(screenshot_file,screenshot,&error_log);
+		*screenshot_file = 0;
+		vzImageFree(screenshot);
+	};
+
 	/* unbind offscreen buffer */
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
@@ -520,16 +548,6 @@ static void vz_scene_display(void)
 
 	// mark flag about first frame
 	not_first_at = 1;
-
-	// check if we need to make a screenshot
-	if(*screenshot_file)
-	{
-		char* error_log;
-		vzImage* screenshot = vzImageNewFromVB(tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT);
-		vzImageSaveTGA(screenshot_file,screenshot,&error_log);
-		*screenshot_file = 0;
-		vzImageFree(screenshot);
-	};
 
 	/* unbind conext */
 	wglMakeCurrent(NULL, NULL);
@@ -636,18 +654,31 @@ static int vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 
 static int vz_destroy_window()
 {
+	if(0 != vz_window_desc.glrc)
+	{
+		wglMakeCurrent(NULL,NULL);
+		wglDeleteContext(vz_window_desc.glrc);
+	};
+
+	if(0 != vz_window_desc.hdc)
+		ReleaseDC(vz_window_desc.wnd, vz_window_desc.hdc);
+
 	return 0;
 };
 
 static int vz_create_window()
 {
+	/* clear window desc struct */
+	memset(&vz_window_desc, 0, sizeof(vz_window_desc));
+
+	/* setup module instance */
 	vz_window_desc.instance = GetModuleHandle(NULL);
 
 	/* prepare window class */
 	WNDCLASSEX wndClass;
-	ZeroMemory              ( &wndClass, sizeof(wndClass) ); // Clear the window class structure.
+	ZeroMemory              ( &wndClass, sizeof(wndClass) );
 	wndClass.cbSize         = sizeof(WNDCLASSEX); 
-	wndClass.style          = /* CS_HREDRAW | CS_VREDRAW | */ CS_OWNDC;
+	wndClass.style          = CS_OWNDC;
 	wndClass.lpfnWndProc    = (WNDPROC)vz_window_proc;
 	wndClass.cbClsExtra     = 0;
 	wndClass.cbWndExtra     = 0;
@@ -758,7 +789,7 @@ static int vz_create_window()
 	if(0 == vz_window_desc.glrc)
     {
 		vz_destroy_window();
-		fprintf( stderr, "Unable to create an OpenGL rendering context\n");
+		fprintf( stderr, "ERROR: Unable to create an OpenGL rendering context\n");
 		return -6;
     };
 
@@ -766,7 +797,7 @@ static int vz_create_window()
 	if(!wglMakeCurrent (vz_window_desc.hdc, vz_window_desc.glrc))
     {
 		vz_destroy_window();
-		fprintf( stderr, "Unable to activate OpenGL rendering context");
+		fprintf( stderr, "ERROR: Unable to activate OpenGL rendering context");
 		return -7;
     };
 
@@ -774,7 +805,13 @@ static int vz_create_window()
 	vzGlExtInit();
 
 	/* init FBO */
-	init_fbo();
+	if (0 != init_fbo())
+	{
+		vz_destroy_window();
+		fprintf( stderr, "ERROR: FBO not supported by hardware\n");
+		return -7;
+    };
+
 
 	/* clear */
 	glClearColor (0.0, 0.0, 0.0, 0.0);
@@ -796,6 +833,27 @@ static int vz_create_window()
 
 	return 0;
 };
+
+static void vz_window_event_loop()
+{
+	/* event loop */
+	MSG msg;
+	int f_exit = 0;
+	while (!f_exit)
+	{
+		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+        {
+			if (msg.message == WM_QUIT)
+				f_exit = 1;
+			else
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+            };
+		};
+    };
+};
+
 
 /*
 ----------------------------------------------------------
@@ -872,93 +930,121 @@ int main(int argc, char** argv)
 	};
 
 	/* create output window */
-	if(0 != vz_create_window())
-		return -1;
-	/* create gl lock */
-	vz_window_desc.lock = CreateMutex(NULL,FALSE,NULL);
-
-	// syncs
-	global_frame_event = CreateEvent(NULL, TRUE, FALSE, NULL);
-	ResetEvent(global_frame_event);
-	scene_lock = CreateMutex(NULL,FALSE,NULL);
-
-	// init functions
-	functions = vzMainNewFunctionsList(config);
-
-	// try to create sync thread in output module
-	int output_module_sync = 0;
-	if(output_module)
-		output_module_sync = vzOutputSync(output_module, frames_counter);
-
-	// check if flag. if its not OK - start internal
-	if(output_module_sync == 0)
+	if(0 == vz_create_window())
 	{
-		HANDLE l = CreateThread
-		(
-			NULL,
-			1024,
-			internal_sync_generator,
-			frames_counter, // params
-			0,
-			NULL
-		);
+		/* create gl lock */
+		vz_window_desc.lock = CreateMutex(NULL,FALSE,NULL);
 
-		SetThreadPriority(l , THREAD_PRIORITY_HIGHEST);
-	};
+		// syncs
+		global_frame_event = CreateEvent(NULL, TRUE, FALSE, NULL);
+		ResetEvent(global_frame_event);
+		scene_lock = CreateMutex(NULL,FALSE,NULL);
 
-	/* sync render */
-	{
-		HANDLE l = CreateThread
-		(
-			NULL,
-			1024,
-			sync_render,
-			NULL, // params
-			0,
-			NULL
-		);
+		// init functions
+		functions = vzMainNewFunctionsList(config);
 
-		SetThreadPriority(l , THREAD_PRIORITY_HIGHEST);
-	};
+		// try to create sync thread in output module
+		int output_module_sync = 0;
+		if(output_module)
+			output_module_sync = vzOutputSync(output_module, frames_counter);
 
-	// check if we need automaticaly load scene
-	if(scene_file)
-	{
-		// init scene
-		scene = vzMainSceneNew(functions,config,&tv);
-		if (!vzMainSceneLoad(scene, scene_file))
+		// check if flag. if its not OK - start internal
+		if(output_module_sync == 0)
 		{
-			printf("Error!!! Unable to load scene '%s'\n",scene_file);
-			vzMainSceneFree(scene);
+			internal_sync_generator_handle = CreateThread
+			(
+				NULL,
+				1024,
+				internal_sync_generator,
+				frames_counter, // params
+				0,
+				NULL
+			);
+
+			SetThreadPriority(internal_sync_generator_handle , THREAD_PRIORITY_HIGHEST);
 		};
-		scene_file = NULL;
-	};
 
-	// start tcpserver
-	unsigned long thread;
-	HANDLE tcpserver_handle = CreateThread(0, 0, tcpserver, config, 0, &thread);
-	HANDLE serserver_handle = CreateThread(0, 0, serserver, config, 0, &thread);
-	SetThreadPriority(tcpserver_handle , THREAD_PRIORITY_LOWEST);
-	SetThreadPriority(serserver_handle , THREAD_PRIORITY_LOWEST);
+		/* sync render */
+		{
+			sync_render_handle = CreateThread
+			(
+				NULL,
+				1024,
+				sync_render,
+				NULL, // params
+				0,
+				NULL
+			);
 
-	/* event loop */
-	MSG msg;
-	int f_exit = 0;
-	while (!f_exit)
-	{
-		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
-        {
-			if (msg.message == WM_QUIT)
-				f_exit = 1;
-			else
+			SetThreadPriority(sync_render_handle , THREAD_PRIORITY_HIGHEST);
+		};
+
+		// check if we need automaticaly load scene
+		if(scene_file)
+		{
+			// init scene
+			scene = vzMainSceneNew(functions,config,&tv);
+			if (!vzMainSceneLoad(scene, scene_file))
 			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-            };
+				printf("Error!!! Unable to load scene '%s'\n",scene_file);
+				vzMainSceneFree(scene);
+			};
+			scene_file = NULL;
 		};
-    };
+
+		// start tcpserver/serial server
+		unsigned long thread;
+		HANDLE tcpserver_handle = CreateThread(0, 0, tcpserver, config, 0, &thread);
+		HANDLE serserver_handle = CreateThread(0, 0, serserver, config, 0, &thread);
+		SetThreadPriority(tcpserver_handle , THREAD_PRIORITY_LOWEST);
+		SetThreadPriority(serserver_handle , THREAD_PRIORITY_LOWEST);
+
+		/* event loop */
+		vz_window_event_loop();
+		f_exit = 1;
+
+		/* stop tcpserver/serial server */
+		tcpserver_kill();
+		WaitForSingleObject(tcpserver_handle, INFINITE);
+		WaitForSingleObject(serserver_handle, INFINITE);
+		CloseHandle(serserver_handle);
+		CloseHandle(tcpserver_handle);
+
+		/* stop sync render thread */
+		WaitForSingleObject(sync_render_handle, INFINITE);
+		CloseHandle(sync_render_handle);
+
+		/* stop internal sync generator */
+		if(INVALID_HANDLE_VALUE != internal_sync_generator_handle)
+		{
+			WaitForSingleObject(internal_sync_generator_handle, INFINITE);
+			CloseHandle(internal_sync_generator_handle);
+		};
+
+		/* unload scene */
+		if(NULL != scene)
+		{
+			vzMainSceneFree(scene);
+			scene = NULL;
+		};
+
+		vzMainFreeFunctionsList(functions);
+
+		/* destroy window */
+		vz_destroy_window();
+
+		/* close mutexes */
+		CloseHandle(scene_lock);
+		CloseHandle(vz_window_desc.lock);
+	};
 
 	/* cleanup */
+	if(output_module_name)
+	{
+		vzOutputFree(output_module);
+		output_module = NULL;
+	};
+
 
 	return 0;
 };
