@@ -93,7 +93,7 @@ struct vzTTFontParams
 
 
 struct vzTTFontLayoutConf vzTTFontLayoutConfDefault(void);
-
+VZTTFONT_API void vzTTFontAddFontPath(char* path);
 class VZTTFONT_API vzTTFont
 {
 	// freetype font face
@@ -106,7 +106,7 @@ class VZTTFONT_API vzTTFont
 	long _glyphs_indexes[VZTTFONT_MAX_GLYPHS];
 
 	// font file name
-	char _file_name[128];
+	char _file_name[1024];
 
 	struct vzTTFontParams _params;
 

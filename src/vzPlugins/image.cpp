@@ -59,14 +59,7 @@ static char* _plugin_notes =
 //#define VERBOSE2
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"image",
-	1.0,
-	"rc8",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO("image");
 
 // internal structure of plugin
 typedef struct

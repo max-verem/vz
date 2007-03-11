@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-03-11:
+		*Program version controled from "vzVersion.h"
+
 	2007-03-10:
 		*FBO support leak detect
 		*more gracefull cleanup
@@ -59,6 +62,7 @@ ChangeLog:
 #include <string.h>
 #include <process.h>
 #include <time.h>
+#include "vzVersion.h"
 #include "vzGlExt.h"
 
 #include "vzMain.h"
@@ -80,9 +84,6 @@ ChangeLog:
 	Main Program Info
 ----------------------------------------------------------
 */
-const char* VZ_TITLE = "ViZualizator";
-float VZ_VERSION_NUMBER = 1.0f;
-const char* VZ_VERSION_SUFFIX = "rc8";
 vzTVSpec tv;
 
 /*
@@ -868,6 +869,9 @@ int main(int argc, char** argv)
 	/* init timer period */
 	timeBeginPeriod(1);
 
+	/* default ttFont path */
+	vzTTFontAddFontPath("fonts");
+
 #ifdef _DEBUG
 {
 	vzTTFont* temp = new vzTTFont("m1-h", NULL);
@@ -876,7 +880,7 @@ int main(int argc, char** argv)
 #endif /* _DEBUG */
 
 	// hello message
-	printf("%s (vz-%.2f-%s) [controller]\n",VZ_TITLE, VZ_VERSION_NUMBER,VZ_VERSION_SUFFIX);
+	printf("%s (vz-%s) [controller]\n",VZ_TITLE, VZ_VERSION);
 
 	// analization of params
 	application = *argv;
@@ -928,6 +932,9 @@ int main(int argc, char** argv)
 		else
 			printf("OK\n");
 	};
+
+	/* add font path */
+	vzTTFontAddFontPath(vzConfigParam(config,"main","font_path"));
 
 	/* create output window */
 	if(0 == vz_create_window())

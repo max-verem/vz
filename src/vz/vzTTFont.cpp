@@ -50,6 +50,8 @@ ChangeLog:
 static FT_Library  ft_library;
 static HANDLE ft_library_lock;
 
+#define MAX_FONT_PATHS 16
+static char* font_paths[MAX_FONT_PATHS];
 
 BOOL APIENTRY DllMain( HANDLE hModule, 
                        DWORD  ul_reason_for_call, 
@@ -59,8 +61,14 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
+
+			/* init library */
 			ft_library_lock = CreateMutex(NULL,FALSE,NULL);
 			FT_Init_FreeType( &ft_library );
+
+			/* fonts path storage init */
+			memset(font_paths, 0, MAX_FONT_PATHS*sizeof(char*));
+
 			break;
 		case DLL_THREAD_ATTACH:
 			break;
@@ -71,7 +79,6 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     }
     return TRUE;
 }
-
 
 #define _MAX(A,B) ((A>B)?A:B)
 #define _MIN(A,B) ((A<B)?A:B)
@@ -116,8 +123,6 @@ VZTTFONT_API vzTTFont::vzTTFont(char* name, struct vzTTFontParams* params)
 	_symbols_count = 0;
 	_symbols = malloc(0);
 
-	//filename
-	sprintf(_file_name,"fonts/%s.ttf",name);
 
 	/* params */
 	_params = (params)?*params:vzTTFontParamsDefaultData;
@@ -131,7 +136,22 @@ VZTTFONT_API vzTTFont::vzTTFont(char* name, struct vzTTFontParams* params)
 	WaitForSingleObject(ft_library_lock,INFINITE);
 
 	// init new face
-	if(FT_New_Face(ft_library,_file_name,0,(FT_Face*)&_font_face))
+	for(int i = 0; (i<MAX_FONT_PATHS) && (NULL == _font_face) && (NULL != font_paths[i]); i++)
+	{
+		/* prepare file name */
+		sprintf
+		(
+			_file_name,
+			"%s/%s.ttf",
+			font_paths[i],
+			name
+		);
+
+		/* init face */
+		FT_New_Face(ft_library,_file_name,0,(FT_Face*)&_font_face);
+	};
+	/* check if it was possible to init font face */
+	if(NULL == _font_face)
 	{
 		// unlock ft library
 		ReleaseMutex(ft_library_lock);
@@ -794,7 +814,7 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 		insert_symbols(symbols);
 };
 
-inline void blit_glyph(unsigned long* dst, long dst_width, unsigned char* src, long src_height, long src_width, unsigned long colour
+static inline void blit_glyph(unsigned long* dst, long dst_width, unsigned char* src, long src_height, long src_width, unsigned long colour
 #ifdef _DEBUG
 , unsigned long* dst_limit
 #endif
@@ -992,8 +1012,22 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long font_colour, long stroke
 	return temp;
 };
 
+VZTTFONT_API void vzTTFontAddFontPath(char* path)
+{
+	int i;
+
+	/* search for next slot */
+	for(i = 0; i<MAX_FONT_PATHS; i++)
+		if(NULL == font_paths[i])
+		{
+			font_paths[i] = path;
+			return;
+		};
+};
+
 struct vzTTFontLayoutConf vzTTFontLayoutConfDefault(void) 
 { 
 	struct vzTTFontLayoutConf d = vzTTFontLayoutConfDefaultData;
 	return d;
 };
+

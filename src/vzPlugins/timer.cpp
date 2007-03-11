@@ -49,14 +49,7 @@ static char* _plugin_notes =
 #define MAX_BUF_LEN 1024
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"timer",
-	1.0,
-	"rc8",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO("timer");
 
 static char* working_param = "s_text";
 

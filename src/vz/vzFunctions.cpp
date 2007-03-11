@@ -72,10 +72,9 @@ void vzFunctions::load()
 				push(function_name,function);
 				printf
 				(
-					"OK! (%s-%.2f-%s)\n",
+					"OK! (%s-%s)\n",
 					function->info()->name,
-					function->info()->version_number,
-					function->info()->version_suffix
+					function->info()->version
 				);
 			}
 			else

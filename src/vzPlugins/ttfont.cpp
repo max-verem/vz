@@ -104,14 +104,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 }
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"ttfont",
-	1.0,
-	"rc8",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO("ttfont");
 
 /* text param description struct */
 struct text_params

@@ -111,6 +111,10 @@ SOURCE=.\serserver.h
 
 SOURCE=.\tcpserver.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\vzVersion.h
+# End Source File
 # End Group
 # Begin Group "Resource Files"
 

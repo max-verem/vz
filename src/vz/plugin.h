@@ -52,8 +52,7 @@ typedef struct
 typedef struct
 {
 	char* name;
-	float version_number;
-	char* version_suffix;
+	char* version;
 	char* description;
 	char* notes;
 } vzPluginInfo;

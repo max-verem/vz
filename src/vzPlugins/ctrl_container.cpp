@@ -43,14 +43,7 @@ static char* _plugin_notes =
 #define VALUE_INVISIBLE		FOURCC_TO_LONG('_','I','N','V') /* '_INV' */
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"ctrl_container",
-	1.0,
-	"rc8",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO("ctrl_container");
 
 // internal structure of plugin
 typedef struct

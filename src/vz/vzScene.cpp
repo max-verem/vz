@@ -102,7 +102,7 @@ ChangeLog:
 #include <stdio.h>
 #include <windows.h>
 #include "vzGlExt.h"
-#include "vz_cmd/vz_cmd.h"
+#include "../vzCmd/vz_cmd.h"
 
 static const unsigned short tag_tree[] = {'t', 'r', 'e', 'e',0};
 static const unsigned short tag_motion[] = {'m', 'o', 't', 'i', 'o', 'n',0};

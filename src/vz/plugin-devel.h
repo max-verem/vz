@@ -36,6 +36,7 @@ ChangeLog:
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "vzGlExt.h"
+#include "vzVersion.h"
 
 // dll exporst deals
 #define PLUGIN_EXPORT extern "C" __declspec(dllexport)
@@ -73,5 +74,25 @@ ChangeLog:
 
 /* plugins additional threads priorities */
 #define VZPLUGINS_AUX_THREAD_PRIO THREAD_PRIORITY_LOWEST
+
+/* versioning info */
+#define DEFINE_PLUGIN_INFO(NAME)											\
+PLUGIN_EXPORT vzPluginInfo info =											\
+{																			\
+	NAME,																	\
+	VZ_VERSION,																\
+	_plugin_description,													\
+	_plugin_notes															\
+}
+
+#define DEFINE_PLUGIN_INFO_EXT(NAME, VERSION)								\
+PLUGIN_EXPORT vzPluginInfo info =											\
+{																			\
+	NAME,																	\
+	VZ_VERSION "-" VERSION,													\
+	_plugin_description,													\
+	_plugin_notes															\
+}
+
 
 #endif

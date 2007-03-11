@@ -49,14 +49,7 @@ static char* _plugin_notes =
 #include "trajectory_table.h"
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"trajectory_table",
-	1.0,
-	"rc8",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO("trajectory_table");
 
 // internal structure of plugin
 typedef struct

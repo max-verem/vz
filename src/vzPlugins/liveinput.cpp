@@ -98,14 +98,7 @@ BOOL APIENTRY DllMain
 
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"liveinput",
-	1.0,
-	"rc8",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO("liveinput");
 
 /* ------------------------------------------------------------------------- */
 

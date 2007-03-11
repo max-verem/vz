@@ -35,6 +35,7 @@ ChangeLog:
 #include <winsock2.h>
 #include <process.h>
 
+#include "vzVersion.h"
 #include "vzMain.h"
 #include "vzImage.h"
 #include "vzTVSpec.h"
@@ -47,10 +48,6 @@ extern int main_stage;
 extern char screenshot_file[1024];
 extern void* config;
 extern vzTVSpec tv;
-
-extern const char* VZ_TITLE;
-extern float VZ_VERSION_NUMBER;
-extern const char* VZ_VERSION_SUFFIX;
 
 #define MAX_CLIENTS 32
 
@@ -172,7 +169,7 @@ static unsigned long WINAPI tcpserver_client(void* _socket)
 	SOCKET socket = (SOCKET)_socket;
 
 	char hello_message[512];
-	sprintf(hello_message, "%s (vz-%.2f-%s) [tcpserver]\n",VZ_TITLE, VZ_VERSION_NUMBER,VZ_VERSION_SUFFIX);
+	sprintf(hello_message, "%s (vz-%s) [tcpserver]\n",VZ_TITLE, VZ_VERSION);
 	char* shell_message = "\r\nvz in$> ";
 	char* shell_out = "vz out$> ";
 	char* error_OVERRUN = "Error: Message too long";

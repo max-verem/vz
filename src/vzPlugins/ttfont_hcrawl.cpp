@@ -32,6 +32,7 @@ ChangeLog:
 
 
 */
+
 static char* _plugin_description = 
 ""
 ;
@@ -109,14 +110,7 @@ struct txt_msg_descr
 };
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"ttfont_hcrawl",
-	1.0,
-	"rc8",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO("ttfont_hcrawl");
 
 // internal structure of plugin
 typedef struct

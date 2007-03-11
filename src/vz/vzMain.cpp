@@ -40,7 +40,7 @@ ChangeLog:
 
 */
 
-
+#include "vzVersion.h"
 #include "vzMain.h"
 #include "vzScene.h"
 #include "vzConfig.h"
@@ -66,7 +66,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 				XMLPlatformUtils::Terminate();
 				return FALSE;
 		    }
-			printf("Loading vzMain-1.0-rc8\n");
+			printf("Loading vzMain-%s\n", VZ_VERSION);
 			break;
 		case DLL_THREAD_ATTACH:
 			break;

@@ -37,14 +37,7 @@ static char* _plugin_notes =
 #include "../vz/plugin.h"
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"alpha",
-	1.0,
-	"rc8",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO("alpha");
 
 // internal structure of plugin
 typedef struct

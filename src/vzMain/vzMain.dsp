@@ -96,18 +96,6 @@ SOURCE=..\vz\unicode.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=..\vz\vz_cmd\vz_cmd.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\vz\vz_cmd\vz_cmd_serial.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\vz\vz_cmd\vz_cmd_shell.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\vz\vzConfig.cpp
 # End Source File
 # Begin Source File
@@ -177,10 +165,6 @@ SOURCE=..\vz\plugin.h
 # Begin Source File
 
 SOURCE=..\vz\unicode.h
-# End Source File
-# Begin Source File
-
-SOURCE="..\vz\vz_cmd\vz_cmd-private.h"
 # End Source File
 # Begin Source File
 

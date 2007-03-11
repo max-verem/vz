@@ -74,14 +74,7 @@ static char* _plugin_notes =
 #include "do_format_string.h"
 
 // declare name and version of plugin
-PLUGIN_EXPORT vzPluginInfo info =
-{
-	"equipe_timer",
-	1.0,
-	"probe2",
-	_plugin_description,
-	_plugin_notes
-};
+DEFINE_PLUGIN_INFO_EXT("equipe_timer","NONSTD");
 
 #define MAX_TIMERS 4
 #define MAX_BUFFER_SIZE 128
