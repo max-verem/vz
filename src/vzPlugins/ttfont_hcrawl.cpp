@@ -183,7 +183,7 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"h_colour", "Text's colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value, h_font_colour)},
 	{"h_stroke_colour", "Text's stroke colour (in hex)", PLUGIN_PARAMETER_OFFSET(default_value, h_stroke_colour)},
 	{"l_box_width", "Line space multiplier", PLUGIN_PARAMETER_OFFSET(default_value,l_box_width)},
-	{"l_loop", "Inicated loop operation (1 - enable)", PLUGIN_PARAMETER_OFFSET(default_value,l_loop)},
+	{"l_loop", "Indicated loop operation (1 - enable)", PLUGIN_PARAMETER_OFFSET(default_value,l_loop)},
 	{"l_interval", "Interval (px) between text messages", PLUGIN_PARAMETER_OFFSET(default_value,l_interval)},
 	{"f_speed", "Speed of moving left blocks (px/field)", PLUGIN_PARAMETER_OFFSET(default_value,f_speed)},
 	{"s_trig_append", "Append string to crawl", PLUGIN_PARAMETER_OFFSET(default_value,s_trig_append)},
@@ -655,7 +655,7 @@ PLUGIN_EXPORT void notify(void* data)
 		(
 			0 
 			!= 
-			memcpy
+			memcmp
 			(
 				&_DATA->font_params, 
 				&_DATA->_font_params, 
@@ -684,7 +684,7 @@ PLUGIN_EXPORT void notify(void* data)
 		(
 			0 
 			!= 
-			memcpy
+			memcmp
 			(
 				&_DATA->font_params, 
 				&_DATA->_font_params, 
