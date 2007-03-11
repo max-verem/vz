@@ -69,9 +69,7 @@ ChangeLog:
 #include "vzOutput.h"
 #include "vzImage.h"
 #include "vzTVSpec.h"
-#ifdef _DEBUG
 #include "vzTTFont.h"
-#endif
 
 #include "tcpserver.h"
 #include "serserver.h"
