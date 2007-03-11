@@ -75,20 +75,20 @@ struct vzTTFontParams
 {											\
 	0,		/* height				*/		\
 	0,		/* width				*/		\
-	0.0,	/* stroke_radius		*/		\
+	0.0f,	/* stroke_radius		*/		\
 	0,		/* stroke_line_cap		*/		\
 	0		/* stroke_line_join		*/		\
 }
 
 #define vzTTFontLayoutConfDefaultData		\
 {											\
-	1.0,	/* line_space			*/		\
+	1.0f,	/* line_space			*/		\
 	0,		/* break_word			*/		\
 	-1,		/* limit_width			*/		\
 	-1,		/* limit_height			*/		\
 	0,		/* fixed_kerning		*/		\
 	1,		/* fixed_kerning_align	*/		\
-	1.0		/* advance_ratio		*/		\
+	1.0f	/* advance_ratio		*/		\
 }
 
 

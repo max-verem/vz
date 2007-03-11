@@ -450,7 +450,7 @@ unsigned long WINAPI tcpserver(void* _config)
 				if(srv_clients[j].thread == INVALID_HANDLE_VALUE)
 				{
 					srv_clients[j].socket = socket_incoming;
-					srv_clients[j].thread = CreateThread(0, 0, tcpserver_client, (void*)srv_clients, 0, NULL);
+					srv_clients[j].thread = CreateThread(0, 0, tcpserver_client, (void*)srv_clients[j].socket, 0, NULL);
 					j = MAX_CLIENTS + 1;
 				};
 			}
