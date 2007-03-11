@@ -99,18 +99,6 @@ SOURCE=.\serserver.cpp
 
 SOURCE=.\tcpserver.cpp
 # End Source File
-# Begin Source File
-
-SOURCE=.\vz_cmd\vz_cmd.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\vz_cmd\vz_cmd_serial.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\vz_cmd\vz_cmd_shell.c
-# End Source File
 # End Group
 # Begin Group "Header Files"
 
@@ -122,14 +110,6 @@ SOURCE=.\serserver.h
 # Begin Source File
 
 SOURCE=.\tcpserver.h
-# End Source File
-# Begin Source File
-
-SOURCE=".\vz_cmd\vz_cmd-private.h"
-# End Source File
-# Begin Source File
-
-SOURCE=.\vz_cmd\vz_cmd.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

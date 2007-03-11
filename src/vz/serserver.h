@@ -31,5 +31,6 @@ ChangeLog:
 #define SERSERVER_H
 
 unsigned long WINAPI serserver(void* _config);
+void serserver_kill(void);
 
 #endif // SERSERVER_H

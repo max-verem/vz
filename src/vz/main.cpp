@@ -1005,6 +1005,7 @@ int main(int argc, char** argv)
 
 		/* stop tcpserver/serial server */
 		tcpserver_kill();
+		serserver_kill();
 		WaitForSingleObject(tcpserver_handle, INFINITE);
 		WaitForSingleObject(serserver_handle, INFINITE);
 		CloseHandle(serserver_handle);

@@ -24,6 +24,18 @@
 #ifndef VZ_CMD_H
 #define VZ_CMD_H
 
+#ifdef __linux__
+#else
+
+#ifdef VZCMD_EXPORTS
+#define VZCMD_API __declspec(dllexport)
+#else /* !VZCMD_EXPORTS */
+#define VZCMD_API __declspec(dllimport)
+#pragma comment(lib, "vzCmd.lib") 
+#endif /* VZCMD_EXPORTS */
+
+#endif /* __linux__ */
+
 #include <stdarg.h>
 
 enum vz_serial_cmd_enum
@@ -50,16 +62,16 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-int vz_cmd_lookup_by_name(char* name);
-char* vz_cmd_get_name(int id);
+extern VZCMD_API int vz_cmd_lookup_by_name(char* name);
+extern VZCMD_API char* vz_cmd_get_name(int id);
 
-int vz_serial_cmd_count(void* _buf);
-int vz_serial_cmd_id(void* _buf, int index);
-int vz_serial_cmd_parseNcopy(void* _buf, int index, ...);
-int vz_serial_cmd_parseNmap(void* _buf, int index, ...);
-int vz_serial_cmd_probe(void* _buf, int* _len);
-int vz_serial_cmd_create_va(void* _buf, int* _len, va_list ap);
-int vz_serial_cmd_create(void* _buf, int* _len, ...);
+extern VZCMD_API int vz_serial_cmd_count(void* _buf);
+extern VZCMD_API int vz_serial_cmd_id(void* _buf, int index);
+extern VZCMD_API int vz_serial_cmd_parseNcopy(void* _buf, int index, ...);
+extern VZCMD_API int vz_serial_cmd_parseNmap(void* _buf, int index, ...);
+extern VZCMD_API int vz_serial_cmd_probe(void* _buf, int* _len);
+extern VZCMD_API int vz_serial_cmd_create_va(void* _buf, int* _len, va_list ap);
+extern VZCMD_API int vz_serial_cmd_create(void* _buf, int* _len, ...);
 
 #ifdef __cplusplus
 };

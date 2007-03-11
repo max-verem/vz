@@ -33,7 +33,7 @@ ChangeLog:
 #include "vzMain.h"
 #include "vzImage.h"
 #include "vzTVSpec.h"
-#include "vz_cmd/vz_cmd.h"
+#include "../vzCmd/vz_cmd.h"
 
 extern void* scene;	// scene loaded
 extern HANDLE scene_lock;
@@ -47,18 +47,25 @@ extern int f_exit;
 
 #define SERIAL_BUF_SIZE 65536
 
+static HANDLE serial_port_handle;
+
+void serserver_kill(void)
+{
+	CloseHandle(serial_port_handle);
+};
+
 unsigned long WINAPI serserver(void* _config)
 {
 	char* temp, *serial_port_name;
 	long buf_size_max = SERIAL_BUF_SIZE;
-	HANDLE serial_port_handle;
+	
 
 	// check if server is enabled
 	if(!vzConfigParam(_config,"serserver","enable"))
 	{
 		printf("serserver: disabled\n");
 		ExitThread(0);
-	};
+	}
 
 	// check for params
 	serial_port_name = vzConfigParam(_config,"serserver","serial_port_name");
@@ -121,6 +128,7 @@ unsigned long WINAPI serserver(void* _config)
 
 	/* "endless" loop */
 	int nak = 0;
+	printf("serserver: started on port %s\n", serial_port_name);
 	for(;0 == f_exit;)
 	{
 		HRESULT h;
