@@ -275,7 +275,7 @@ int vzTTFont::_get_glyph(unsigned short char_code, void** font_glyph, void** str
 		WaitForSingleObject(ft_library_lock,INFINITE);
 
 		// loading glyph info face
-		FT_Load_Glyph( (FT_Face)_font_face, glyph_index, FT_LOAD_RENDER /*| FT_LOAD_NO_HINTING */);
+		FT_Load_Glyph( (FT_Face)_font_face, glyph_index, FT_LOAD_RENDER | FT_LOAD_NO_HINTING );
 	
 		// storing 
 		FT_Glyph temp_glyph;
