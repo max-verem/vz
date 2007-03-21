@@ -84,6 +84,8 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 #include "vzMain.h"
 
 static struct vzOutputBuffers* _global_buffers_info = NULL;
+static double Ak = logl(10) / 20.0;
+
 
 //vzOutput public DLL method
 VZOUTPUT_API void* vzOutputNew(void* config, char* name, void* tv)
@@ -412,28 +414,52 @@ void vzOutput::pre_render()
 	/* find current active mix buffer */
 	struct vzOutputMixerBuffers* m = 
 		&_buffers.mix_queue[1 - _buffers.mix_current];
-	/* cleanup output buf */
-	memset
+	/* for one channel */
+	if
 	(
-		_buffers.output.audio[_buffers.pos_render],
-		0,
-		_buffers.output.audio_buf_size
-	);
-	/* multiply level */
-	for(j = 0; j< m->count ; j++)
+		(1 == m->count)
+		&&
+		(0.0 == m->levels[0])
+	)
 	{
-		/* calc k */
-		float k = expf(m->levels[j] * logf(10) / (20.0f));
+		memcpy
+		(
+			_buffers.output.audio[_buffers.pos_render],
+			m->buffers[0],
+			_buffers.output.audio_buf_size
+		);
+	}
+	else
+	{
+		/* cleanup output buf */
+		memset
+		(
+			_buffers.output.audio[_buffers.pos_render],
+			0,
+			_buffers.output.audio_buf_size
+		);
 
-		/* add line */
-		for(i = 0; i< (_buffers.output.audio_buf_size/2) ; i++)
-			((signed short*)_buffers.output.audio[_buffers.pos_render])[i]
-			+= 
-			((signed short*)m->buffers[j])[i] * k;
-
-		/* free buffer */
+		/* calc max and amps settings */
+		double Lmax = 0.0, Rs, Ls[32];
+		for(j = 0; j< m->count ; j++)
+			Lmax += (Ls[j] = expl(m->levels[j] * Ak));
+		/* limit */
+		if(Lmax < 1.0) Lmax = 1.0;
+		/* mix down */
+		for(i = 0, Rs = 0.0; i< (_buffers.output.audio_buf_size/2) ; i++)
+		{	
+			/* calc mixed sample */
+			for(j = 0; j< m->count ; j++)
+				Rs = ((double)(((signed short*)m->buffers[j])[i])) * Ls[j];
+			/* normalize */
+			Rs /= Lmax;
+			/* save */
+			((signed short*)_buffers.output.audio[_buffers.pos_render])[i] =(signed short)Rs;
+		};
+	}
+	/* free buffer */
+	for(j = 0; j< m->count ; j++)
 		free(m->buffers[j]);
-	};
 	m->count = 0;
 
 //#define FAKE_MIX
@@ -442,7 +468,7 @@ void vzOutput::pre_render()
 	memcpy
 	(
 		_buffers.output.audio[_buffers.pos_render],
-		_buffers.input.audio[_buffers.pos_render][0],
+		_buffers.input.audio[_buffers.pos_render][1],
 		_buffers.output.audio_buf_size
 	);
 #endif /* FAKE_MIX */
