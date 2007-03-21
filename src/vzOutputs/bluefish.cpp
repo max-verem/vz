@@ -295,44 +295,92 @@ static unsigned long WINAPI demux_fields(void* p)
 	return 0;
 };
 
+/* composite audio */
+#define MAX_AUDIO_SAMPLE_SIZE 4
+#define MAX_AUDIO_FRAMES_STORE 14
+#define MAX_AUDIO_FRAMES_READ 4
+static struct
+{
+	unsigned char *head;
+	int tail;
+	int sample_size;
+	int buffer_size;
+	int channel_map;
+} ca; 
 static unsigned long WINAPI io_in_a(void* p)
 {
-#define MAX_DROPPED_CLEAN 5
 	unsigned long **buffers = (unsigned long **)p;
-	unsigned long *composite_buffer = (unsigned long *)malloc(MAX_DROPPED_CLEAN*VZOUTPUT_MAX_CHANNELS * 2 * 2 * VZOUTPUT_AUDIO_SAMPLES);
-	int 
-		r = 0,
-		n = 0,
-		channel_map = (2 == inputs_count)?(STEREO_PAIR_1 | STEREO_PAIR_2):STEREO_PAIR_1
-		;
+	int r = 0, n = 0;
 
-	/* clean buffer */
-	memset(composite_buffer, 0, 2 * 2 * VZOUTPUT_AUDIO_SAMPLES);
+	/* init audio composite buffer */
+	if(NULL == ca.head)
+	{
+		ca.buffer_size = (MAX_AUDIO_SAMPLE_SIZE * VZOUTPUT_AUDIO_SAMPLES) * MAX_AUDIO_FRAMES_STORE;
+		ca.head = (unsigned char*)input_hanc_buffers[0][0];//malloc(ca.buffer_size);
+		ca.channel_map = (2 == inputs_count)?(STEREO_PAIR_1 | STEREO_PAIR_2):STEREO_PAIR_1;
+		ca.sample_size = inputs_count*4;
+		ca.tail = 0;
 
-	/* read first buffer */
+		/* read garbage */
+		n = bluefish[0]->ReadAudioSample
+		(
+			ca.channel_map,
+			ca.head,
+			VZOUTPUT_AUDIO_SAMPLES * MAX_AUDIO_FRAMES_STORE,
+			AUDIO_CHANNEL_LITTLEENDIAN | AUDIO_CHANNEL_16BIT,
+			0
+		);
+	};
+
+	/* clean tail */
+	memset(ca.head + ca.tail*ca.sample_size, 0, ca.buffer_size - ca.tail*ca.sample_size);
+
+	/* read buffer */
 	n = bluefish[0]->ReadAudioSample
 	(
-		channel_map,
-		composite_buffer,
-		VZOUTPUT_AUDIO_SAMPLES * MAX_DROPPED_CLEAN,
+		ca.channel_map,
+		ca.head + ca.tail*ca.sample_size,
+		VZOUTPUT_AUDIO_SAMPLES * MAX_AUDIO_FRAMES_READ,
 		AUDIO_CHANNEL_LITTLEENDIAN | AUDIO_CHANNEL_16BIT,
 		0
 	);
+	/* shift tail */
+	ca.tail += n;
+
+//fprintf(stderr, "n=%d, tail=%d\n", n, ca.tail);
 
 	/* demultiplex buffers */
 	if(2 == inputs_count)
 	{
 		for(int i=0, j=0 ; j<VZOUTPUT_AUDIO_SAMPLES; j++)
 		{
-			buffers[0][j] = composite_buffer[i]; i++;
-			buffers[1][j] = composite_buffer[i]; i++;
+			buffers[0][j] = ((unsigned long*)ca.head)[i]; i++;
+			buffers[1][j] = ((unsigned long*)ca.head)[i]; i++;
 		};
 	}
 	else
-		memcpy(buffers[0], composite_buffer, 4 * VZOUTPUT_AUDIO_SAMPLES);
+		memcpy(buffers[0], ca.head, 4 * VZOUTPUT_AUDIO_SAMPLES);
 
-	/* free buffers */
-	free(composite_buffer);
+	/* defragment buffers */
+	memmove
+	(
+		ca.head,
+		ca.head + VZOUTPUT_AUDIO_SAMPLES*ca.sample_size,
+		ca.buffer_size - VZOUTPUT_AUDIO_SAMPLES*ca.sample_size
+	);
+	ca.tail -= VZOUTPUT_AUDIO_SAMPLES;
+
+	/* check under/overflow */
+	if(ca.tail < 0)
+	{
+		fprintf(stderr, "audio resync #1: tail=%d\n", ca.tail);
+		ca.tail = 0;//VZOUTPUT_AUDIO_SAMPLES*ca.sample_size;
+	};
+	if(ca.tail > (MAX_AUDIO_FRAMES_READ*VZOUTPUT_AUDIO_SAMPLES)) 
+	{
+		fprintf(stderr, "audio resync #2: tail=%d\n", ca.tail);
+		ca.tail = 0;//VZOUTPUT_AUDIO_SAMPLES*ca.sample_size;
+	};
 
 	return 0;
 };
@@ -1275,6 +1323,7 @@ BOOL APIENTRY DllMain
 			/* clean vars */
 			memset(input_mapped_buffers, 0, sizeof(input_mapped_buffers));
 			memset(input_hanc_buffers, 0, sizeof(input_hanc_buffers));
+			memset(&ca, 0, sizeof(ca));
 
 			/* init HANC buffers */
 			for(i = 0; i < MAX_INPUTS; i++)
