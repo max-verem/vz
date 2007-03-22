@@ -101,11 +101,15 @@ ChangeLog:
 #define O_SWAP_INPUT_CONNECTORS	"SWAP_INPUT_CONNECTORS"
 #define O_ANALOG_INPUT			"ANALOG_INPUT"
 #define O_ANALOG_OUTPUT			"ANALOG_OUTPUT"
+#define O_PROGRAM_ANALOG_OUTPUT	"PROGRAM_ANALOG_OUTPUT"
+#define O_PROGRAM_SDI_DUPLICATE	"PROGRAM_SDI_DUPLICATE"
+#define O_PROGRAM_OUTPUT_SWAP	"PROGRAM_OUTPUT_SWAP"
 
 #define O_AUDIO_OUTPUT_EMBED	"AUDIO_OUTPUT_EMBED"
 #define O_AUDIO_OUTPUT_ENABLE	"AUDIO_OUTPUT_ENABLE"
 #define O_AUDIO_INPUT_ENABLE	"AUDIO_INPUT_ENABLE"
 #define O_AUDIO_INPUT_EMBED		"AUDIO_INPUT_EMBED"
+#define O_AUDIO_INPUT_SIGNAL	"AUDIO_INPUT_SIGNAL"
 
 #define MAX_HANC_BUFFER_READ (64*1024)
 #define MAX_HANC_BUFFER_SIZE (256*1024)
@@ -631,7 +635,10 @@ static unsigned long WINAPI main_io_loop(void* p)
 			bluefish[0]->InitAudioCaptureMode();
 			{
 				VARIANT v;
-				v.ulVal= 0; /* 0 - AES, 1 - Analouge, 2 - SDI A, 3 - SDI B */
+				v.ulVal = 0;
+				if(NULL != CONFIG_O(O_AUDIO_INPUT_SIGNAL))
+					/* 0 - AES, 1 - Analouge, 2 - SDI A, 3 - SDI B */
+					v.ulVal = atol(CONFIG_O(O_AUDIO_INPUT_SIGNAL));
 				v.vt = VT_UI4;
 				bluefish[0]->SetCardProperty(AUDIO_INPUT_PROP,v);
 			}
@@ -881,6 +888,170 @@ static int bluefish_init(int board_id)
 	return 1;
 };
 
+static void bluefish_configure_matrix(void)
+{
+	int r;
+
+	/* configure matrix */
+	{
+		EBlueConnectorPropertySetting routes[2];
+
+		/* configure dual output */
+		memset(routes, 0, sizeof(routes));
+		routes[0].channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;	
+		routes[0].connector = BLUE_CONNECTOR_DVID_1;
+		routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_OUTPUT;
+		routes[0].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_1;
+
+		routes[1].channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;
+		routes[1].connector = BLUE_CONNECTOR_DVID_2;
+		routes[1].signaldirection = BLUE_CONNECTOR_SIGNAL_OUTPUT;
+		routes[1].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_2;
+
+		/* analouge output */
+		if(NULL != CONFIG_O(O_PROGRAM_ANALOG_OUTPUT))
+		{
+			/* override settings and save */
+			routes[0].propType  = BLUE_CONNECTOR_PROP_SINGLE_LINK;
+			r = blue_set_connector_property(bluefish_obj, 1, routes);
+
+			fprintf(stdout, "bluefish: '%s' is active (r=%d)\n", O_PROGRAM_ANALOG_OUTPUT, r);
+
+			/* continue configure new routing matrix */
+			//memset(routes, 0, sizeof(routes));
+			routes[0].channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;	
+			routes[0].connector = BLUE_CONNECTOR_ANALOG_VIDEO_1;
+			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_OUTPUT;
+			routes[0].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_1;
+
+		};
+
+		if(NULL != CONFIG_O(O_PROGRAM_SDI_DUPLICATE))
+		{
+			int r1, r2;
+
+			/* override */
+			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
+			routes[1].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
+
+			/* set */
+			r1 = blue_set_connector_property(bluefish_obj, 1, &routes[0]);
+			r2 = blue_set_connector_property(bluefish_obj, 1, &routes[1]);
+
+			/* notify */
+			fprintf(stdout, "bluefish: '%s' is active (r1=%d, r2=%d)\n", O_PROGRAM_SDI_DUPLICATE, r1, r2);
+		}
+		else
+		{
+			/* swap */
+			if(NULL != CONFIG_O(O_PROGRAM_OUTPUT_SWAP))
+			{
+				routes[0].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_2;
+				routes[1].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_1;
+				fprintf(stdout, "bluefish: '%s' is active\n", O_PROGRAM_OUTPUT_SWAP);
+			};
+
+			r = blue_set_connector_property(bluefish_obj, 2, routes);
+		};
+
+		/* continue analouge output */
+		if(NULL != CONFIG_O(O_PROGRAM_ANALOG_OUTPUT))
+		{
+			VARIANT v;
+
+			/* detect analog output */
+			switch (atol(CONFIG_O(O_PROGRAM_ANALOG_OUTPUT)))
+			{
+				case 1: /* Composite + s-video */
+					v.ulVal = ANALOG_OUTPUTSIGNAL_CVBS_Y_C;
+					break;
+
+				case 2:	/* Component */
+					v.ulVal = ANALOG_OUTPUTSIGNAL_COMPONENT;
+					break;
+
+				case 3:	/* RGB */
+					v.ulVal = ANALOG_OUTPUTSIGNAL_RGB;
+					break;
+
+				case 5:	/* Composite + s-video + RGB */
+					v.ulVal = ANALOG_OUTPUTSIGNAL_CVBS_Y_C | ANALOG_OUTPUTSIGNAL_RGB;
+					break;
+
+				default:	/*  Composite + s-video + Component */
+					v.ulVal = ANALOG_OUTPUTSIGNAL_CVBS_Y_C| ANALOG_OUTPUTSIGNAL_COMPONENT;
+					break;
+			};
+
+
+			/* configure analouge output */
+			v.vt = VT_UI4;
+			v.ulVal =  /* ANALOG_OUTPUTSIGNAL_CVBS_Y_C| */ ANALOG_OUTPUTSIGNAL_COMPONENT;
+			bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_OUTPUT_SIGNAL_TYPE, v);
+		};
+
+
+
+		if(inputs_count)
+		{
+			/* use analog input if defined */
+			EBlueConnectorIdentifier 
+				connector_ch_A = BLUE_CONNECTOR_DVID_3,
+				connector_ch_B = BLUE_CONNECTOR_DVID_4;
+
+			/* if defined analog input usage */
+			if(NULL != CONFIG_O(O_ANALOG_INPUT))
+			{
+				unsigned long av_i_use;
+
+				if(!(CONFIG_O(O_SWAP_INPUT_CONNECTORS)))
+				{
+					connector_ch_A = BLUE_CONNECTOR_ANALOG_VIDEO_1;
+					av_i_use = ANALOG_VIDEO_INPUT_USE_SDI_A;
+				}
+				else
+				{
+					connector_ch_B = BLUE_CONNECTOR_ANALOG_VIDEO_1;
+					av_i_use = ANALOG_VIDEO_INPUT_USE_SDI_B;
+				};
+
+				/* setup analoge video input properties*/
+				VARIANT value;
+				value.vt = VT_UI4;
+				switch(atol(CONFIG_O(O_ANALOG_INPUT)))
+				{
+					/* 0 - Composite, 1 - S-Video, 2 - Component */
+					case 1:		value.ulVal = ANALOG_VIDEO_INPUT_Y_C_AIN3_AIN6; break;
+					case 2:		value.ulVal = ANALOG_VIDEO_INPUT_YUV_AIN2_AIN3_AIN6; break;
+					default:	value.ulVal = ANALOG_VIDEO_INPUT_CVBS_AIN2; break;
+				};
+				value.ulVal += av_i_use;
+				bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_INPUT_CONNECTOR, value);
+			};
+
+			/* first input for channel A */
+			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_A;
+			routes[0].connector = connector_ch_A;
+			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
+			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
+			r = blue_set_connector_property(bluefish_obj, 1, routes);
+
+			/* second input for channel B */
+			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_B;
+			routes[0].connector = connector_ch_B;
+			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
+			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
+			r = blue_set_connector_property(bluefish_obj, 1, routes);
+
+			
+			if(NULL != CONFIG_O(O_ANALOG_INPUT))
+			{
+
+			};
+		};
+	};
+};
+
 static void bluefish_configure(void)
 {
 	int r = 0, i=0;
@@ -962,103 +1133,6 @@ static void bluefish_configure(void)
 		};
 	};
 
-
-	/* configure matrix */
-	{
-		EBlueConnectorPropertySetting routes[2];
-		memset(routes, 0, sizeof(routes));
-
-		EBlueConnectorIdentifier 
-			c_a = BLUE_CONNECTOR_DVID_1,
-			c_b = BLUE_CONNECTOR_DVID_2;
-
-		/* analouge output */
-#ifdef TRY_ANALOUGE_OUTPUT
-		{
-//			c_b = BLUE_CONNECTOR_ANALOG_VIDEO_1,
-//			c_a = BLUE_CONNECTOR_DVID_1;
-			c_a = BLUE_CONNECTOR_ANALOG_VIDEO_1,
-			c_b = BLUE_CONNECTOR_ANALOG_VIDEO_2;
-
-			VARIANT v;
-			v.vt = VT_UI4;
-			v.ulVal = ( /* ANALOG_OUTPUTSIGNAL_CVBS_Y_C| */ ANALOG_OUTPUTSIGNAL_COMPONENT);
-			bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_OUTPUT_SIGNAL_TYPE,v);
-		};
-#endif /* TRY_ANALOUGE_OUTPUT */
-
-		/* configure dual output */
-		routes[0].channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;	
-		routes[0].connector = c_a; //BLUE_CONNECTOR_DVID_1;
-		routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_OUTPUT;
-		routes[0].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_1;
-
-		routes[1].channel = BLUE_VIDEO_OUTPUT_CHANNEL_A;	
-		routes[1].connector = c_b; //BLUE_CONNECTOR_DVID_2;
-		routes[1].signaldirection = BLUE_CONNECTOR_SIGNAL_OUTPUT;
-		routes[1].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_2;
-
-		r = blue_set_connector_property(bluefish_obj, 2, routes);
-
-		if(inputs_count)
-		{
-			/* use analog input if defined */
-			EBlueConnectorIdentifier 
-				connector_ch_A = BLUE_CONNECTOR_DVID_3,
-				connector_ch_B = BLUE_CONNECTOR_DVID_4;
-
-			/* if defined analog input usage */
-			if(NULL != CONFIG_O(O_ANALOG_INPUT))
-			{
-				unsigned long av_i_use;
-
-				if(!(CONFIG_O(O_SWAP_INPUT_CONNECTORS)))
-				{
-					connector_ch_A = BLUE_CONNECTOR_ANALOG_VIDEO_1;
-					av_i_use = ANALOG_VIDEO_INPUT_USE_SDI_A;
-				}
-				else
-				{
-					connector_ch_B = BLUE_CONNECTOR_ANALOG_VIDEO_1;
-					av_i_use = ANALOG_VIDEO_INPUT_USE_SDI_B;
-				};
-
-				/* setup analoge video input properties*/
-				VARIANT value;
-				value.vt = VT_UI4;
-				switch(atol(CONFIG_O(O_ANALOG_INPUT)))
-				{
-					/* 0 - Composite, 1 - S-Video, 2 - Component */
-					case 1:		value.ulVal = ANALOG_VIDEO_INPUT_Y_C_AIN3_AIN6; break;
-					case 2:		value.ulVal = ANALOG_VIDEO_INPUT_YUV_AIN2_AIN3_AIN6; break;
-					default:	value.ulVal = ANALOG_VIDEO_INPUT_CVBS_AIN2; break;
-				};
-				value.ulVal += av_i_use;
-				bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_INPUT_CONNECTOR, value);
-			};
-
-			/* first input for channel A */
-			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_A;
-			routes[0].connector = connector_ch_A;
-			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
-			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
-			r = blue_set_connector_property(bluefish_obj, 1, routes);
-
-			/* second input for channel B */
-			routes[0].channel = BLUE_VIDEO_INPUT_CHANNEL_B;
-			routes[0].connector = connector_ch_B;
-			routes[0].signaldirection = BLUE_CONNECTOR_SIGNAL_INPUT;
-			routes[0].propType = BLUE_CONNECTOR_PROP_SINGLE_LINK;
-			r = blue_set_connector_property(bluefish_obj, 1, routes);
-
-			
-			if(NULL != CONFIG_O(O_ANALOG_INPUT))
-			{
-
-			};
-		};
-	};
-
 	/* setup video */
 	for(i=0 ; (i<3) && (bluefish[i]) ; i++)
 	r = bluefish[i]->set_video_framestore_style(video_format, memory_format, update_format, video_resolution);
@@ -1088,6 +1162,8 @@ static void bluefish_configure(void)
 	scaled_rgb = (NULL != CONFIG_O(O_SCALED_RGB))?1:0;
 	for(i=0 ; (i<3) && (bluefish[i]) ; i++)
 	r = bluefish[i]->set_scaled_rgb(scaled_rgb);
+
+	bluefish_configure_matrix();
 
 	/* genlock source */
 	//SetCardProperty
