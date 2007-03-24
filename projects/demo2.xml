@@ -36,7 +36,7 @@ See vzdemo2.sh.bz2 for script
 			<function name="ttfont" id="desc">
 				<param name="s_text" value="Long long message to the customers!!! Pay money stupids!!"/>
 				<param name="f_limit_width" value="450.0"/>
-				<param name="s_font" value="m1-h"/>
+				<param name="s_font" value="verdanab"/>
 				<param name="l_height" value="20"/>
 				<param name="h_colour" value=" 0xFFFFFF"/>
 				<param name="h_colour" value=" 0x312E30"/>
@@ -58,7 +58,7 @@ See vzdemo2.sh.bz2 for script
 			</function>
 			<function name="ttfont" id="text_top">
 				<param name="s_text" value="I-O-O-O-I"/>
-				<param name="s_font" value="m1-h"/>
+				<param name="s_font" value="verdanab"/>
 				<param name="l_height" value="20"/>
 				<param name="h_colour" value=" 0x312E30"/>
 				<param name="L_center" value="_CM_"/>

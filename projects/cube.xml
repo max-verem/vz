@@ -137,10 +137,10 @@ scene.tree.motion.director.ab_mix.cont()
 </tree>
 <motion>
 
-    <director id="ab_mix" dur="155" loop="0" pos="0" run="1">
+    <director id="ab_mix" dur="155" loop="1" pos="0" run="1">
         <control>
-            <key time="76" enable="1" action="1" value="" id="ab_mix_stop_1" /> 
-            <key time="153" enable="1" action="1" value="" id="ab_mix_stop_2" /> 
+<!--            <key time="76" enable="1" action="1" value="" id="ab_mix_stop_1" /> 
+            <key time="153" enable="1" action="1" value="" id="ab_mix_stop_2" />  -->
         </control>
 
         <!-- control visibility of size A -->

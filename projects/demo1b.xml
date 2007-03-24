@@ -45,7 +45,7 @@ Connection closed by foreign host.
 			</function>
 			<function name="ttfont" id="text_1">
 				<param name="s_text" value="TEST MESSAGE #1"/>
-				<param name="s_font" value="m1-hb"/>
+				<param name="s_font" value="verdanab"/>
 				<param name="l_height" value="22"/>
 				<param name="h_colour" value="0xFFDCDCDC"/>
 				<param name="L_center" value="_LM_"/>

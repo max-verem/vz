@@ -57,7 +57,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_header">
 					<param name="s_text" value="TIMER #1"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="24"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -72,7 +72,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_timer_1">
 					<param name="s_text" value="00:00:00"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="20"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -106,7 +106,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_header">
 					<param name="s_text" value="TIMER #2"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="24"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -121,7 +121,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_timer_2">
 					<param name="s_text" value="00:00:00"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="20"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -155,7 +155,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_header">
 					<param name="s_text" value="TIMER #3"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="24"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -170,7 +170,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_timer_3">
 					<param name="s_text" value="00:00:00"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="20"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -205,7 +205,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_header">
 					<param name="s_text" value="TIMER #4"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="24"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -220,7 +220,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_timer_4">
 					<param name="s_text" value="00:00:00"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="20"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -254,7 +254,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_header">
 					<param name="s_text" value="T#X"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="24"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>
@@ -269,7 +269,7 @@ Connection closed by foreign host.
 				</function>
 				<function name="ttfont" id="text_timer_x">
 					<param name="s_text" value="00:00:00"/>
-					<param name="s_font" value="m1-hb"/>
+					<param name="s_font" value="verdanab"/>
 					<param name="l_height" value="20"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="L_center" value="_LM_"/>

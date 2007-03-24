@@ -74,9 +74,15 @@ vz out$> OK
 					<param name="l_height" value="20"/>
 					<param name="h_colour" value="0xFFDCDCDC"/>
 					<param name="l_box_width" value="700"/>
-					<param name="l_loop" value="0"/>
+					<param name="l_loop" value="1"/>
 					<param name="l_interval" value="80"/>
 					<param name="f_speed" value="1.24"/>
+					<param name="f_advance_ratio" value="1.1"/>
+	                                <param name="h_stroke_colour" value="0xFF202020"/>
+        	                        <param name="f_stroke_radius" value="2.0"/>
+					<param name="l_stroke_line_cap" value="1"/>
+					<param name="s_trig_append" value="Hellow from 'demo3.xml'"/>
+					<param name="s_trig_append" value="This is another one message for crawl"/>
 				</function>
 			</container>
 
