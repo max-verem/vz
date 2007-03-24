@@ -47,6 +47,12 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name vzCmd
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name tga2h
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name vzPointTracer
+    End Project Dependency
 }}}
 
 ###############################################################################
