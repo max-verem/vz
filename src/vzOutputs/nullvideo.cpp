@@ -306,7 +306,10 @@ VZOUTPUTS_EXPORT void vzOutput_StopOutputLoop()
 	// notify to stop thread
 	notify_to_stop_loop = 1;
 
-	// close everithing
+	/* wait for thread finish */
+	WaitForSingleObject(loop_thread, INFINITE);
+
+	/* close thread handle */
 	CloseHandle(loop_thread);
 };
 
