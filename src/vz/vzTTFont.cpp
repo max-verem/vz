@@ -260,6 +260,8 @@ int vzTTFont::_get_glyph(unsigned short char_code, void** font_glyph, void** str
 		if(glyph_index == 0)
 		{
 			// error happen !! no such symbol
+			*font_glyph = NULL;
+			*stroke_glyph = NULL;
 
 			// unlock
 			ReleaseMutex((HANDLE)lock);
@@ -495,6 +497,19 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 		symbols->data[i_text].x			= posX;
 		symbols->data[i_text].y			= posY;
 
+		// control symbols
+		if (string_uni[i_text] == 0x0A)
+		{
+			posX = 0;
+			continue;
+		};
+			
+		if(string_uni[i_text] == 0x0D)
+		{
+			posY += __height;
+			continue;
+		};
+
 		/* layers offset */
 		for(int l = 0; (l < 2) && (NULL != symbols->data[i_text].layers[l].bmp); l++)
 		{
@@ -510,19 +525,6 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 		};
 
 //		symbols[i_text].draw = 0;
-
-		// control symbols
-		if (string_uni[i_text] == 0x0A)
-		{
-			posX = 0;
-			continue;
-		};
-			
-		if(string_uni[i_text] == 0x0D)
-		{
-			posY += __height;
-			continue;
-		};
 
 		// check if glyph is present
 		if(!(symbols->data[i_text].layers[i_layer].glyph))
@@ -913,6 +915,8 @@ try
 		// check if glyph is present
 		if(!(symbols->data[i_text].draw))
 			// if glyph not correctly defined - return;
+			continue;
+		if(NULL == symbols->data[i_text].layers[l].bmp)
 			continue;
 
 		/* check if glyph is inside of surface */
