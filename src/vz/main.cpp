@@ -648,6 +648,9 @@ static int vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 		default:
 			return DefWindowProc(hwnd, message, wparam, lparam);
 	};
+
+	Sleep(10);
+
 	return 0;
 };
 
