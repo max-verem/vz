@@ -73,6 +73,10 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 //#define DUMP_DRV_IO_LOCKS
 #endif /* _DEBUG */
 
+////#define FAKE_MIX
+////#define FAKE_TONE
+
+
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
@@ -322,6 +326,9 @@ void vzOutput::unlock_io_bufs(void** v_output, void*** v_input, void** a_output,
 	ReleaseMutex(_buffers.lock);
 };
 
+#ifdef FAKE_TONE
+	static unsigned short *tone_buffer = NULL;
+#endif /* FAKE_TONE */
 
 void vzOutput::pre_render()
 {
@@ -449,8 +456,8 @@ void vzOutput::pre_render()
 		for(i = 0, Rs = 0.0; i< (_buffers.output.audio_buf_size/2) ; i++)
 		{	
 			/* calc mixed sample */
-			for(j = 0; j< m->count ; j++)
-				Rs = ((double)(((signed short*)m->buffers[j])[i])) * Ls[j];
+			for(j = 0, Rs = 0.0; j< m->count ; j++)
+				Rs += ((double)(((signed short*)m->buffers[j])[i])) * Ls[j];
 			/* normalize */
 			Rs /= Lmax;
 			/* save */
@@ -462,7 +469,32 @@ void vzOutput::pre_render()
 		free(m->buffers[j]);
 	m->count = 0;
 
-//#define FAKE_MIX
+#ifdef FAKE_TONE
+	/* init */
+	if(NULL == tone_buffer)
+	{
+		tone_buffer = (unsigned short*)malloc(1920*2*sizeof(unsigned short));
+
+		/* generate */
+		for(int p = 0; p < 1920; p++)
+		{
+			double r = 6030.0*sinf( p * (1.0/48000.0) * 2.0 * 3.1415 * 1000.0);
+			tone_buffer[2*p + 1] = 
+				tone_buffer[2*p + 0] = 
+					(unsigned short)r;
+		};
+	};
+
+	/* copy */
+	memcpy
+	(
+		_buffers.output.audio[_buffers.pos_render],
+		tone_buffer,
+		_buffers.output.audio_buf_size
+	);
+
+#endif /* FAKE_TONE */
+
 #ifdef FAKE_MIX
 	/* fake copy */
 	memcpy
