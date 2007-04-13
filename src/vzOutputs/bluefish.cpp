@@ -111,7 +111,7 @@ ChangeLog:
 #define O_AUDIO_INPUT_EMBED		"AUDIO_INPUT_EMBED"
 #define O_AUDIO_INPUT_SIGNAL	"AUDIO_INPUT_SIGNAL"
 
-#define MAX_HANC_BUFFER_READ (64*1024)
+#define MAX_HANC_BUFFER_READ (128*1024)
 #define MAX_HANC_BUFFER_SIZE (256*1024)
 #define MAX_INPUTS 2
 
@@ -315,6 +315,7 @@ static unsigned long WINAPI io_in_a(void* p)
 {
 	unsigned long **buffers = (unsigned long **)p;
 	int r = 0, n = 0;
+	unsigned long l1=0, l2=0, l;
 
 	/* init audio composite buffer */
 	if(NULL == ca.head)
@@ -336,6 +337,9 @@ static unsigned long WINAPI io_in_a(void* p)
 		);
 	};
 
+	/* wait interrupt */
+	bluefish[0]->wait_audio_input_interrupt(l1, l2);
+
 	/* clean tail */
 	memset(ca.head + ca.tail*ca.sample_size, 0, ca.buffer_size - ca.tail*ca.sample_size);
 
@@ -348,10 +352,17 @@ static unsigned long WINAPI io_in_a(void* p)
 		AUDIO_CHANNEL_LITTLEENDIAN | AUDIO_CHANNEL_16BIT,
 		0
 	);
+	l = n;
+	/* fix semicompleated blocks capture */
+	if((n > 1900) && (n <1950)) n = 1920;
+
 	/* shift tail */
 	ca.tail += n;
 
-//fprintf(stderr, "n=%d, tail=%d\n", n, ca.tail);
+#ifdef _DEBUG
+	/* log status */
+	fprintf(stderr, "n=%d, tail=%d, l=%d, l1=%d, l2=%d\n", n, ca.tail, l, l1, l2);
+#endif /* _DEBUG */
 
 	/* demultiplex buffers */
 	if(2 == inputs_count)
@@ -380,7 +391,7 @@ static unsigned long WINAPI io_in_a(void* p)
 		fprintf(stderr, "audio resync #1: tail=%d\n", ca.tail);
 		ca.tail = 0;//VZOUTPUT_AUDIO_SAMPLES*ca.sample_size;
 	};
-	if(ca.tail > (MAX_AUDIO_FRAMES_READ*VZOUTPUT_AUDIO_SAMPLES)) 
+	if(ca.tail >= (2*VZOUTPUT_AUDIO_SAMPLES)) 
 	{
 		fprintf(stderr, "audio resync #2: tail=%d\n", ca.tail);
 		ca.tail = 0;//VZOUTPUT_AUDIO_SAMPLES*ca.sample_size;
@@ -388,6 +399,38 @@ static unsigned long WINAPI io_in_a(void* p)
 
 	return 0;
 };
+
+static unsigned long WINAPI io_out_a(void* p)
+{
+	unsigned long l1, l2;
+	int c = 0;
+
+	struct io_out_desc* desc = (struct io_out_desc*)p;
+
+	/* wait block */
+	bluefish[0]->wait_audio_output_interrupt(l1, l2);
+	
+	/* write audio */
+	if(audio_output)
+	{
+		c = bluefish[0]->WriteAudioSample
+		(
+			STEREO_PAIR_1,					/* int AudioChannelMap, */
+			desc->audio,					/* void * pBuffer, */
+			VZOUTPUT_AUDIO_SAMPLES,			/* long nSampleCount, */
+			AUDIO_CHANNEL_LITTLEENDIAN |	/* int bFlag, */
+			AUDIO_CHANNEL_16BIT,
+			0
+		);
+
+#ifdef _DEBUG
+//		fprintf(stderr, "a_out: c=%d, l1=%d, l2=%d\n", c, l1, l2);
+#endif /* _DEBUG */
+
+	};
+
+	return 0;
+}
 
 static unsigned long WINAPI io_out(void* p)
 {
@@ -416,20 +459,6 @@ static unsigned long WINAPI io_out(void* p)
 				0								/* odd */
 			);
 
-			/* write audio */
-			if(audio_output)
-			{
-				int c = bluefish[0]->WriteAudioSample
-				(
-					STEREO_PAIR_1,					/* int AudioChannelMap, */
-					desc->audio,					/* void * pBuffer, */
-					VZOUTPUT_AUDIO_SAMPLES,			/* long nSampleCount, */
-					AUDIO_CHANNEL_LITTLEENDIAN |	/* int bFlag, */
-					AUDIO_CHANNEL_16BIT,
-					0
-				);
-//fprintf(stderr, "out: c=%d\n", c);
-			};
 		}
 		else
 		{
@@ -505,10 +534,14 @@ static unsigned long WINAPI io_in(void* p)
 			};
 
 			/* check dropped frames */
-/*			if(dropped_count)
+			if(dropped_count)
 			{
-				fprintf(stderr, MODULE_PREFIX "dropped %d frames at [%d]\n", dropped_count, desc->id);
-			}; */
+				fprintf(stderr, MODULE_PREFIX "dropped %d frames at [%d], remain=%d\n", dropped_count, desc->id, remain_count);
+
+				/* restart capture */
+				bluefish[desc->id]->video_capture_stop();
+				bluefish[desc->id]->video_capture_start();
+			};
 
 		}
 		else
@@ -537,12 +570,12 @@ static unsigned long WINAPI main_io_loop(void* p)
 	struct io_out_desc out_main;
 
 	unsigned long f1;
-	HANDLE io_ops[8];
-	unsigned long io_ops_id[8];
+	HANDLE io_ops[9];
+	unsigned long io_ops_id[9];
 	int r, i;
 
 	/* clear thread handles values */
-	for(i = 0; i<8 ; i++)
+	for(i = 0; i<9 ; i++)
 		io_ops[i] = INVALID_HANDLE_VALUE;
 
 #ifdef OVERRUN_RECOVERY
@@ -632,7 +665,6 @@ static unsigned long WINAPI main_io_loop(void* p)
 			(!(audio_input_embed))
 		)
 		{
-			bluefish[0]->InitAudioCaptureMode();
 			{
 				VARIANT v;
 				v.ulVal = 0;
@@ -642,7 +674,8 @@ static unsigned long WINAPI main_io_loop(void* p)
 				v.vt = VT_UI4;
 				bluefish[0]->SetCardProperty(AUDIO_INPUT_PROP,v);
 			}
-			bluefish[0]->StartAudioCapture(0);		
+			bluefish[0]->InitAudioCaptureMode();
+			bluefish[0]->StartAudioCapture(10);
 		};
 	};
 
@@ -696,6 +729,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 		out_main.audio = output_a_buffer;
 		out_main.buffer = output_buffer;
 		io_ops[0] = CreateThread(0, 0, io_out,  &out_main , 0, &io_ops_id[0]);
+		io_ops[8] = CreateThread(0, 0, io_out_a,  &out_main , 0, &io_ops_id[8]);
 
 		/* start audio output */
 		if
@@ -739,7 +773,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 		};
 
 		/* wait for thread ends */
-		for(i = 0; i<8; i++)
+		for(i = 0; i<9; i++)
 			if(INVALID_HANDLE_VALUE != io_ops[i])
 			{
 				WaitForSingleObject(io_ops[i], INFINITE);
@@ -782,15 +816,6 @@ static unsigned long WINAPI main_io_loop(void* p)
 		;
 	};
 
-	/* stop playback/capture */
-    bluefish[0]->video_playback_stop(false, false);
-	if(inputs_count)
-	{
-		bluefish[1]->video_capture_stop();
-		if(inputs_count > 1)
-			bluefish[2]->video_capture_stop();
-	};
-
 	/* stop audio capture / playout */
 	if(audio_output)
 	{
@@ -806,6 +831,15 @@ static unsigned long WINAPI main_io_loop(void* p)
 			r = bluefish[0]->StopAudioCapture();
 			r = bluefish[0]->EndAudioCaptureMode(); 
 		};
+	};
+
+	/* stop playback/capture */
+    bluefish[0]->video_playback_stop(false, true);
+	if(inputs_count)
+	{
+		bluefish[1]->video_capture_stop();
+		if(inputs_count > 1)
+			bluefish[2]->video_capture_stop();
 	};
 
 	/* unmap drivers buffer */
@@ -845,17 +879,18 @@ static void bluefish_destroy(void)
 {
 	int i;
 
-	/* finish */
-	for(i = 0; i< 3; i++)
-		if(bluefish[i])
-		{
-			bluefish[i]->device_detach();
-			delete bluefish[i];
-			bluefish[i] = NULL;
-		};
-
+	/* detach all */
 	if(bluefish_obj)
 		blue_detach_from_device(&bluefish_obj);
+
+	/* finish */
+	for(i = 0; i< 3; i++)
+		if(bluefish[2 - i])
+		{
+			bluefish[2 - i]->device_detach();
+//			delete bluefish[i];
+			bluefish[2 - i] = NULL;
+		};
 };
 
 static int bluefish_init(int board_id)
@@ -1121,14 +1156,14 @@ static void bluefish_configure(void)
 	{
 		/* free and detach */
 		bluefish[2]->device_detach();
-		delete bluefish[2];
+//		delete bluefish[2];
 		bluefish[2] = NULL;
 
 		if(inputs_count < 1)
 		{
 			/* free and detach */
 			bluefish[1]->device_detach();
-			delete bluefish[1];
+//			delete bluefish[1];
 			bluefish[1] = NULL;
 		};
 	};
@@ -1443,12 +1478,12 @@ BOOL APIENTRY DllMain
 			};
 
 			/* trying to stop all devices */
-		    if(bluefish[0])
+/*		    if(bluefish[0])
 				bluefish[0]->video_playback_stop(false, false);
 			if(bluefish[1])
 				bluefish[1]->video_capture_stop();
 			if(bluefish[2])
-				bluefish[2]->video_capture_stop();
+				bluefish[2]->video_capture_stop(); */
 
 			/* deinit */
 			fprintf(stderr, MODULE_PREFIX "force bluefish deinit\n");
