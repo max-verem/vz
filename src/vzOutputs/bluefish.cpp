@@ -100,7 +100,6 @@ ChangeLog:
 #define O_SOFT_TWICE_FIELDS		"SOFT_TWICE_FIELDS"
 #define O_SWAP_INPUT_CONNECTORS	"SWAP_INPUT_CONNECTORS"
 #define O_ANALOG_INPUT			"ANALOG_INPUT"
-#define O_ANALOG_OUTPUT			"ANALOG_OUTPUT"
 #define O_PROGRAM_ANALOG_OUTPUT	"PROGRAM_ANALOG_OUTPUT"
 #define O_PROGRAM_SDI_DUPLICATE	"PROGRAM_SDI_DUPLICATE"
 #define O_PROGRAM_OUTPUT_SWAP	"PROGRAM_OUTPUT_SWAP"
@@ -978,7 +977,8 @@ static void bluefish_configure_matrix(void)
 			routes[0].propType  = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 			r = blue_set_connector_property(bluefish_obj, 1, routes);
 
-			fprintf(stdout, "bluefish: '%s' is active (r=%d)\n", O_PROGRAM_ANALOG_OUTPUT, r);
+			fprintf(stdout, "bluefish: '%s=%s' is active (r=%d)\n", 
+				O_PROGRAM_ANALOG_OUTPUT, CONFIG_O(O_PROGRAM_ANALOG_OUTPUT), r);
 
 			/* continue configure new routing matrix */
 			//memset(routes, 0, sizeof(routes));
@@ -1049,7 +1049,6 @@ static void bluefish_configure_matrix(void)
 
 			/* configure analouge output */
 			v.vt = VT_UI4;
-			v.ulVal =  /* ANALOG_OUTPUTSIGNAL_CVBS_Y_C| */ ANALOG_OUTPUTSIGNAL_COMPONENT;
 			bluefish[0]->SetAnalogCardProperty(ANALOG_VIDEO_OUTPUT_SIGNAL_TYPE, v);
 		};
 
