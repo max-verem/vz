@@ -111,9 +111,10 @@ ChangeLog:
 #define O_AUDIO_INPUT_EMBED		"AUDIO_INPUT_EMBED"
 #define O_AUDIO_INPUT_SIGNAL	"AUDIO_INPUT_SIGNAL"
 
-#define MAX_HANC_BUFFER_READ (128*1024)
-#define MAX_HANC_BUFFER_SIZE (256*1024)
-#define MAX_INPUTS 2
+#define MAX_HANC_BUFFER_READ	(128*1024)
+#define MAX_HANC_BUFFER_SIZE	(256*1024)
+#define MAX_INPUTS				2
+#define MAX_FRAMES_REMAINS		3
 
 /* ------------------------------------------------------------------
 
@@ -473,6 +474,8 @@ static unsigned long WINAPI io_out(void* p)
 	return 0;
 };
 
+static unsigned long dropped_counts[4] = {0,0,0,0};
+
 static unsigned long WINAPI io_in(void* p)
 {
 	struct io_in_desc* desc = (struct io_in_desc*)p;
@@ -534,14 +537,39 @@ static unsigned long WINAPI io_in(void* p)
 			};
 
 			/* check dropped frames */
-			if(dropped_count)
+			if(dropped_count != dropped_counts[desc->id])
 			{
-				fprintf(stderr, MODULE_PREFIX "dropped %d frames at [%d], remain=%d\n", dropped_count, desc->id, remain_count);
+				int recycled_frames = 0;
+				unsigned long dropped_count_temp = 0;
 
-				/* restart capture */
-				bluefish[desc->id]->video_capture_stop();
-				bluefish[desc->id]->video_capture_start();
+				/* try to recyle frames */
+				while(remain_count > MAX_FRAMES_REMAINS)
+				{
+					/* request buffer */
+					bluefish[desc->id]->video_capture_harvest
+					(
+						(void **)&address, 
+						buffer_id, 
+						dropped_count_temp, 
+						remain_count
+					);
+
+					/* Manually recycle a harvested frame */
+					bluefish[desc->id]->video_capture_compost(buffer_id);
+
+					/* count */
+					recycled_frames++;
+				};
+
+			
+				/* notify */
+				fprintf(stderr, MODULE_PREFIX "dropped %d frames at [%d], remain=%d, recycled=%d\n", 
+					dropped_count - dropped_counts[desc->id], desc->id, remain_count, recycled_frames);
+			
+				/* assign new counter value */
+				dropped_counts[desc->id] = dropped_count;
 			};
+				
 
 		}
 		else
