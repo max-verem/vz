@@ -1396,7 +1396,7 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 	/* inputs count conf */
 	
 
-	if(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"))
+	if(0 != inputs_count)
 	{
 		b->input.audio_buf_size = 
 			2 /* 16 bits */ * 
