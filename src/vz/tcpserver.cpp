@@ -51,7 +51,7 @@ extern vzTVSpec tv;
 
 #define MAX_CLIENTS 32
 
-static void CMD_screenshot(char* filename,char* &error_log)
+static void CMD_screenshot(char* filename,char** error_log)
 {
 	// lock scene
 	WaitForSingleObject(scene_lock,INFINITE);
@@ -63,12 +63,12 @@ static void CMD_screenshot(char* filename,char* &error_log)
 	ReleaseMutex(scene_lock);
 };
 
-static void CMD_loadscene(char* filename,char* &error_log)
+static void CMD_loadscene(char* filename,char** error_log)
 {
 	// lock scene
 	if (WaitForSingleObject(scene_lock,INFINITE) != WAIT_OBJECT_0)
 	{
-		error_log = "Error! Unable to lock scene handle";
+		*error_log = "Error! Unable to lock scene handle";
 		return;
 	};
 
@@ -79,7 +79,7 @@ static void CMD_loadscene(char* filename,char* &error_log)
 
 	if (!vzMainSceneLoad(scene, filename))
 	{
-		error_log = "Error! Unable to load scene";
+		*error_log = "Error! Unable to load scene";
 		vzMainSceneFree(scene);
 		scene = NULL;
 	};
@@ -161,179 +161,209 @@ static void FIND_TO_TERM(char* &src,char* &buf, char* term)
 	};
 };
 
+static char
+	*shell_greeting_template = "%s (vz-%s) [tcpserver]\n",
+	*shell_in = "\r\nvz in$> ",
+	*shell_out = "vz out$> ",
+	*shell_bye = "Bye!\n\r",
+	*shell_error_overrun = "Error: Message too long",
+	*shell_error_scene = "Error! Scene not loaded!",
+	*shell_error_prenth = "Error! No final parenthesis found",
+	*shell_ok_scene = "OK!Scene",
+	*shell_ok_load = "OK!Load",
+	*shell_ok_screenshot = "OK!Screenshot",
+	*shell_error_recog = "Error! Command not recogized";
 
 
+
+static int tcpserver_client_exec(char* buffer, char** error_log)
+{
+	*error_log = shell_error_recog;
+
+	printf("recieved: '%s'\n",buffer);
+
+	// clear escape characters
+	for(char* p = buffer; (*p) ; p++)
+	{
+		// set flag
+		char replace = 0;
+
+		// check for escape character
+		if('\\' == *p)
+			switch(*(p+1))
+			{
+				case 'n': replace = 0x0A; break;
+				case 'r': replace = 0x0D; break;
+				case 't': replace = 0x08; break;
+				case '\\': replace = '\\'; break;
+			};
+
+		// shift
+		if(0 != replace)
+		{
+			*p = replace;
+			for(char* t=(p + 1);(*t);t++) *t = *(t+1);
+		};
+
+	};
+
+	// process command here
+	if(FIND_FROM_LITERAL(buffer, TAG_QUIT))
+	{
+		printf("tcpserver: CMD quit recieved\n");
+		*error_log = shell_bye;
+		return 1;
+	}
+	else if (FIND_FROM_LITERAL(buffer,TAG_SCENE))
+	{
+		// send command tp
+		printf("tcpserver: CMD scene \"%s\" recieved\n",buffer);
+		*error_log = shell_ok_scene; 
+					
+		// lock scene
+//		WaitForSingleObject(scene_lock,INFINITE);
+		if(scene)
+			vzMainSceneCommand(scene, buffer,error_log);
+		else
+			*error_log = shell_error_scene;
+//		ReleaseMutex(scene);
+	}
+	else if (FIND_FROM_LITERAL(buffer, TAG_RENDERMAN_LOAD))
+	{
+		char* buf = NULL;
+		FIND_TO_TERM(buffer, buf, ")");
+		if(buf)
+		{
+			// buf contains name of file
+			// where scene name is stored
+			printf("tcpserver: CMD load \"%s\" recieved\n",buf);
+			*error_log = shell_ok_load;
+			CMD_loadscene(buf,error_log);
+		}
+		else
+			*error_log = shell_error_prenth;
+		
+		if(buf) free(buf);
+	}
+	else if (FIND_FROM_LITERAL(buffer, TAG_RENDERMAN_SCREENSHOT))
+	{
+		char* buf = NULL;
+		FIND_TO_TERM(buffer, buf, ")");
+		if(buf)
+		{
+			// buf contains name of file
+			// where screenshot stored
+			printf("tcpserver: CMD screenshot \"%s\" recieved\n",buf);
+			*error_log = shell_ok_screenshot;
+			CMD_screenshot(buf,error_log);
+		}
+		else
+			*error_log = shell_error_prenth;
+		
+		if(buf) free(buf);
+	};
+
+	return 0;
+};
 
 static unsigned long WINAPI tcpserver_client(void* _socket)
 {
 	SOCKET socket = (SOCKET)_socket;
 
-	char hello_message[512];
-	sprintf(hello_message, "%s (vz-%s) [tcpserver]\n",VZ_TITLE, VZ_VERSION);
-	char* shell_message = "\r\nvz in$> ";
-	char* shell_out = "vz out$> ";
-	char* error_OVERRUN = "Error: Message too long";
-	char* bye_message = "Bye!\n\r";
-	char* in_buffer = (char*)malloc(TCPSERVER_BUFSIZE);
-	long in_size;
-	long exit_flag;
+	char
+		hello_message[512],
+		*in_buffer = (char*)malloc(2*TCPSERVER_BUFSIZE),
+		*in_buffer_cmd = NULL,
+		*error_log, 
+		*in_buffer_head = in_buffer,
+		*in_buffer_tail = in_buffer;
 
+
+	/* send greeting */
+	sprintf(hello_message, shell_greeting_template, VZ_TITLE, VZ_VERSION);
 	send(socket,hello_message,strlen(hello_message),0);
 
-	do
+	/* dialog loop */
+	for(int r_s_in, r_rec_len = 0; r_rec_len >= 0; )
 	{
-		// exit flag - if all happents - reset flag
-		exit_flag = 1;
+		/* send prompt */
+		r_s_in = send(socket,shell_in,strlen(shell_in),0);
 
-		// send prompt
-		if( send(socket,shell_message,strlen(shell_message),0) > 0 )
+		/* read data from socket buffer */
+		for(r_rec_len = 0, r_rec_len = 0; r_rec_len >=0 ; )
 		{
-			char* in_buffer_temp = in_buffer;
-			int got_message = 0;
-			// read data from client
-
-			while((!(got_message)) && (in_buffer_temp - in_buffer < TCPSERVER_BUFSIZE) && (recv(socket,in_buffer_temp++,1,0)>0))
+			/* check if error happend */
+			if(r_rec_len >= 0)
 			{
-//				printf("'%ld'\n",(unsigned long)(*(in_buffer_temp - 1)));
+				/* move buffer tail */
+				in_buffer_tail += r_rec_len;
 
-				// check if buffer contains terminal symbol
-				if ((in_buffer_temp - in_buffer) > 1)
+				/* check if command found */
+				for(; (in_buffer_head < in_buffer_tail) && (NULL == in_buffer_cmd) ; )
 				{
-					if
-					(
-						(*(in_buffer_temp - 1) == 10)
-						&&
-						(*(in_buffer_temp - 2) == 13)
-					)
+					switch(*in_buffer_head)
 					{
-						// set flag
-						got_message = 1;
+						case '\n':
+							/* set termination symbol */
+							*in_buffer_head = 0;
 
-						// clean tail
-						*(in_buffer_temp - 2) = 0;
-						*(in_buffer_temp - 1) = 0;
-					};
+							/* allocate buffer for command and copy */
+							in_buffer_cmd = (char*)malloc(in_buffer_head - in_buffer + 1);
+							memcpy(in_buffer_cmd, in_buffer, in_buffer_head - in_buffer + 1);
+
+							/* defragment buffer */
+							memmove(in_buffer, in_buffer_head + 1, TCPSERVER_BUFSIZE);
+							
+							/* fix pointers */
+							in_buffer_tail -= in_buffer_head - in_buffer + 1;
+							in_buffer_head = in_buffer;
+							break;
+
+						case '\r':
+							/* ignore character */
+							memmove(in_buffer_head, in_buffer_head + 1, TCPSERVER_BUFSIZE);
+							in_buffer_tail -= 1;
+							break;
+
+						default:
+							in_buffer_head++;
+							break;
+					}		
 				};
 			};
 
-			if (got_message)
+			if(NULL != in_buffer_cmd)
+				break;
+
+			/* read data from socket */
+			if((r_rec_len = recv(socket, in_buffer_tail, TCPSERVER_BUFSIZE, 0)) <= 0)
 			{
-				// process command
-				in_size = in_buffer_temp - in_buffer - 2;
-				if( send(socket,shell_out,strlen(shell_out),0) > 0 )
-				{
-					// reset flag
-					exit_flag = 0;
+				r_rec_len = -1;
 
-					// clear escape characters
-					for(char* p = in_buffer; (*p) ; p++)
-					{
-						// set flag
-						char replace = 0;
-
-						// check for escape character
-						if((*p == '\\')&&(*(p+1) == 'n'))
-							replace = 0x0A;
-						if((*p == '\\')&&(*(p+1) == 't'))
-							replace = 0x08;
-						if((*p == '\\')&&(*(p+1) == 'r'))
-							replace = 0x0D;
-						if((*p == '\\')&&(*(p+1) == 't'))
-							replace = 0x09;
-						if((*p == '\\')&&(*(p+1) == '\\'))
-							replace = '\\';
-
-						// shift
-						if(replace)
-						{
-							*p = replace;
-							for(char* t=(p + 1);(*t);t++)
-								*t = *(t+1);
-						};
-
-					};
-
-					printf("recieved: '%s'\n",in_buffer);
-
-					// process command here
-					in_buffer_temp = in_buffer;
-					char* error_log = "Error! Command not recogized";
-
-					if(FIND_FROM_LITERAL(in_buffer_temp,TAG_QUIT))
-					{
-						printf("tcpserver: CMD quit recieved\n");
-						error_log = bye_message;
-						exit_flag = 1;
-					}
-					else if (FIND_FROM_LITERAL(in_buffer_temp,TAG_SCENE))
-					{
-						// send command tp
-						printf("tcpserver: CMD scene \"%s\" recieved\n",in_buffer_temp);
-						error_log = "OK!Scene";
-					
-						// lock scene
-//						WaitForSingleObject(scene_lock,INFINITE);
-						if(scene)
-							vzMainSceneCommand(scene, in_buffer_temp,&error_log);
-						else
-							error_log = "Error! Scene not loaded!";
-//						ReleaseMutex(scene);
-					}
-					else if (FIND_FROM_LITERAL(in_buffer_temp,TAG_RENDERMAN_LOAD))
-					{
-						char* buf = NULL;
-						FIND_TO_TERM(in_buffer_temp,buf, ")");
-						if(buf)
-						{
-							// buf contains name of file
-							// where scene name is stored
-							printf("tcpserver: CMD load \"%s\" recieved\n",buf);
-							error_log = "OK!Load";
-							CMD_loadscene(buf,error_log);
-						}
-						else
-							error_log = "Error! No final parenthesis found";
-						if(buf) free(buf);
-					}
-					else if (FIND_FROM_LITERAL(in_buffer_temp,TAG_RENDERMAN_SCREENSHOT))
-					{
-						char* buf = NULL;
-						FIND_TO_TERM(in_buffer_temp,buf, ")");
-						if(buf)
-						{
-							// buf contains name of file
-							// where screenshot stored
-							printf("tcpserver: CMD screenshot \"%s\" recieved\n",buf);
-							error_log = "OK!Screenshot";
-
-							CMD_screenshot(buf,error_log);
-						}
-						else
-							error_log = "Error! No final parenthesis found";
-						if(buf) free(buf);
-					};
-
-					if(send(socket,error_log,strlen(error_log),0)<=0)
-						exit_flag = 1;
-
-				};
-			}
-			else
-			{
-				// check if message is too long
-				if (in_buffer_temp - in_buffer >= TCPSERVER_BUFSIZE)
-				{
-					// notify user about long message
-					if( send(socket,shell_out,strlen(shell_out),0) > 0 )
-						if( send(socket,error_OVERRUN,strlen(error_OVERRUN),0) > 0 )
-							// reset exit flag
-							exit_flag = 0;
-				};
+				break;
 			};
-				
 		};
-	}
-	while(!(exit_flag));
+
+		if(NULL != in_buffer_cmd)
+		{
+			/* ignore error read if command found */
+			r_rec_len = 0;
+
+			/* shell out */
+			send(socket,shell_out,strlen(shell_out),0);
+
+			/* execute command */
+			if(0 != tcpserver_client_exec(in_buffer_cmd, &error_log))
+				r_rec_len = -1;
+			
+			/* free buffer here */
+			free(in_buffer_cmd);
+			in_buffer_cmd = NULL;
+
+			/* shell reply */
+			send(socket,error_log,strlen(error_log),0);
+		};
+	};
 
 	printf("tcpserver: closing connection.\n");
 
