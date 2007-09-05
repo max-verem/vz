@@ -22,6 +22,11 @@
 
 
 ChangeLog:
+	2007-06-30:
+		*Linked with release 5.4.26.
+		*Attempt to spread dropped frame recyling in long period: no more
+		them 1 frame in DROPPED_RECYCLE_INTERVAL (milisec) interval.
+
 	2007-01-05:
 		*'blue_emb_audio_group1_enable' introduced in 5.4.18betta drivers.
 		*decomposing fields into 2 buffers moved into parallel thread.
@@ -113,7 +118,11 @@ ChangeLog:
 #define MAX_HANC_BUFFER_READ	(128*1024)
 #define MAX_HANC_BUFFER_SIZE	(256*1024)
 #define MAX_INPUTS				2
-#define MAX_FRAMES_REMAINS		3
+
+#ifdef RECYCLE_DROPPED_FRAMES
+#define MAX_FRAMES_REMAINS		4
+#define DROPPED_RECYCLE_INTERVAL 2000
+#endif /* RECYCLE_DROPPED_FRAMES */
 
 /* ------------------------------------------------------------------
 
@@ -474,7 +483,9 @@ static unsigned long WINAPI io_out(void* p)
 };
 
 static unsigned long dropped_counts[4] = {0,0,0,0};
-
+#ifdef RECYCLE_DROPPED_FRAMES
+static unsigned long dropped_recycled[4] = {0,0,0,0};
+#endif /* RECYCLE_DROPPED_FRAMES */
 static unsigned long WINAPI io_in(void* p)
 {
 	struct io_in_desc* desc = (struct io_in_desc*)p;
@@ -492,7 +503,8 @@ static unsigned long WINAPI io_in(void* p)
 				(void **)&address, 
 				buffer_id, 
 				dropped_count, 
-				remain_count
+				remain_count,
+				0
 			)
 		)
 	)
@@ -535,40 +547,70 @@ static unsigned long WINAPI io_in(void* p)
 				);
 			};
 
-			/* check dropped frames */
-			if(dropped_count != dropped_counts[desc->id])
-			{
-				int recycled_frames = 0;
-				unsigned long dropped_count_temp = 0;
+			/* Manually recycle a harvested frame */
+			bluefish[desc->id]->video_capture_compost(buffer_id);
 
-				/* try to recyle frames */
-				while(remain_count > MAX_FRAMES_REMAINS)
+#ifdef RECYCLE_DROPPED_FRAMES
+
+			/* check dropped frames */
+			if
+			(
+				(dropped_count != dropped_counts[desc->id])
+				&&
+				(timeGetTime() > (dropped_recycled[desc->id] + DROPPED_RECYCLE_INTERVAL))
+			)
+			{
+				if(remain_count < MAX_FRAMES_REMAINS)
 				{
+					/* notify */
+					fprintf(stderr, MODULE_PREFIX "dropped frames counter %d+%d\n", 
+						dropped_counts[desc->id], dropped_count - dropped_counts[desc->id]);
+
+					/* sync */
+					dropped_counts[desc->id] = dropped_count;
+				}
+				else
+				{
+					unsigned long dropped_count_temp, remain_count_temp;
+
 					/* request buffer */
 					bluefish[desc->id]->video_capture_harvest
 					(
 						(void **)&address, 
 						buffer_id, 
 						dropped_count_temp, 
-						remain_count
+						remain_count_temp,
+						0
 					);
 
 					/* Manually recycle a harvested frame */
 					bluefish[desc->id]->video_capture_compost(buffer_id);
 
-					/* count */
-					recycled_frames++;
-				};
+					/* notify */
+					fprintf(stderr, MODULE_PREFIX "(%ld) recycled on [%d] 1 frame, remains = %d->%d, buffer_id=%d\n", 
+						timeGetTime(), desc->id, remain_count, remain_count_temp, buffer_id);
 
-			
+					/* update last recylced time */
+					dropped_recycled[desc->id] = timeGetTime();
+				};
+			};
+
+#else /* !RECYCLE_DROPPED_FRAMES */
+
+			/* just notify about drops */
+			if (dropped_count != dropped_counts[desc->id])
+			{
 				/* notify */
-				fprintf(stderr, MODULE_PREFIX "dropped %d frames at [%d], remain=%d, recycled=%d\n", 
-					dropped_count - dropped_counts[desc->id], desc->id, remain_count, recycled_frames);
-			
-				/* assign new counter value */
+				fprintf(stderr, MODULE_PREFIX "[%d] dropped %d->%d (remain=%d)\n", 
+					desc->id, dropped_counts[desc->id], dropped_count, remain_count);
+
+				/* sync */
 				dropped_counts[desc->id] = dropped_count;
 			};
-				
+
+#endif /* RECYCLE_DROPPED_FRAMES */
+
+			
 
 		}
 		else
@@ -604,11 +646,6 @@ static unsigned long WINAPI main_io_loop(void* p)
 	/* clear thread handles values */
 	for(i = 0; i<9 ; i++)
 		io_ops[i] = INVALID_HANDLE_VALUE;
-
-#ifdef OVERRUN_RECOVERY
-	int skip_wait_sync = 0;
-#endif /* OVERRUN_RECOVERY */
-
 
 	/* map buffers for input */
 	if(inputs_count)
@@ -714,32 +751,34 @@ static unsigned long WINAPI main_io_loop(void* p)
 	bluefish[0]->wait_output_video_synch(update_format, f1);
 	bluefish[0]->wait_output_video_synch(update_format, f1);
 
+
+#ifdef OVERRUN_RECOVERY
+	int skip_wait_sync = 0;
 	long A,B, C1 = 0, C2 = 0;
+#endif /* OVERRUN_RECOVERY */
 
 	/* endless loop */
 	while(!(flag_exit))
 	{
 		dump_line;
 
-#ifdef OVERRUN_RECOVERY
-		if(!(skip_wait_sync))
-#endif /* OVERRUN_RECOVERY */
-		/* wait output vertical sync */
+#ifndef OVERRUN_RECOVERY
+		/* just wait for sync */
 		bluefish[0]->wait_output_video_synch(update_format, f1);
+
+#else OVERRUN_RECOVERY
+		if(0 == skip_wait_sync)
+		{
+			/* wait output vertical sync */
+			bluefish[0]->wait_output_video_synch(update_format, f1);
+
+			/* save time of starting sync */
+			A = timeGetTime();
+		};
+#endif /* OVERRUN_RECOVERY */
 
 		/* flip buffers index */
 		flip_buffers_index = 1 - flip_buffers_index;
-		
-		/* fix time */
-		C1 = (A = timeGetTime());
-
-		if(C2)
-		{
-			if((C1 - C2) > 50)
-				fprintf(stderr, MODULE_PREFIX "%d out of sync \n",  (C1 - C2) - 40);
-		};
-		C2 = C1;
-		
 
 		dump_line;
 
@@ -813,34 +852,38 @@ static unsigned long WINAPI main_io_loop(void* p)
 		tbc->unlock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 		dump_line;
 
+#ifdef OVERRUN_RECOVERY
+		/* save time of finish */
 		B = timeGetTime();
 
-		if ( (B - A) >= 40 )
+		/* check if frame transfer is greater then frame dur */
+		if((A + 40) < B)
 		{
-			fprintf(stderr, MODULE_PREFIX "%d miliseconds overrun",  (B - A) - 40);
-#ifdef OVERRUN_RECOVERY
-			if
-			(
-				( (B - A - 40) < OVERRUN_RECOVERY)	/* overrun in our range */
-				&&									/* and */
-				(0 == skip_wait_sync)				/* previous not skipped */
-			)
+			if(0 != skip_wait_sync)
 			{
-				skip_wait_sync = 1;
-				fprintf(stderr, " [recovering]");
 			}
 			else
-				skip_wait_sync = 0;
-#endif /* OVERRUN_RECOVERY */
-			fprintf(stderr, "\n");
+			{
+				/* notify about start of unsynced render */
+				fprintf(stderr, MODULE_PREFIX "unsync render started, this delays in %d milisec\n",  (B - A) - 40);
+			};
+
+			/* unsync render continues - 
+				increment counter and timer */
+			skip_wait_sync++;
+			A += 40;
 		}
-#ifdef OVERRUN_RECOVERY
-		else 
+		else
 		{
-			skip_wait_sync = 0;
-		}
+			/* no overrun happend - reset sskip sync and notify */
+			if(0 != skip_wait_sync)
+			{
+				fprintf(stderr, MODULE_PREFIX "sync render restored after %d frames\n",  skip_wait_sync);
+				skip_wait_sync = 0;
+			};
+		};
 #endif /* OVERRUN_RECOVERY */
-		;
+
 	};
 
 	/* stop audio capture / playout */
