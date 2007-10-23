@@ -416,12 +416,16 @@ static unsigned long WINAPI io_out_a(void* p)
 
 	struct io_out_desc* desc = (struct io_out_desc*)p;
 
-	/* wait block */
-	bluefish[0]->wait_audio_output_interrupt(l1, l2);
-	
+	dump_line;
+
 	/* write audio */
 	if(audio_output)
 	{
+		dump_line;
+
+		/* wait block */
+		bluefish[0]->wait_audio_output_interrupt(l1, l2);
+
 		c = bluefish[0]->WriteAudioSample
 		(
 			STEREO_PAIR_1,					/* int AudioChannelMap, */
@@ -431,6 +435,8 @@ static unsigned long WINAPI io_out_a(void* p)
 			AUDIO_CHANNEL_16BIT,
 			0
 		);
+
+	dump_line;
 
 #ifdef _DEBUG
 //		fprintf(stderr, "a_out: c=%d, l1=%d, l2=%d\n", c, l1, l2);
@@ -449,6 +455,8 @@ static unsigned long WINAPI io_out(void* p)
 
 	if(BLUE_OK(bluefish[0]->video_playback_allocate((void **)&address,buffer_id,underrun)))
 	{
+ 		dump_line;
+
 		if (buffer_id  != -1)
 		{
 			bluefish[0]->system_buffer_write_async
@@ -459,6 +467,9 @@ static unsigned long WINAPI io_out(void* p)
 				buffer_id,						/* host buffer id */ 
 				0								/* offset */
 			);
+
+			dump_line;
+
 			bluefish[0]->video_playback_present
 			(
 				next_buf_id,
@@ -467,7 +478,8 @@ static unsigned long WINAPI io_out(void* p)
 				0,								/* keep */
 				0								/* odd */
 			);
-
+		
+			dump_line;
 		}
 		else
 		{
@@ -794,8 +806,11 @@ static unsigned long WINAPI main_io_loop(void* p)
 		/* start output thread */
 		out_main.audio = output_a_buffer;
 		out_main.buffer = output_buffer;
+		dump_line;
 		io_ops[0] = CreateThread(0, 0, io_out,  &out_main , 0, &io_ops_id[0]);
+		dump_line;
 		io_ops[8] = CreateThread(0, 0, io_out_a,  &out_main , 0, &io_ops_id[8]);
+		dump_line;
 
 		/* start audio output */
 		if
@@ -809,6 +824,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 			io_ops[3] = CreateThread(0, 0, io_in_a,  input_a_buffers , 0, &io_ops_id[3]);
 		else
 			io_ops[3] = INVALID_HANDLE_VALUE;
+		dump_line;
 
 
 		/* start inputs */
