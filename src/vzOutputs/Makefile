@@ -29,13 +29,13 @@ BLUEFISH_LIB	= $(BLUEFISH_SDK)\Lib
 BLUEFISH_INC	= $(BLUEFISH_SDK)\Inc
 
 !IF  "$(CFG)" == "Debug"
-DEBUGFLAGS	= -D_DEBUG /Yd /GZ /GX /Zi /FD
+DEBUGFLAGS	= -D_DEBUG /RTC1 /EHsc /Zi /FD
 INSTALL_DIR	= ../../install/Debug/outputs/
 OBJS_DIR	= ../../tmp/Debug/outputs/
 LIB_PATH	= /LIBPATH:"../../tmp/Debug/"
-LINKER_OPT	= /LDd /Yd
-LINKER_FLAGS	= $(LIB_PATH) /DEBUG /PDB:$(INSTALL_DIR)$(<:.cpp=.pdb)
-CPPFLAGS	= $(CPPFLAGS) /MDd /Zm256 -Fd$(INSTALL_DIR)$(<:.cpp=.pdb)
+LINKER_OPT	= /LDd
+LINKER_FLAGS	= $(LIB_PATH) /DEBUG
+CPPFLAGS	= $(CPPFLAGS) /MDd /Zm256
 !ENDIF
 
 !IF  "$(CFG)" == "Release"
@@ -54,7 +54,7 @@ SDK_LIB		=  /LIBPATH:"$(STREAMALPHA_LIB)" /LIBPATH:"$(BLUEFISH_LIB)"
 SDK_INC		=  -I"$(STREAMALPHA_INC)" -I"$(BLUEFISH_INC)"
 
 # compiler setting
-CPPFLAGS	= $(CPPFLAGS) /G6 -TP -GD 
+CPPFLAGS	= $(CPPFLAGS) -TP
 LIB_PATH	= $(LIB_PATH) $(SDK_LIB)
 INCLUDE_DIR	= -I. -I../vz $(SDK_INC) -I$(OBJS_DIR)
 LINKER		= /incremental:no $(LINKER_FLAGS)
@@ -75,9 +75,16 @@ all: "$(OBJS_DIR)" "$(INSTALL_DIR)" $(TARGET)
 
 .cpp.dll:
 	@echo Compiling:$< ... $(<:.cpp=.obj)
-	@$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) -Fo$(OBJS_DIR)$(<:.cpp=.obj)  $<
+	@$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) \
+		-Fo$(OBJS_DIR)$(<:.cpp=.obj) \
+		-Fd$(INSTALL_DIR)$(<:.cpp=.pdb) \
+		$<
+
 	@echo Linking:$(<:.cpp=.obj) ... $@
-	@$(CPP) $(LINKER_OPT) -Fe$(INSTALL_DIR)$@ $(OBJS_DIR)$(<:.cpp=.obj) /link  $(LINKER) /implib:$(OBJS_DIR)$(<:.cpp=.lib) 
+	@$(CPP) $(LINKER_OPT) \
+		-Fe$(INSTALL_DIR)$@ $(OBJS_DIR)$(<:.cpp=.obj) /link  \
+		$(LINKER) /implib:$(OBJS_DIR)$(<:.cpp=.lib) \
+		/PDB:$(INSTALL_DIR)$(<:.cpp=.pdb)
 
 # stream alpha depends on streamalpha SDK (www.streamalpha.com)
 # please modify STREAMALPHA_SDK for proper location
