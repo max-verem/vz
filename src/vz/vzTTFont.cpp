@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-11-16: 
+		*Visual Studio 2005 migration.
+
 	2006-09-21:
 		*Fix not initialized '_font_face' destroying
 		*Split code of glyphs layouting

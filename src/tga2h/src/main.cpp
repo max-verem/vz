@@ -19,6 +19,10 @@
     You should have received a copy of the GNU General Public License
     along with ViZualizator; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+Changelog:
+	2007-11-16: 
+		*Visual Studio 2005 migration.
 */
 
 #define _CRT_SECURE_NO_WARNINGS
