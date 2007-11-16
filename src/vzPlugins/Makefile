@@ -20,13 +20,13 @@ CFG=Debug
 
 
 !IF  "$(CFG)" == "Debug"
-DEBUGFLAGS	= -D_DEBUG /Yd /GZ /GX /Zi /FD
+DEBUGFLAGS	= -D_DEBUG /RTC1 /EHsc /Zi /FD
 INSTALL_DIR	= ../../install/Debug/plugins/
 OBJS_DIR	= ../../tmp/Debug/plugins/
 LIB_PATH	= /LIBPATH:"../../tmp/Debug/"
 LINKER_OPT	= /LDd /nologo 
-LINKER_FLAGS	= $(LIB_PATH) /DEBUG /PDB:$(INSTALL_DIR)$(<:.cpp=.pdb)
-CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16 -Fd$(INSTALL_DIR)$(<:.cpp=.pdb)
+LINKER_FLAGS	= $(LIB_PATH) /DEBUG
+CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
 !ENDIF
 
 
@@ -42,7 +42,7 @@ CPPFLAGS	= $(CPPFLAGS) /MD /Zp16
 !ENDIF
 
 # compiler setting
-CPPFLAGS	= $(CPPFLAGS) /G6 -TP -GD 
+CPPFLAGS	= $(CPPFLAGS) -TP
 INCLUDE_DIR	= -I. -I../vz
 LINKER		= /incremental:no $(LINKER_FLAGS)
 
@@ -77,8 +77,18 @@ all: $(TARGET)
 
 .cpp.dll:
 	@echo Compiling:$< ... $(<:.cpp=.obj)
-	$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) -Fo$(OBJS_DIR)$(<:.cpp=.obj) -Fd$(INSTALL_DIR)$(<:.cpp=.pdb) $<
+	$(CPP) \
+		-c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) \
+		-Fo$(OBJS_DIR)$(<:.cpp=.obj) \
+		-Fd$(INSTALL_DIR)$(<:.cpp=.pdb) $<
+
 	@echo Linking:$(<:.cpp=.obj) ... $@
-	$(CPP) $(LINKER_OPT) -Fe$(INSTALL_DIR)$@ $(OBJS_DIR)$(<:.cpp=.obj) /link $(LINKER) /implib:$(OBJS_DIR)$(<:.cpp=.lib)
+	$(CPP) $(LINKER_OPT) \
+		-Fe$(INSTALL_DIR)$@ $(OBJS_DIR)$(<:.cpp=.obj) \
+		/link $(LINKER) /implib:$(OBJS_DIR)$(<:.cpp=.lib) \
+		/PDB:$(INSTALL_DIR)$(<:.cpp=.pdb)
+
 	@SET PATH=$(PATH);$(INSTALL_DIR)../
-	@vzPluginsMan.exe $(INSTALL_DIR)$(<:.cpp=.dll) $(INSTALL_DIR)$(<:.cpp=.man)
+	@vzPluginsMan.exe \
+		$(INSTALL_DIR)$(<:.cpp=.dll) \
+		$(INSTALL_DIR)$(<:.cpp=.man)

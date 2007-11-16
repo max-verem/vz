@@ -40,7 +40,7 @@ ChangeLog:
 
 // dll exporst deals
 #define PLUGIN_EXPORT extern "C" __declspec(dllexport)
-#pragma comment(linker, "/LIBPATH:E:\\sdk\\xerces\\lib\\")
+//#pragma comment(linker, "/LIBPATH:E:\\sdk\\xerces\\lib\\")
 
 // offset calculating
 #define PLUGIN_PARAMETER_OFFSET(struct_begin,member) ((unsigned char*)(&struct_begin.member)-(unsigned char*)(&struct_begin))

@@ -21,7 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
-    2005-06-08: Code cleanup
+	2007-11-16: 
+		*Visual Studio 2005 migration.
+
+	2005-06-08: Code cleanup
 
 
 */
@@ -90,6 +93,7 @@ void center_vector(long L_center,float f_width, float f_height, float& co_X, flo
 
 inline unsigned long POT(unsigned long v)
 {
-	for(unsigned long i=1;(i!=0x80000000)&&(i<v);i<<=1);
+	unsigned long i;
+	for(i=1;(i!=0x80000000)&&(i<v);i<<=1);
 	return i;
 };
