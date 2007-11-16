@@ -35,7 +35,7 @@ static const unsigned short tag_module[] = {'m', 'o', 'd', 'u', 'l', 'e',0};
 vzConfig::vzConfig(char* config_file)
 {
 	//init parser
-	XercesDOMParser *parser = new XercesDOMParser;
+	XercesDOMParserX *parser = new XercesDOMParserX;
 
     try
     {
@@ -48,30 +48,30 @@ vzConfig::vzConfig(char* config_file)
     }
 
 
-	DOMDocument* doc = parser->getDocument();
+	DOMDocumentX* doc = parser->getDocument();
 	if(!doc)
 	{
 		return;
 	};
 
-	DOMElement* config = doc->getDocumentElement();
+	DOMElementX* config = doc->getDocumentElement();
 
-	DOMNodeList* modules_params = config->getChildNodes();
+	DOMNodeListX* modules_params = config->getChildNodes();
 
 	for(unsigned int i=0;i<modules_params->getLength();i++)
 	{
 		// getting child 
-		DOMNode* module = modules_params->item(i);
+		DOMNodeX* module = modules_params->item(i);
 
 		// checking type
-		if(module->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(module->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name
-		if (XMLString::compareIString(module->getNodeName(),tag_module) == 0)
+		if (XMLStringX::compareIString(module->getNodeName(),tag_module) == 0)
 		{
 			// load attributes
-			vzXMLAttributes*  attrs = new vzXMLAttributes(module);
+			vzXMLAttributes* attrs = new vzXMLAttributes(module);
 
 			char* name;
 

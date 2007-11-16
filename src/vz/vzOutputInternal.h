@@ -55,8 +55,8 @@ ChangeLog:
 
 #define DMA_PAGE_SIZE 4096
 
-typedef long (*output_proc_vzOutput_FindBoard)(char** error_log = NULL);
-typedef long (*output_proc_vzOutput_SelectBoard)(unsigned long id,char** error_log = NULL);
+typedef long (*output_proc_vzOutput_FindBoard)(char** error_log /* = NULL */);
+typedef long (*output_proc_vzOutput_SelectBoard)(unsigned long id,char** error_log /* = NULL */);
 typedef long (*output_proc_vzOutput_InitBoard)(void*);
 typedef void (*output_proc_vzOutput_StartOutputLoop)(void*);
 typedef void (*output_proc_vzOutput_StopOutputLoop)(void);

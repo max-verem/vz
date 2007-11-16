@@ -24,13 +24,13 @@ ChangeLog:
     2005-06-08: Code cleanup
 
 */
-
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "vzContainerFunction.h"
 
 #include "unicode.h"
 
-vzContainerFunction::vzContainerFunction(DOMNode* parent_node,vzFunctions* functions_list,vzScene* scene, vzContainer* parent_container)
+vzContainerFunction::vzContainerFunction(DOMNodeX* parent_node,vzFunctions* functions_list,vzScene* scene, vzContainer* parent_container)
 {
 	// reset 
 	_data = NULL;

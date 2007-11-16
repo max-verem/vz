@@ -79,7 +79,7 @@ class vzMotionTimeline
 
 
 public:
-	vzMotionTimeline(DOMNode* node, vzScene* scene, char* param_name, vzContainerFunction* function);
+	vzMotionTimeline(DOMNodeX* node, vzScene* scene, char* param_name, vzContainerFunction* function);
 	~vzMotionTimeline();
 	void assign(long frame, int field);
 

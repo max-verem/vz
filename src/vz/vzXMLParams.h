@@ -36,7 +36,7 @@ class vzXMLParams : public vzHash<char*>
 {
 public:
 
-	vzXMLParams(DOMNode* node);
+	vzXMLParams(DOMNodeX* node);
 	virtual ~vzXMLParams();
 };
 

@@ -38,7 +38,7 @@ class vzMotionDirector;
 class vzMotion : public vzHash<vzMotionDirector*>
 {
 public:
-	vzMotion(DOMNode* node,vzScene* scene);
+	vzMotion(DOMNodeX* node,vzScene* scene);
 	virtual ~vzMotion();
 	void assign(long frame, int field);
 };

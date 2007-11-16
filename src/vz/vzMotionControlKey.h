@@ -51,7 +51,7 @@ class vzMotionControlKey
 
 public:
 
-	vzMotionControlKey(DOMNode* node,vzScene* scene);
+	vzMotionControlKey(DOMNodeX* node,vzScene* scene);
 	~vzMotionControlKey();
 
 

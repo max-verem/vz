@@ -69,6 +69,8 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 
 */
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #ifdef _DEBUG
 //#define DUMP_DRV_IO_LOCKS
 #endif /* _DEBUG */

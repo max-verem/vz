@@ -56,7 +56,7 @@ class vzContainer
 	unsigned long nodes_counter;
 
 public:
-	vzContainer(DOMNode* parent_node,vzFunctions* functions_list,vzScene* scene);
+	vzContainer(DOMNodeX* parent_node,vzFunctions* functions_list,vzScene* scene);
 	void draw(vzRenderSession* render_session);
 	virtual ~vzContainer();
 	void visible(char* value);

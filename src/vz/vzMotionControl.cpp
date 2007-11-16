@@ -33,27 +33,27 @@ ChangeLog:
 
 static const unsigned short tag_key[] = {'k', 'e', 'y',0};
 
-vzMotionControl::vzMotionControl(DOMNode* node,vzScene* scene) : vzHash<vzMotionControlKey*>()
+vzMotionControl::vzMotionControl(DOMNodeX* node,vzScene* scene) : vzHash<vzMotionControlKey*>()
 {
 	// auto id generation for timelines hash
 	int keys_counter = 0;
 	char key_name[1024];
 	
 	// request list of child nodes
-	DOMNodeList* children = node->getChildNodes();
+	DOMNodeListX* children = node->getChildNodes();
 
 	// enumerate
 	for(unsigned int i=0;i<children->getLength();i++)
 	{
 		// getting child
-		DOMNode* child = children->item(i);
+		DOMNodeX* child = children->item(i);
 
 		// checking type
-		if(child->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(child->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name for 'function'
-		if (XMLString::compareIString(child->getNodeName(),tag_key) == 0)
+		if (XMLStringX::compareIString(child->getNodeName(),tag_key) == 0)
 		{
 			// init function Instance object
 			vzMotionControlKey* key = new vzMotionControlKey(child,scene);

@@ -33,14 +33,14 @@ static const unsigned short tag_param[] = {'p','a','r','a','m',0};
 static const unsigned short tag_value[] = {'v','a','l','u','e',0};
 static const unsigned short tag_name[] = {'n','a','m','e',0};
 
-vzXMLAttributes::vzXMLAttributes(DOMNode* node) : vzHash<char*>() 
+vzXMLAttributes::vzXMLAttributes(DOMNodeX* node) : vzHash<char*>() 
 {
 	// processing element's attributes
-	DOMNamedNodeMap* attributes = node->getAttributes();
+	DOMNamedNodeMapX* attributes = node->getAttributes();
 	
 	for(unsigned int i=0;i<attributes->getLength();i++)
 	{
-		DOMNode* attribute = attributes->item(i);
+		DOMNodeX* attribute = attributes->item(i);
 
 		char* temp_value = uni2utf8((short*)attribute->getNodeValue());
 		char* temp_name = uni2utf8((short*)attribute->getNodeName());

@@ -60,7 +60,7 @@ class vzContainerFunction
 	vzFunction* _function;
 
 public:
-	vzContainerFunction(DOMNode* parent_node,vzFunctions* functions_list,vzScene* scene, vzContainer* parent_container);
+	vzContainerFunction(DOMNodeX* parent_node,vzFunctions* functions_list,vzScene* scene, vzContainer* parent_container);
 	~vzContainerFunction();
 
 	inline char* get_id(void){ return _id;};

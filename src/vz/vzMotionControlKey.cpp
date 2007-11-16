@@ -25,6 +25,8 @@ ChangeLog:
 
 */
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "vzMotionControlKey.h"
 #include "vzScene.h"
 
@@ -41,7 +43,7 @@ int vzMotionControlKey::copystrval(char* &variable,char* val)
 		return 0;
 };
 
-vzMotionControlKey::vzMotionControlKey(DOMNode* node,vzScene* scene)
+vzMotionControlKey::vzMotionControlKey(DOMNodeX* node,vzScene* scene)
 {
 	// start params
 	_id = NULL; 

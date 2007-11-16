@@ -29,7 +29,7 @@ ChangeLog:
 #include "vzMotionTimeline.h"
 
 
-vzMotionTimeline::vzMotionTimeline(DOMNode* node, vzScene* scene, char* param_name, vzContainerFunction* function)
+vzMotionTimeline::vzMotionTimeline(DOMNodeX* node, vzScene* scene, char* param_name, vzContainerFunction* function)
 {
 	// create lock
 	_lock = CreateMutex(NULL,FALSE,NULL);

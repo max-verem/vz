@@ -24,7 +24,7 @@ ChangeLog:
     2005-06-08: Code cleanup
 
 */
-
+#define _CRT_SECURE_NO_WARNINGS
 
 #include <windows.h>
 #include <stdlib.h>

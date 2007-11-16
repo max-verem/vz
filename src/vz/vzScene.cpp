@@ -130,7 +130,7 @@ int vzScene::load(char* file_name)
 	printf("Loading scene '%s'... ",file_name);
 
 	//init parser
-	XercesDOMParser *parser = new XercesDOMParser;
+	XercesDOMParserX *parser = new XercesDOMParserX;
 
 	printf("Parsing... ");
 
@@ -146,7 +146,7 @@ int vzScene::load(char* file_name)
     }
 
 
-	DOMDocument* doc = parser->getDocument();
+	DOMDocumentX* doc = parser->getDocument();
 	if(!doc)
 	{
 		fprintf(stderr, "Failed load scene (NO Document)!\n");
@@ -154,7 +154,7 @@ int vzScene::load(char* file_name)
 		return 0;
 	};
 
-	DOMElement* scene = doc->getDocumentElement();
+	DOMElementX* scene = doc->getDocumentElement();
 
 	/* check if scene properly loaded */
 	if(!(scene))
@@ -164,7 +164,7 @@ int vzScene::load(char* file_name)
 		return 0;
 	};
 
-	DOMNodeList* scene_components = scene->getChildNodes();
+	DOMNodeListX* scene_components = scene->getChildNodes();
 
 	unsigned int i;
 
@@ -173,14 +173,14 @@ int vzScene::load(char* file_name)
 	for(i=0;(i<scene_components->getLength()) && (_tree == NULL);i++)
 	{
 		// getting child 
-		DOMNode* scene_component = scene_components->item(i);
+		DOMNodeX* scene_component = scene_components->item(i);
 
 		// checking type
-		if(scene_component->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(scene_component->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name
-		if (XMLString::compareIString(scene_component->getNodeName(),tag_tree) == 0)
+		if (XMLStringX::compareIString(scene_component->getNodeName(),tag_tree) == 0)
 		{
 			printf("Found containers.... ");
 			_tree = new vzContainer(scene_component,_functions,this);
@@ -194,14 +194,14 @@ int vzScene::load(char* file_name)
 	for(i=0;(i<scene_components->getLength()) && (_motion == NULL);i++)
 	{
 		// getting child 
-		DOMNode* scene_component = scene_components->item(i);
+		DOMNodeX* scene_component = scene_components->item(i);
 
 		// checking type
-		if(scene_component->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(scene_component->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name
-		if (XMLString::compareIString(scene_component->getNodeName(),tag_motion) == 0)
+		if (XMLStringX::compareIString(scene_component->getNodeName(),tag_motion) == 0)
 		{
 			printf("Found Motion!!.... ");
 			_motion = new vzMotion(scene_component,this);

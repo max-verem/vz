@@ -31,27 +31,27 @@ ChangeLog:
 
 static const unsigned short tag_director[] = {'d', 'i', 'r', 'e', 'c', 't', 'o', 'r',0};
 
-vzMotion::vzMotion(DOMNode* node,vzScene* scene) : vzHash<vzMotionDirector*>()
+vzMotion::vzMotion(DOMNodeX* node,vzScene* scene) : vzHash<vzMotionDirector*>()
 {
 	// auto id generation for Directors (if not present)
 	int directors_counter = 0;
 	char director_name[1024];
 
 	// request list of child nodes
-	DOMNodeList* children = node->getChildNodes();
+	DOMNodeListX* children = node->getChildNodes();
 
 	// enumerate
 	for(unsigned int i=0;i<children->getLength();i++)
 	{
 		// getting child
-		DOMNode* child = children->item(i);
+		DOMNodeX* child = children->item(i);
 
 		// checking type
-		if(child->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(child->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name for 'function'
-		if (XMLString::compareIString(child->getNodeName(),tag_director) == 0)
+		if (XMLStringX::compareIString(child->getNodeName(),tag_director) == 0)
 		{
 			// init function Instance object
 			vzMotionDirector* director = new vzMotionDirector(child,scene);

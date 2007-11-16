@@ -33,17 +33,24 @@ ChangeLog:
 #include <xercesc/parsers/AbstractDOMParser.hpp>
 #include <xercesc/parsers/XercesDOMParser.hpp>
 #include <xercesc/dom/DOMElement.hpp>
+#include <xercesc/dom/DOMNode.hpp>
 #include <xercesc/dom/DOMNodeList.hpp>
 #include <xercesc/dom/DOMNamedNodeMap.hpp>
 
-XERCES_CPP_NAMESPACE_USE
-
-// xerces library linacke
+// xerces library linking
 #ifdef _DEBUG
 	#pragma comment(lib, "xerces-c_2D.lib") 
 #else
 	#pragma comment(lib, "xerces-c_2.lib") 
 #endif
 
+#define DOMDocumentX xercesc_2_6::DOMDocument
+#define DOMNodeX xercesc_2_6::DOMNode
+#define XercesDOMParserX xercesc_2_6::XercesDOMParser
+#define DOMElementX xercesc_2_6::DOMElement
+#define DOMNodeListX xercesc_2_6::DOMNodeList
+#define XMLStringX xercesc_2_6::XMLString
+#define XMLPlatformUtilsX xercesc_2_6::XMLPlatformUtils
+#define DOMNamedNodeMapX xercesc_2_6::DOMNamedNodeMap
 
 #endif

@@ -49,7 +49,7 @@ ChangeLog:
 static const unsigned short tag_container[] = {'c','o','n','t','a','i','n','e','r',0};
 static const unsigned short tag_function[] = {'f','u','n','c','t','i','o','n',0};
 
-vzContainer::vzContainer(DOMNode* parent_node,vzFunctions* functions_list,vzScene* scene)
+vzContainer::vzContainer(DOMNodeX* parent_node,vzFunctions* functions_list,vzScene* scene)
 {
 	nodes_counter = 0;
 	char node_name[1024];
@@ -76,20 +76,20 @@ vzContainer::vzContainer(DOMNode* parent_node,vzFunctions* functions_list,vzScen
 */
 
 	// request list of child nodes
-	DOMNodeList* children = parent_node->getChildNodes();
+	DOMNodeListX* children = parent_node->getChildNodes();
 
 	// enumerate
 	for(unsigned int i=0;i<children->getLength();i++)
 	{
 		// getting child
-		DOMNode* child = children->item(i);
+		DOMNodeX* child = children->item(i);
 
 		// checking type
-		if(child->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(child->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name for 'function'
-		if (XMLString::compareIString(child->getNodeName(),tag_function) == 0)
+		if (XMLStringX::compareIString(child->getNodeName(),tag_function) == 0)
 		{
 			// init function Instance object
 			vzContainerFunction* function = new vzContainerFunction(child,functions_list,scene,this);
@@ -102,7 +102,7 @@ vzContainer::vzContainer(DOMNode* parent_node,vzFunctions* functions_list,vzScen
 		};
 
 		// check node name for 'container'
-		if (XMLString::compareIString(child->getNodeName(),tag_container) == 0)
+		if (XMLStringX::compareIString(child->getNodeName(),tag_container) == 0)
 		{
 			// init function Instance object
 			vzContainer* container = new vzContainer(child,functions_list,scene);

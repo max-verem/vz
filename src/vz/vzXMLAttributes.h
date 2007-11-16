@@ -36,7 +36,7 @@ class vzXMLAttributes : public vzHash<char*>
 {
 public:
 
-	vzXMLAttributes(DOMNode* node);
+	vzXMLAttributes(DOMNodeX* node);
 	virtual ~vzXMLAttributes();
 };
 

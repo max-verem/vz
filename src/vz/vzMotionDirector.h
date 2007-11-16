@@ -73,7 +73,7 @@ class vzMotionDirector
 
 public:
 	
-	vzMotionDirector(DOMNode* node,vzScene* scene);
+	vzMotionDirector(DOMNodeX* node,vzScene* scene);
 	~vzMotionDirector();
 
 	inline char* id(void) { return _id;};

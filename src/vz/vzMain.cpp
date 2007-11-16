@@ -59,11 +59,11 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 			// Init xml processor
 		    try
 			{
-				XMLPlatformUtils::Initialize();
+				XMLPlatformUtilsX::Initialize();
 			}
 			catch (...)
 			{
-				XMLPlatformUtils::Terminate();
+				XMLPlatformUtilsX::Terminate();
 				return FALSE;
 		    }
 			printf("Loading vzMain-%s\n", VZ_VERSION);
@@ -73,7 +73,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 		case DLL_THREAD_DETACH:
 			break;
 		case DLL_PROCESS_DETACH:
-				XMLPlatformUtils::Terminate();
+				XMLPlatformUtilsX::Terminate();
 			break;
     }
     return TRUE;

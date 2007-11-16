@@ -34,7 +34,7 @@ ChangeLog:
 static const unsigned short tag_param[] = {'p', 'a', 'r', 'a', 'm',0};
 static const unsigned short tag_control[] = {'c', 'o', 'n', 't', 'r', 'o', 'l',0};
 
-vzMotionDirector::vzMotionDirector(DOMNode* node,vzScene* scene)
+vzMotionDirector::vzMotionDirector(DOMNodeX* node,vzScene* scene)
 {
 	// create lock
 	_lock = CreateMutex(NULL,FALSE,NULL);
@@ -63,20 +63,20 @@ vzMotionDirector::vzMotionDirector(DOMNode* node,vzScene* scene)
 
 	// load parameters
 	// request list of child nodes
-	DOMNodeList* children = node->getChildNodes();
+	DOMNodeListX* children = node->getChildNodes();
 
 	// enumerate
 	for(unsigned int i=0;i<children->getLength();i++)
 	{
 		// getting child
-		DOMNode* child = children->item(i);
+		DOMNodeX* child = children->item(i);
 
 		// checking type
-		if(child->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(child->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name for 'function'
-		if (XMLString::compareIString(child->getNodeName(),tag_param) == 0)
+		if (XMLStringX::compareIString(child->getNodeName(),tag_param) == 0)
 		{
 			// init function Instance object
 			vzMotionParameter* parameter = new vzMotionParameter(child,scene);
@@ -89,7 +89,7 @@ vzMotionDirector::vzMotionDirector(DOMNode* node,vzScene* scene)
 		};
 
 		// check node name for 'function'
-		if (XMLString::compareIString(child->getNodeName(),tag_control) == 0)
+		if (XMLStringX::compareIString(child->getNodeName(),tag_control) == 0)
 		{
 			// Motion control
 			if (!(_control))

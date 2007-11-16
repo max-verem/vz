@@ -33,28 +33,28 @@ static const unsigned short tag_param[] = {'p','a','r','a','m',0};
 static const unsigned short tag_value[] = {'v','a','l','u','e',0};
 static const unsigned short tag_name[] = {'n','a','m','e',0};
 
-vzXMLParams::vzXMLParams(DOMNode* parent_node) : vzHash<char*>() 
+vzXMLParams::vzXMLParams(DOMNodeX* parent_node) : vzHash<char*>() 
 {
 	// looking for 'param' element
-	DOMNodeList* params = parent_node->getChildNodes();
+	DOMNodeListX* params = parent_node->getChildNodes();
 
 	// enumerate
 	for(unsigned int i=0;i<params->getLength();i++)
 	{
 		// getting child
-		DOMNode* param = params->item(i);
+		DOMNodeX* param = params->item(i);
 
 		// checking type
-		if(param->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(param->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name
-		if (XMLString::compareIString(param->getNodeName(),tag_param) != 0)
+		if (XMLStringX::compareIString(param->getNodeName(),tag_param) != 0)
 			continue;
 
 		// processing element's attributes
-		DOMNamedNodeMap* attributes = param->getAttributes();
-		DOMNode* attribute;
+		DOMNamedNodeMapX* attributes = param->getAttributes();
+		DOMNodeX* attribute;
 
 		char *temp_value = NULL, *temp_name = NULL;
 

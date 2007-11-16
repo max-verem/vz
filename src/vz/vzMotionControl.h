@@ -29,13 +29,15 @@ ChangeLog:
 #ifndef VZMOTIONCONTROL_H
 #define VZMOTIONCONTROL_H
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "vzMotionControlKey.h"
 #include "../templates/hash.hpp"
 
 class vzMotionControl : public vzHash<vzMotionControlKey*>
 {
 public:
-	vzMotionControl(DOMNode* node,vzScene* scene);
+	vzMotionControl(DOMNodeX* node,vzScene* scene);
 	~vzMotionControl();
 	long find_stop(long from,long to);
 };

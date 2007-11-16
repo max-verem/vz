@@ -35,6 +35,7 @@ ChangeLog:
 
 */
 
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "vzTTFont.h"
 #include "unicode.h"
@@ -430,6 +431,8 @@ VZTTFONT_API long vzTTFont::insert_symbols(void *new_sym)
 
 VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf* l)
 {
+	int i_text;
+
 	struct vzTTFontLayoutConf layout_conf;
 
 	/* check if font inited */
@@ -471,7 +474,7 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 		i_layer = 0;
 
 	// filling
-	for(int i_text=0;i_text<length;i_text++)
+	for(i_text=0;i_text<length;i_text++)
 	{
 		/* set glyphs */
 		_get_glyph
@@ -695,9 +698,10 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 				{
 					// look back to line begin (position is i_line_begin)
 					// and find first white space
+					int j;
 					for
 					(
-						int j=i_text - 1; 
+						j=i_text - 1; 
 						(j > i_line_begin) 
 						&& 
 						(symbols->data[j].character != 0x20)

@@ -35,7 +35,7 @@ ChangeLog:
 static const unsigned short tag_timeline[] = {'t', 'i', 'm', 'e', 'l', 'i', 'n', 'e',0};
 
 
-vzMotionParameter::vzMotionParameter(DOMNode* node,vzScene* scene) : vzHash<vzMotionTimeline*>()
+vzMotionParameter::vzMotionParameter(DOMNodeX* node,vzScene* scene) : vzHash<vzMotionTimeline*>()
 {
 	// auto id generation for timelines hash
 	int timelines_counter = 0;
@@ -59,20 +59,20 @@ vzMotionParameter::vzMotionParameter(DOMNode* node,vzScene* scene) : vzHash<vzMo
 	// load timelines !!!!
 
 	// request list of child nodes
-	DOMNodeList* children = node->getChildNodes();
+	DOMNodeListX* children = node->getChildNodes();
 
 	// enumerate
 	for(unsigned int i=0;i<children->getLength();i++)
 	{
 		// getting child
-		DOMNode* child = children->item(i);
+		DOMNodeX* child = children->item(i);
 
 		// checking type
-		if(child->getNodeType() !=  DOMNode::ELEMENT_NODE)
+		if(child->getNodeType() !=  DOMNodeX::ELEMENT_NODE)
 			continue;
 
 		// check node name for 'function'
-		if (XMLString::compareIString(child->getNodeName(),tag_timeline) == 0)
+		if (XMLStringX::compareIString(child->getNodeName(),tag_timeline) == 0)
 		{
 			// init function Instance object
 			vzMotionTimeline* timeline = new vzMotionTimeline(child,scene,_name_local,function);

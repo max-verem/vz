@@ -24,7 +24,7 @@ ChangeLog:
     2005-07-08: Code cleanup
 
 */
-
+#define _CRT_SECURE_NO_WARNINGS
 
 #ifndef VZHASH_HPP
 #define VZHASH_HPP

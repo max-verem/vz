@@ -52,7 +52,7 @@ class vzMotionParameter : public vzHash<vzMotionTimeline*>
 	char* _name_local;
 
 public:
-	vzMotionParameter(DOMNode* node,vzScene* scene);
+	vzMotionParameter(DOMNodeX* node,vzScene* scene);
 	virtual ~vzMotionParameter();
 	void assign(long frame, int field);
 
