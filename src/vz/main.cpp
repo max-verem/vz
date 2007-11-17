@@ -55,6 +55,7 @@ ChangeLog:
 
 
 */
+#define _CRT_SECURE_NO_WARNINGS
 
 #include <windows.h>
 #include <stdio.h>
@@ -193,6 +194,7 @@ static unsigned long WINAPI sync_render(void* data)
 	while(0 == f_exit)
 	{
 		if(WAIT_OBJECT_0 == WaitForSingleObject(global_frame_event, INFINITE))
+//		WaitForSingleObject(global_frame_event, /* INFINITE */ 1000);
 		{
 			/* render picture */
 			if(not_first_at)

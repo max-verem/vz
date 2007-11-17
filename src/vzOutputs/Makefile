@@ -28,6 +28,16 @@ BLUEFISH_SDK	= c:\sdk\bluefish
 BLUEFISH_LIB	= $(BLUEFISH_SDK)\Lib
 BLUEFISH_INC	= $(BLUEFISH_SDK)\Inc
 
+# Decklink SDK
+DECKLINK_SDK	= c:\sdk\decklink
+DECKLINK_LIB	= $(DECKLINK_SDK)\Lib
+DECKLINK_INC	= $(DECKLINK_SDK)\Include
+
+# BaseClasses (Platform SDK)
+BASECLASSES_SDK = C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2
+BASECLASSES_LIB	= $(BASECLASSES_SDK)\Lib\BaseClasses
+BASECLASSES_INC	= $(BASECLASSES_SDK)\Samples\Multimedia\DirectShow\BaseClasses
+
 !IF  "$(CFG)" == "Debug"
 DEBUGFLAGS	= -D_DEBUG /RTC1 /EHsc /Zi /FD
 INSTALL_DIR	= ../../install/Debug/outputs/
@@ -50,8 +60,21 @@ CPPFLAGS	= $(CPPFLAGS) /MD /Zm256
 !ENDIF
 
 # additional sdks
-SDK_LIB		=  /LIBPATH:"$(STREAMALPHA_LIB)" /LIBPATH:"$(BLUEFISH_LIB)"
-SDK_INC		=  -I"$(STREAMALPHA_INC)" -I"$(BLUEFISH_INC)"
+SDK_LIB		= \
+		/LIBPATH:"$(STREAMALPHA_LIB)" \
+		/LIBPATH:"$(BLUEFISH_LIB)" \
+		/LIBPATH:"$(DECKLINK_LIB)" \
+		/LIBPATH:"$(BASECLASSES_LIB)"
+
+SDK_INC		= \
+		-I"$(STREAMALPHA_INC)" \
+		-I"$(BLUEFISH_INC)" \
+		-I"$(DECKLINK_INC)" \
+		-I"$(BASECLASSES_INC)"
+
+#!MESSAGE SDK_INC=$(SDK_INC)
+#!MESSAGE SDK_LIB=$(SDK_LIB)
+#!ERROR
 
 # compiler setting
 CPPFLAGS	= $(CPPFLAGS) -TP
@@ -60,7 +83,7 @@ INCLUDE_DIR	= -I. -I../vz $(SDK_INC) -I$(OBJS_DIR)
 LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
-TARGET = bluefish nullvideo streamalpha
+TARGET = decklink bluefish nullvideo streamalpha
 
 all: "$(OBJS_DIR)" "$(INSTALL_DIR)" $(TARGET)
 
@@ -75,7 +98,7 @@ all: "$(OBJS_DIR)" "$(INSTALL_DIR)" $(TARGET)
 
 .cpp.dll:
 	@echo Compiling:$< ... $(<:.cpp=.obj)
-	@$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) \
+	$(CPP) -c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) \
 		-Fo$(OBJS_DIR)$(<:.cpp=.obj) \
 		-Fd$(INSTALL_DIR)$(<:.cpp=.pdb) \
 		$<
@@ -108,6 +131,24 @@ bluefish_sdk: "$(BLUEFISH_LIB)" "$(BLUEFISH_INC)"
 
 "$(BLUEFISH_INC)":
 	@if not exist "$(BLUEFISH_INC)" echo "BLUEFISH_SDK incorrect"
+
+
+# check decklink sdk
+decklink: decklink_sdk decklink.cpp vzdssrc.h decklink.dll
+
+decklink_sdk: "$(DECKLINK_LIB)" "$(DECKLINK_INC)" "$(BASECLASSES_LIB)" "$(BASECLASSES_INC)"
+
+"$(DECKLINK_LIB)":
+	@if not exist "$(DECKLINK_LIB)" echo "DECKLINK_LIB incorrect"
+
+"$(DECKLINK_INC)":
+	@if not exist "$(DECKLINK_INC)" echo "DECKLINK_SDK incorrect"
+
+"$(BASECLASSES_LIB)":
+	@if not exist "$(BASECLASSES_LIB)" echo "BASECLASSES_LIB incorrect"
+
+"$(BASECLASSES_INC)":
+	@if not exist "$(BASECLASSES_INC)" echo "BASECLASSES_SDK incorrect"
 
 
 # NULL output module - fake for testing....
