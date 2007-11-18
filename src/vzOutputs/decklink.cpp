@@ -524,9 +524,9 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 ------------------------------------------------------------------ */
 
 #pragma comment(lib, "winmm")
-#pragma comment(linker,"/NODEFAULTLIB:MSVCRT.lib")
 
 #ifdef _DEBUG
+#pragma comment(linker,"/NODEFAULTLIB:MSVCRT.lib")
 #pragma comment(linker,"/NODEFAULTLIB:LIBCMTD.lib")
 #else
 #pragma comment(linker,"/NODEFAULTLIB:LIBCMT.lib")
