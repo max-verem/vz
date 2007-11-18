@@ -21,6 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-11-18:
+		*More timing dumping support added to understand what problem
+		with decklink.
+
 	2007-11-16: 
 		*Visual Studio 2005 migration.
 
@@ -81,6 +85,11 @@ http://www.gamedev.net/community/forums/topic.asp?topic_id=360729
 ////#define FAKE_MIX
 ////#define FAKE_TONE
 
+#ifdef DUMP_DRV_IO_LOCKS
+unsigned _buffers_pos_render = 0;
+unsigned _buffers_pos_driver = 0;
+#pragma comment(lib, "winmm")
+#endif /* DUMP_DRV_IO_LOCKS */
 
 #include <stdio.h>
 #include <string.h>
@@ -222,7 +231,7 @@ void vzOutput::lock_io_bufs(void** v_output, void*** v_input, void** a_output, v
 			/* check drop count */
 			if(_buffers.pos_driver_dropped)
 			{
-				printf("vzOutput: dropped %d frames[driver]\n", _buffers.pos_driver_dropped);
+				fprintf(stderr, "vzOutput: dropped %d frames[driver]\n", _buffers.pos_driver_dropped);
 				_buffers.pos_driver_dropped = 0;
 			};
 		}
@@ -249,7 +258,9 @@ void vzOutput::lock_io_bufs(void** v_output, void*** v_input, void** a_output, v
 	*a_output = _buffers.output.audio[ _buffers.pos_driver ];
 	*a_input = _buffers.input.audio[ _buffers.pos_driver ];
 
-//printf("lock_io_bufs: id=%d\n",_buffers.id[ _buffers.pos_driver ]);
+#ifdef DUMP_DRV_IO_LOCKS
+	fprintf(stderr, "lock_io_bufs: id=%d\n",_buffers.id[ _buffers.pos_driver ]);
+#endif /* DUMP_DRV_IO_LOCKS */
 
 	/* check if we need to map buffers */
 	if(_use_offscreen_buffer)
@@ -268,10 +279,16 @@ void vzOutput::lock_io_bufs(void** v_output, void*** v_input, void** a_output, v
 	};
 
 #ifdef DUMP_DRV_IO_LOCKS
-	printf("lock_io_bufs: %-10d r=%d d=%d [", timeGetTime(), _buffers.pos_render, _buffers.pos_driver);
+	if(_buffers_pos_render == _buffers.pos_render)
+		fprintf(stderr, "lock_io_bufs: '_buffers.pos_render=%d' duplicated\n", _buffers.pos_render);
+	if(_buffers_pos_driver == _buffers.pos_driver)
+		fprintf(stderr, "lock_io_bufs: '_buffers.pos_driver=%d' duplicated\n", _buffers.pos_driver);
+	_buffers_pos_render = _buffers.pos_render;
+	_buffers_pos_driver = _buffers.pos_driver;
+	fprintf(stderr, "lock_io_bufs: %-10d r=%d d=%d [", timeGetTime(), _buffers.pos_render, _buffers.pos_driver);
 	for(i = 0; i<VZOUTPUT_MAX_BUFS ; i++)
-		printf("%-4d", _buffers.id[i]);
-	printf("]\n");
+		fprintf(stderr, "/ %-6d /", _buffers.id[i]);
+	fprintf(stderr, "]\n");
 #endif /* DUMP_DRV_IO_LOCKS */
 
 };
@@ -354,7 +371,7 @@ void vzOutput::pre_render()
 			/* check drop count */
 			if(_buffers.pos_render_dropped)
 			{
-				printf("vzOutput: dropped %d frames[render]\n", _buffers.pos_render_dropped);
+				fprintf(stderr, "vzOutput: dropped %d frames[render]\n", _buffers.pos_render_dropped);
 				_buffers.pos_render_dropped = 0;
 			};
 		}
