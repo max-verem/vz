@@ -21,10 +21,14 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-11-18:
+		*VS2005 migrations patches
+
     2007-02-19:
 		* new version start
 
 */
+#define _CRT_SECURE_NO_WARNINGS
 
 #include <stdio.h>
 #include <process.h>

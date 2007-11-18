@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2007-11-18:
+		*VS2005 migrations patches
+
 	2007-03-10:
 		*exiting from threads fixed
 
@@ -30,6 +33,7 @@ ChangeLog:
 		and TCPSERVER_BUFSIZE no longer static and hard compiled variables.
 
 */
+#define _CRT_SECURE_NO_WARNINGS
 
 #include <stdio.h>
 #include <winsock2.h>
