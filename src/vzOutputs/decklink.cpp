@@ -50,6 +50,17 @@ ChangeLog:
 #define MODULE_PREFIX "decklink: "
 #define CONFIG_O(VAR) vzConfigParam(_config, "decklink", VAR)
 
+#define O_ONBOARD_KEYER			"ONBOARD_KEYER"
+#define O_ANALOGUE_OUTPUT		"ANALOGUE_OUTPUT"
+#define O_VIDEO_INPUT			"VIDEO_INPUT"
+#define O_IN_COMPONENT_LEVEL_SMPTE	\
+								"IN_COMPONENT_LEVEL_SMPTE"
+#define O_IN_SETUP_IS_75		"IN_SETUP_IS_75"
+#define O_OUT_COMPONENT_LEVEL_SMPTE \
+								"OUT_COMPONENT_LEVEL_SMPTE"
+#define O_OUT_SETUP_IS_75		"OUT_SETUP_IS_75"
+#define O_TIMING_OFFSET			"TIMING_OFFSET"
+
 /* ------------------------------------------------------------------
 
 	Module variables 
@@ -90,8 +101,22 @@ static char
 	Decklink board init methods
 
 ------------------------------------------------------------------ */
+
+#define NOTIFY_RESULT(MSG) fprintf(stderr, MODULE_PREFIX MSG "... ");
+#define CHECK_RESULT						\
+	if (FAILED(hr))							\
+	{										\
+		fprintf(stderr, "failed\n");		\
+		fflush(stderr);						\
+		return 0;							\
+	}										\
+	fprintf(stderr, "OK\n");				\
+	fflush(stderr);
+
 static void decklink_configure(void)
 {
+	HRESULT hr;
+
 	/* check if possible to configure */
 	if
 	(
@@ -101,17 +126,106 @@ static void decklink_configure(void)
 	)
 		return;
 
-/*
-if(NULL != CONFIG_O(O_DUAL_INPUT))
-	key_white = (NULL != CONFIG_O(O_KEY_WHITE))?1:0;
-	key_invert = (NULL != CONFIG_O(O_KEY_INVERT))?1:0;
+	/* setup keyer */
+	{
+		fprintf
+		(
+			stderr, "Setting %s keyer... ", 
+			(NULL != CONFIG_O(O_ONBOARD_KEYER))?"INTERNAL":"EXTERNAL"
+		);
 
-		hr = decklink_keyer->set_AlphaBlendModeOff();
-		hr = decklink_keyer->set_AlphaBlendModeOn();
+		hr = decklink_keyer->set_AlphaBlendModeOn((NULL == CONFIG_O(O_ONBOARD_KEYER))?1:0);
 
-	hr = decklink_ioctl->SetDualLinkOutput(true);
-*/
+		if(S_OK == hr) fprintf(stderr, "OK\n");
+		else if(E_PROP_ID_UNSUPPORTED == hr) fprintf(stderr, "UNSUPPORTED\n");
+		else fprintf(stderr, "FAILED\n");
+	};
 
+	/* set video input O_VIDEO_INPUT */
+	if(NULL != CONFIG_O(O_VIDEO_INPUT))
+	{
+		unsigned long video_output = DECKLINK_VIDEOOUTPUT_COMPOSITE;
+		char* video_output_name = "COMPOSITE";
+
+		switch(atol(CONFIG_O(O_VIDEO_INPUT)))
+		{
+			case 0:
+				video_output_name = "COMPOSITE";
+				video_output = DECKLINK_VIDEOOUTPUT_COMPOSITE;
+				break;
+			case 1:
+				video_output_name = "SVIDEO";
+				video_output = DECKLINK_VIDEOOUTPUT_SVIDEO;
+				break;
+			case 2:
+				video_output_name = "COMPONENT";
+				video_output = DECKLINK_VIDEOOUTPUT_COMPONENT;
+				break;
+			case 3:
+				video_output_name = "SDI";
+				video_output = DECKLINK_VIDEOINPUT_SDI;
+				break;
+		};
+		fprintf(stderr, "Setting video input to %s ... ", video_output_name);
+		
+		hr = decklink_ioctl->SetVideoInput2
+		(
+			video_output,
+			(NULL == CONFIG_O(O_IN_SETUP_IS_75))?1:0,
+			(NULL == CONFIG_O(O_IN_COMPONENT_LEVEL_SMPTE))?1:0
+		);
+
+		if(S_OK == hr) fprintf(stderr, "OK\n");
+		else if(E_INVALIDARG == hr) fprintf(stderr, "INVALIDARG\n");
+		else fprintf(stderr, "FAILED\n");
+	};
+
+	/* setup analoge output */
+	if(NULL != CONFIG_O(O_ANALOGUE_OUTPUT))
+	{
+		unsigned long video_output = DECKLINK_VIDEOOUTPUT_COMPOSITE;
+		char* video_output_name = "COMPOSITE";
+
+		switch(atol(CONFIG_O(O_ANALOGUE_OUTPUT)))
+		{
+			case 0:
+				video_output_name = "COMPOSITE";
+				video_output = DECKLINK_VIDEOOUTPUT_COMPOSITE;
+				break;
+			case 1:
+				video_output_name = "SVIDEO";
+				video_output = DECKLINK_VIDEOOUTPUT_SVIDEO;
+				break;
+			case 2:
+				video_output_name = "COMPONENT";
+				video_output = DECKLINK_VIDEOOUTPUT_COMPONENT;
+				break;
+		};
+		fprintf(stderr, "Setting analogue video output to %s ... ", video_output_name);
+		
+		hr = decklink_ioctl->SetAnalogueOutput2
+		(
+			video_output,
+			(NULL == CONFIG_O(O_OUT_SETUP_IS_75))?1:0,
+			(NULL == CONFIG_O(O_OUT_COMPONENT_LEVEL_SMPTE))?1:0
+		);
+
+		if(S_OK == hr) fprintf(stderr, "OK\n");
+		else if(E_INVALIDARG == hr) fprintf(stderr, "INVALIDARG\n");
+		else fprintf(stderr, "FAILED\n");
+	};
+
+	/* setup timing of the genlock input  */
+	if(NULL != CONFIG_O(O_TIMING_OFFSET))
+	{
+		int offset = atol(CONFIG_O(O_TIMING_OFFSET));
+		fprintf(stderr, "Setting timing of the genlock input to %d ... ", offset);
+		hr = decklink_ioctl->SetGenlockTiming(offset);
+
+		if(S_OK == hr) fprintf(stderr, "OK\n");
+		else if(E_INVALIDARG == hr) fprintf(stderr, "INVALIDARG\n");
+		else fprintf(stderr, "FAILED\n");
+	};
 };
 
 static void decklink_destroy(void)
@@ -133,17 +247,6 @@ static void decklink_destroy(void)
 static int decklink_init()
 {
 	HRESULT hr;
-
-#define NOTIFY_RESULT(MSG) fprintf(stderr, MODULE_PREFIX MSG "... ");
-#define CHECK_RESULT						\
-	if (FAILED(hr))							\
-	{										\
-		fprintf(stderr, "failed\n");		\
-		fflush(stderr);						\
-		return 0;							\
-	}										\
-	fprintf(stderr, "OK\n");				\
-	fflush(stderr);
 
 	fprintf(stderr, MODULE_PREFIX "init...\n");
 	/*
@@ -210,6 +313,15 @@ static int decklink_init()
 	NOTIFY_RESULT("IID_IDecklinkKeyer");
 	hr = decklink_renderer->QueryInterface(IID_IDecklinkKeyer, (void **)&decklink_keyer);
 	CHECK_RESULT;
+	NOTIFY_RESULT("get_DeviceSupportsKeying");
+	if (FAILED(decklink_keyer->get_DeviceSupportsKeying()))
+		fprintf(stderr, "does NOT support alpha keying!\n");
+	else
+		fprintf(stderr, "DOES support alpha keying!\n");
+	if (FAILED(decklink_keyer->get_DeviceSupportsExternalKeying()))
+		fprintf(stderr, "does NOT support external keying!\n");
+	else
+		fprintf(stderr, "DOES support external keying!\n");
 
 	/*
 		IDecklinkStatus
@@ -383,6 +495,7 @@ VZOUTPUTS_EXPORT void vzOutput_AssignBuffers(struct vzOutputBuffers* b)
 
 VZOUTPUTS_EXPORT long vzOutput_SetSync(frames_counter_proc fc)
 {
+//	return 0;
 //fprintf(stderr, "HERE1\n");
 	return (long)(_fc =  fc);
 };
@@ -416,7 +529,7 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 #ifdef _DEBUG
 #pragma comment(linker,"/NODEFAULTLIB:LIBCMTD.lib")
 #else
-#pragma comment(linker,"/NODEFAULTLIB:LIBCMTD.lib")
+#pragma comment(linker,"/NODEFAULTLIB:LIBCMT.lib")
 #endif
 
 BOOL APIENTRY DllMain

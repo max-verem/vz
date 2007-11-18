@@ -30,6 +30,10 @@ ChangeLog:
 #ifndef VZDSSRC_H
 #define VZDSSRC_H
 
+#ifdef _DEBUG
+//#define TIME_DUMP_POINTS 15
+#endif /* _DEBUG */
+
 #define _CRT_SECURE_NO_WARNINGS
 #define STRSAFE_NO_DEPRECATE
 #define _WIN32_DCOM
@@ -76,6 +80,10 @@ DEFINE_GUID(CLSID_VZPushSource,
 class CVZPushPin : public CSourceStream
 {
 	long long sample_time;
+
+#ifdef TIME_DUMP_POINTS
+	unsigned long last_fill;
+#endif /* TIME_DUMP_POINTS */
 
 public:
 	CVZPushPin(HRESULT *phr, CSource *pFilter);
@@ -140,6 +148,10 @@ CVZPushPin::CVZPushPin(HRESULT *phr, CSource *pFilter) :
 	CSourceStream(NAME("VZPushPin"), phr, pFilter, L"Out")
 {
 	sample_time = 0;
+
+#ifdef TIME_DUMP_POINTS
+	last_fill = timeGetTime();
+#endif /* TIME_DUMP_POINTS */
 };
 
 CVZPushPin::~CVZPushPin()
@@ -226,35 +238,73 @@ HRESULT CVZPushPin::FillBuffer(IMediaSample *pSample)
 //fprintf(stderr, "HERE2\n");
     CheckPointer(pSample, E_POINTER);
 
+#ifdef TIME_DUMP_POINTS
+	unsigned long last_fill2 = timeGetTime();
+	unsigned long points[TIME_DUMP_POINTS];
+	unsigned long points_index = 0;
+#endif /* TIME_DUMP_POINTS */
+
     CAutoLock cAutoLock(m_pFilter->pStateLock());
+
+#ifdef TIME_DUMP_POINTS
+	points[points_index++] = timeGetTime();
+#endif /* TIME_DUMP_POINTS */
 
 	/* cast pointer to vzOutput */
 	vzOutput* tbc = (vzOutput*)_tbc;
 
-	/* send sync */
-	if(_fc)
-		_fc();
+#ifdef TIME_DUMP_POINTS
+	points[points_index++] = timeGetTime();
+#endif /* TIME_DUMP_POINTS */
 
 	/* request pointers to buffers */
 	tbc->lock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
+
+#ifdef TIME_DUMP_POINTS
+	points[points_index++] = timeGetTime();
+#endif /* TIME_DUMP_POINTS */
 
 	/* Access the sample's data buffer */
     pSample->GetPointer(&pData);
     cbData = pSample->GetSize();
 
+#ifdef TIME_DUMP_POINTS
+	points[points_index++] = timeGetTime();
+#endif /* TIME_DUMP_POINTS */
+
 	/* set datas */
 	memcpy(pData, output_buffer, cbData);
+
+#ifdef TIME_DUMP_POINTS
+	points[points_index++] = timeGetTime();
+#endif /* TIME_DUMP_POINTS */
 
 	/* unlock buffers */
 	tbc->unlock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
-    /* Set TRUE on every sample for uncompressed frames */
+#ifdef TIME_DUMP_POINTS
+	points[points_index++] = timeGetTime();
+#endif /* TIME_DUMP_POINTS */
+
+	/* Set TRUE on every sample for uncompressed frames */
     pSample->SetSyncPoint(TRUE);
 
 	/* setup sample time */
 	long long sample_time_current = sample_time;
 	sample_time += _tv->TV_FRAME_DUR_MS * 1000 * 10;
 	pSample->SetTime(&sample_time_current, &sample_time);
+
+#ifdef TIME_DUMP_POINTS
+	fprintf(stderr, "T: %5ld = ", last_fill2 - last_fill);
+	for(int j = 0; j<points_index; j++)
+		fprintf(stderr, " | %5ld", points[j] - last_fill2);
+	fprintf(stderr, "\n");
+	last_fill = last_fill2;
+#endif /* TIME_DUMP_POINTS */
+
+	/* send sync */
+	if(_fc)
+		_fc();
 
     return S_OK;
 }
@@ -266,14 +316,14 @@ HRESULT CVZPushPin::DecideBufferSize(IMemAllocator *pAlloc,
 
     CAutoLock cAutoLock(m_pFilter->pStateLock());
 
-	if (pRequest->cBuffers == 0)
+	if (pRequest->cBuffers < 1)
     {
         pRequest->cBuffers = 1;  // We need at least one buffer
     };
 
-	if (pRequest->cbBuffer < 720*576*4)
+	if (pRequest->cbBuffer < 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT)
 	{
-		pRequest->cbBuffer = 720*576*4;
+		pRequest->cbBuffer = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
 	};
 
 	// Try to set these properties.
