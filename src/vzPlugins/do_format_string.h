@@ -9,6 +9,7 @@ static void do_format_string(long value, char* f, char* o)
 		{
 			case 'H':
 			case 'M':
+			case 'm':
 			case 's':
 			case 'S':
 			case 'F':
@@ -34,6 +35,9 @@ static void do_format_string(long value, char* f, char* o)
 						case 'M':
 							local_value = (value)/1000/60;
 							local_value = local_value % 60;
+							break;
+						case 'm':
+							local_value = (value)/1000/60;
 							break;
 						case 'S':
 							local_value = (value)/1000;

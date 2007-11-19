@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangleLog:
+	2007-11-19:
+		*Plugin _description and _notes added.
+
 	2006-12-14:
 		*constructor updates, added two parameters 'scene' 'parent_container'
 
@@ -29,11 +32,17 @@ ChangleLog:
 
 */
 static char* _plugin_description = 
-""
+"This plugins is used as timer source with variable format supported. "
+"Format string defines how timer output will be formatted. Timer internal"
+"value is measured in miliseconds"
 ;
 
 static char* _plugin_notes = 
-""
+"Some samples format string: \n"
+"    m:SS        - football like timer, \"61:00\" \n"
+"    HH:MM:SS:FF - SMPTE timecode, \"00:01:22:00\" \n"
+"    HH:MM:SS:FF - SMPTE timecode, \"00:01:22:00\" \n"
+"    MM:SS.DDD   - high resulotion with miliseconds\n"
 ;
 
 #include "../vz/plugin-devel.h"
