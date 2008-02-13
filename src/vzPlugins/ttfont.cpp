@@ -115,6 +115,7 @@ struct text_params
 	long h_font_colour;
 	long h_stroke_colour;
 	struct vzTTFontLayoutConf layout;
+	float f_max_width;
 };
 
 #define default_text_params													\
@@ -124,7 +125,8 @@ struct text_params
 	vzTTFontParamsDefault,													\
 	0,																		\
 	0,																		\
-	vzTTFontLayoutConfDefaultData											\
+	vzTTFontLayoutConfDefaultData,											\
+	0.0f																	\
 }
 
 // internal structure of plugin
@@ -216,7 +218,9 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 		"\t1 - Used to render beveled line joins; i.e., the two joining lines are extended until they intersect [FT_STROKER_LINEJOIN_BEVEL];\n"
 		"\t2 - Same as beveled rendering, except that an additional line break is added if the angle between the two joining lines is too closed (this is useful to avoid unpleasant spikes in beveled rendering) [FT_STROKER_LINEJOIN_MITER];",
 		PLUGIN_PARAMETER_OFFSET(default_value,params.font_params.stroke_line_join)},
-
+	{"f_max_width",
+		"Max font width. If defined, scale width to given value", 
+		PLUGIN_PARAMETER_OFFSET(default_value,params.f_max_width)},
 	
 	{NULL,NULL,0}
 };
@@ -480,6 +484,9 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
 	{
+		/* scale factor */
+		float f_max_width_scale = 0.0f;
+
 		// determine center offset 
 		float co_X = 0.0f, co_Y = 0.0f, co_Z = 0.0f;
 
@@ -489,6 +496,20 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		// translate coordinate according to real image
 		co_Y += _DATA->_offset_y + _DATA->_base_height - _DATA->_height;
 		co_X += (-1.0f) * _DATA->_offset_x;
+		
+		/* check if horizontal scale is needed */
+		if(0.0f != _DATA->params.f_max_width)
+		{
+			if(_DATA->params.f_max_width < _DATA->_base_width)
+				f_max_width_scale = _DATA->params.f_max_width / _DATA->_base_width;
+		};
+
+		/* scale for max size */
+		if(0 != f_max_width_scale)
+		{
+			glPushMatrix();
+			glScalef(f_max_width_scale, 1.0f, 1.0f);
+		};
 
 		// begin drawing
 		glEnable(GL_TEXTURE_2D);
@@ -514,6 +535,12 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		glEnd(); // Stop drawing QUADS
 
 		glDisable(GL_TEXTURE_2D);
+
+		/* scale for max size */
+		if(0 != f_max_width_scale)
+		{
+			glPopMatrix();
+		};
 	}
 	else
 	{
