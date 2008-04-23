@@ -456,7 +456,7 @@ void vzScene::draw(long frame,long field,long fill,long key,long order)
 						};
 
 						/* notify */
-						if(i) target->notify();
+//						if(i) target->notify();
 					};
 
 					/* lookup next */

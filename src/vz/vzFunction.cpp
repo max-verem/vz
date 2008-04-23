@@ -107,11 +107,12 @@ void* get_data_param_ptr(char* param_name, void* data,vzFunction* function)
 	return (char*)data + function->offset(param_name);
 }
 */
-
+#include <stdio.h>
 int set_data_param_fromtext(char* name, char* value, void* data ,vzFunction* function,vzContainerFunction* container_function)
 {
 	void* param = get_data_param_ptr(name,data,function);
-	char* temp_char;
+	int is_dirty = 0;
+	float s_f; long s_l; unsigned long s_ul; char s_c; char* s_ch;
 
 	if(!(param))
 		return 0;
@@ -122,43 +123,88 @@ int set_data_param_fromtext(char* name, char* value, void* data ,vzFunction* fun
 
 		// float
 		case 'f':
-			*((float*)param) = (float)atof(value);
+			s_f = (float)atof(value);
+			if(*((float*)param) != s_f)
+			{
+				*((float*)param) = s_f;
+				is_dirty = 1;
+			};
 			break;
 
 		// long
 		case 'l':
-			*((long*)param) = (long)atol(value);
+			s_l = (long)atol(value);
+			if(*((long*)param) != s_l)
+			{
+				*((long*)param) = (long)atol(value);
+				is_dirty = 1;
+			};
 			break;
 
 		// long hex
 		case 'h':
-			*((unsigned long*)param) = (unsigned long)strtoul(value,NULL,16);
+			s_ul = (unsigned long)strtoul(value,NULL,16);
+			if(*((unsigned long*)param) != s_ul)
+			{
+				*((unsigned long*)param) = s_ul;
+				is_dirty = 1;
+			};
 			break;
 
 		// four characters
 		case 'L':
-			*((long*)param) = *((long*)value);
+			s_l = *((long*)value);
+			if(*((long*)param) != s_l)
+			{
+				*((long*)param) = s_l;
+				is_dirty = 1;
+			};
 			break;
 
 		// one characters
 		case 'c':
-			*((char*)param) = value[0];
+			s_c = value[0];
+			if(*((char*)param) != s_c)
+			{
+				*((char*)param) = s_c;
+				is_dirty = 1;
+			};
 			break;
 
 		// text
 		case 's':
-			// free used string if it's is not null
-			temp_char = strcpy( (char*)malloc(strlen(value)+1) , value);
-			if(*((char**)param))
-				free((*((char**)param)));
-			*((char**)param) = temp_char;
+			s_ch = *((char**)param);
+
+			/* compare if it not null */
+			if(NULL != s_ch)
+			{
+				if(0 != strcmp(s_ch, value))
+				{
+					free(s_ch);
+					s_ch = NULL;
+				};
+			};
+
+			/* update content of string if it new or different */
+			if(NULL == s_ch)
+			{
+				/* alloc and copy string */
+				*((char**)param) = 
+					strcpy( (char*)malloc(strlen(value)+1) , value);
+
+				is_dirty = 1;
+			};
 			break;
+
 		default:
 			return 0;
 	};
-	
+
+//printf("set_data_param_fromtext: container_function=%.8X, name='%s', value='%s', is_dirty=%d\n", 
+//	   container_function, name, value, is_dirty);
+
 	// should we notify or not
-	if(container_function)
+	if((container_function)&&(0 != is_dirty))
 		container_function->notify();
 
 	return 1;
