@@ -561,8 +561,6 @@ PLUGIN_EXPORT void notify(void* data)
 		return;
 	};
 
-	// check if data changed
-	if(memcmp(&_DATA->params, &_DATA->_params, sizeof(struct text_params)) != 0)
 	{
 		char* tmp2;
 
@@ -603,7 +601,5 @@ PLUGIN_EXPORT void notify(void* data)
 			// firts element is free - setup
 			_DATA->_async_renderer_queue[0] = tmp;
 		ReleaseMutex(_DATA->_async_renderer_lock);
-	}
-	else
-		ReleaseMutex(_DATA->_lock_update);
+	};
 };
