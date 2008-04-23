@@ -385,6 +385,8 @@ void vzScene::display(long frame)
 	ReleaseMutex(_lock_for_command);
 };
 
+static char* target_id_seps = " ,;:";
+
 void vzScene::draw(long frame,long field,long fill,long key,long order)
 {
 	// init render session and set defaults
@@ -403,38 +405,66 @@ void vzScene::draw(long frame,long field,long fill,long key,long order)
 		/* datasource deals */
 		for(unsigned int d = 0; d <_id_datasources.count(); d++)
 		{
-			int i = 0; 
+			int i = 0, r = 0; 
 			char *name;
 			char *value;
+			char* targets_id_found;
+			char* targets_id;
+			char* target_id_state;
+			char* target_id;
+
 			/* get source function */
 			vzContainerFunction* source = _id_datasources.value(d);
-			/* detect target function */
-			char* target_id = source->get_datatarget();
-			vzContainerFunction* target = (target_id)?_id_functions.find(target_id):NULL;
 
+			/* find ids list */
+			targets_id_found = source->get_datatarget();
 
-			/* check if target,source is ok */
-			if((target)&&(source))
+			/* check if ids found */
+			if(NULL != targets_id_found)
 			{
+				/* allocate space for string */
+				targets_id = (char*)malloc(strlen(targets_id_found) + 1);
+				strcpy(targets_id, targets_id_found);
 
-				/* try to retrive params */
-				while
-				(
-					source->datasource
-					(
-						&_render_session,
-						i,
-						&name,
-						&value
-					)
-				)
+				/* lookup first */
+				target_id = strtok_s( targets_id, target_id_seps, &target_id_state);
+
+				/* check if found */
+				while(NULL != target_id)
 				{
-					i++;
-					target->set_data_param_fromtext(name, value);
+					/* detect target function */
+					vzContainerFunction* target = _id_functions.find(target_id);
+
+					/* check if target,source is ok */
+					if((target)&&(source))
+					{
+						/* try to retrive params */
+						i = 0;
+						while
+						(
+							r = source->datasource
+							(
+								&_render_session,
+								i,
+								&name,
+								&value
+							)
+						)
+						{
+							i++;
+							target->set_data_param_fromtext(name, value);
+						};
+
+						/* notify */
+						if(i) target->notify();
+					};
+
+					/* lookup next */
+					target_id = strtok_s( NULL, target_id_seps, &target_id_state);
 				};
 
-				/* notify */
-				if(i) target->notify();
+				/* free list */
+				free(targets_id);
 			};
 		};
 
