@@ -242,9 +242,14 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		// image submitted!!!
 		if
 		(
+/*
 			(_DATA->_width != POT(_DATA->_image->width))
 			||
 			(_DATA->_height != POT(_DATA->_image->height))
+*/
+			(_DATA->_base_width != _DATA->_image->width)
+			||
+			(_DATA->_base_height != _DATA->_image->height)
 		)
 		{
 			/* texture should be (re)initialized */
@@ -626,7 +631,7 @@ PLUGIN_EXPORT void notify(void* data)
 	WaitForSingleObject(_DATA->_lock_update, INFINITE);
 
 	// check if pointer to filenames is different?
-	if(_DATA->_filename != _DATA->s_filename)
+//	if(_DATA->_filename != _DATA->s_filename)
 	{
 		// Wait until previous thread finish
 		if (INVALID_HANDLE_VALUE != _DATA->_async_image_loader)
@@ -645,7 +650,7 @@ PLUGIN_EXPORT void notify(void* data)
                 SetThreadPriority(_DATA->_async_image_loader , VZPLUGINS_AUX_THREAD_PRIO);
 
 		/* sunc filename */
-		_DATA->_filename = _DATA->s_filename;
+//		_DATA->_filename = _DATA->s_filename;
 	};
 
 	// release mutex -  let created tread work
