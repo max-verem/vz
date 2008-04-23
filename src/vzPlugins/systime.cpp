@@ -139,8 +139,10 @@ PLUGIN_EXPORT long datasource(void* data,vzRenderSession* render_session, long i
 		return 0;
 
 	/* allocate buffer */
+	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 	if (_DATA->_buffer == NULL)
 		_DATA->_buffer = (char*)malloc(MAX_BUFFER_SIZE);
+	ReleaseMutex(_DATA->_lock_update);
 
 	/* request time */
 	time( &ltime );
@@ -165,7 +167,6 @@ PLUGIN_EXPORT long datasource(void* data,vzRenderSession* render_session, long i
 	/* expand in text */
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 	strftime( _DATA->_buffer , MAX_BUFFER_SIZE - 5, (_DATA->s_format)?_DATA->s_format:default_str_format , rtime );
-	ReleaseMutex(_DATA->_lock_update);
 
 	/* append text */
 	if (_DATA->l_PM)
@@ -175,7 +176,8 @@ PLUGIN_EXPORT long datasource(void* data,vzRenderSession* render_session, long i
 		else
 			strcat(_DATA->_buffer, "AM");
 	};
-	
+	ReleaseMutex(_DATA->_lock_update);
+
 	/* return values */
 	*name = working_param;
 	*value = _DATA->_buffer;

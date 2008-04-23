@@ -234,18 +234,13 @@ PLUGIN_EXPORT long datasource(void* data,vzRenderSession* render_session, long i
 		(_DATA->s_format)?_DATA->s_format:default_format_string,
 		tmp
 	);
-	ReleaseMutex(_DATA->_lock_update);
-
-	/* compare prev string and current */
-	if(0 == strcmp(tmp, _DATA->_buffer))
-	{
-		free(tmp);
-		return 0;
-	}
 
 	/* exchange buffer */
 	free(_DATA->_buffer);
 	_DATA->_buffer = tmp;
+
+	ReleaseMutex(_DATA->_lock_update);
+
 	*value = tmp;
 	*name = working_param;
 	return 1;
