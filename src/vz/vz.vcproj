@@ -165,6 +165,7 @@
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\../../tmp/Release/vz.pdb"
 				SubSystem="1"
+				LargeAddressAware="2"
 				TargetMachine="1"
 			/>
 			<Tool
