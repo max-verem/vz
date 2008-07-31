@@ -100,7 +100,7 @@ public:
 	void render(void* data,vzRenderSession* render_session);
 	void prerender(void* data,vzRenderSession* render_session);
 	void postrender(void* data,vzRenderSession* render_session);
-	void notify(void* data);
+	void notify(void* data, char* param_name);
 	long datasource(void* data,vzRenderSession* render_session, long index, char** name, char** value);
 	vzPluginInfo* info(void);
 #endif

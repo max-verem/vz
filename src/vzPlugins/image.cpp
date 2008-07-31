@@ -182,6 +182,10 @@ PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 	_DATA->_lock_update = CreateMutex(NULL,FALSE,NULL);
 	ReleaseMutex(_DATA->_lock_update);
 
+	/* allocate space for _filename */
+	_DATA->_filename = (char*)malloc(MAX_PATH);
+	_DATA->_filename[0] = 0;
+
 	// return pointer
 	return data;
 };
@@ -217,6 +221,8 @@ PLUGIN_EXPORT void destructor(void* data)
 	if(_DATA->_ft_vertices) free(_DATA->_ft_vertices);
 	if(_DATA->_ft_texels) free(_DATA->_ft_texels);
 
+	/* free filename data */
+	free(_DATA->_filename);
 
 	// free data
 	free(data);
@@ -627,11 +633,13 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 {
 	struct imageloader_desc* desc;
 
+//	printf("image: notify('%s')\n", param_name);
+
 	//wait for mutext free
 	WaitForSingleObject(_DATA->_lock_update, INFINITE);
 
-	// check if pointer to filenames is different?
-//	if(_DATA->_filename != _DATA->s_filename)
+	/* check if parameter "s_filename" changed */
+	if(0 == strcmp(param_name, "s_filename"))
 	{
 		// Wait until previous thread finish
 		if (INVALID_HANDLE_VALUE != _DATA->_async_image_loader)
@@ -649,8 +657,8 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		_DATA->_async_image_loader = CreateThread(0, 0, imageloader_proc, desc, 0, NULL);
                 SetThreadPriority(_DATA->_async_image_loader , VZPLUGINS_AUX_THREAD_PRIO);
 
-		/* sunc filename */
-//		_DATA->_filename = _DATA->s_filename;
+		/* store filename */
+		strcpy(_DATA->_filename, _DATA->s_filename);
 	};
 
 	// release mutex -  let created tread work
