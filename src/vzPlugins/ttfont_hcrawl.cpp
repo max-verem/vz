@@ -642,7 +642,7 @@ unsigned long WINAPI _msg_layouter(void* param)
 	return 0;
 };
 
-PLUGIN_EXPORT void notify(void* data)
+PLUGIN_EXPORT void notify(void* data, char* param_name)
 {
 	int i;
 

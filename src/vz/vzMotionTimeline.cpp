@@ -131,7 +131,7 @@ void vzMotionTimeline::assign(long frame, int field)
 
 		// no calculation - just set it from text
 		_function->set_data_param_fromtext(_param_name,_attributes->find("y1"));
-		_function->notify();
+		_function->notify(_param_name);
 		ReleaseMutex(_lock);
 		return;
 	};
@@ -165,7 +165,7 @@ void vzMotionTimeline::assign(long frame, int field)
 				ReleaseMutex(_lock);
 				return;
 		};
-		_function->notify();
+		_function->notify(_param_name);
 		ReleaseMutex(_lock);
 		return;
 	};

@@ -205,7 +205,7 @@ int set_data_param_fromtext(char* name, char* value, void* data ,vzFunction* fun
 
 	// should we notify or not
 	if((container_function)&&(0 != is_dirty))
-		container_function->notify();
+		container_function->notify(name);
 
 	return 1;
 };
@@ -240,9 +240,9 @@ void vzFunction::postrender(void* data,vzRenderSession* render_session)
 	if (proc_postrender) proc_postrender(data,render_session);
 };
 
-void vzFunction::notify(void* data)
+void vzFunction::notify(void* data, char* param_name)
 {
-	if (proc_notify) proc_notify(data);
+	if (proc_notify) proc_notify(data, param_name);
 };
 
 long vzFunction::datasource(void* data,vzRenderSession* render_session, long index, char** name, char** value)

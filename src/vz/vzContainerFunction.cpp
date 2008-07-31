@@ -75,10 +75,6 @@ vzContainerFunction::vzContainerFunction(DOMNodeX* parent_node,vzFunctions* func
 			for(unsigned int i=0;i<_params->count();i++)
 				// detect type be param name prefix
 				::set_data_param_fromtext(_params->key(i),_params->value(i),_data,_function);
-
-			// notify about params change
-			_function->notify(_data);
-
 		};
 	};
 };

@@ -78,8 +78,8 @@ public:
 	inline void postrender(vzRenderSession* render_session)
 	{ if (_function) _function->postrender(_data,render_session);};
 
-	inline void notify(void)
-	{ if (_function) _function->notify(_data);};
+	inline void notify(char* param_name)
+	{ if (_function) _function->notify(_data, param_name);};
 
 	inline void* get_data_param_ptr(char* param_name)
 	{ return (_function)?::get_data_param_ptr(param_name, _data, _function):NULL; };

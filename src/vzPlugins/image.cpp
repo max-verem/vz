@@ -623,7 +623,7 @@ static unsigned long WINAPI imageloader_proc(void* d)
 	return 0;
 };
 
-PLUGIN_EXPORT void notify(void* data)
+PLUGIN_EXPORT void notify(void* data, char* param_name)
 {
 	struct imageloader_desc* desc;
 

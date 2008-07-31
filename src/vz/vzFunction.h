@@ -43,7 +43,7 @@ typedef void (*plugin_proc_destructor)(void*);
 typedef void (*plugin_proc_postrender)(void* data,vzRenderSession* render_session);
 typedef void (*plugin_proc_prerender)(void* data,vzRenderSession* render_session);
 typedef void (*plugin_proc_render)(void* data,vzRenderSession* render_session);
-typedef void (*plugin_proc_notify)(void* data);
+typedef void (*plugin_proc_notify)(void* data, char* param_name);
 typedef void (*plugin_proc_configure)(void* config);
 typedef long (*plugin_proc_datasource)(void* data,vzRenderSession* render_session, long index, char** name, char** value);
 
@@ -88,7 +88,7 @@ public:
 	inline void postrender(void* data,vzRenderSession* render_session)
 		{ if (proc_postrender) proc_postrender(data,render_session);};
 
-	inline void notify(void* data){ if (proc_notify) proc_notify(data);};
+	inline void notify(void* data, char* param_name){ if (proc_notify) proc_notify(data, param_name);};
 
 	inline long datasource(void* data,vzRenderSession* render_session, long index, char** name, char** value)
 		{ if (proc_datasource) return proc_datasource(data,render_session, index, name, value); else return 0;};

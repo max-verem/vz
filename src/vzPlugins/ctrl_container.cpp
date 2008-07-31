@@ -102,7 +102,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 {
 };
 
-PLUGIN_EXPORT void notify(void* data)
+PLUGIN_EXPORT void notify(void* data, char* param_name)
 {
 	/* set value for container data */
 	if
