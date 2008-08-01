@@ -553,14 +553,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 	int r;
 
 	//wait for mutext free
-	if(WAIT_OBJECT_0 != (r = WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE)))
-	{
-#ifdef _DEBUG
-		fprintf(stderr, DEBUG_LINE_ARG  "unable to lock: %s\n", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
-#endif /* _DEBUG */
-		return;
-	};
-
+	if(WAIT_OBJECT_0 == (r = WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE)))
 	{
 		char* tmp2;
 
@@ -601,5 +594,12 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 			// firts element is free - setup
 			_DATA->_async_renderer_queue[0] = tmp;
 		ReleaseMutex(_DATA->_async_renderer_lock);
+#ifdef _DEBUG
+	}
+	else
+	{
+		fprintf(stderr, DEBUG_LINE_ARG  "unable to lock: %s\n", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
+		return;
+#endif /* _DEBUG */
 	};
 };

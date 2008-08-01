@@ -1164,8 +1164,13 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 	//wait for mutext free
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 
-	// check if pointer to filenames is different?
-	if(_DATA->s_filename != _DATA->_filename)
+	/* check if avi filename is given */
+	if
+	(
+		(NULL == param_name)
+		||
+		(0 == strcmp(param_name, "s_filename"))
+	)
 	{
 		/* change current frame position*/
 		_DATA->_current_frame = _DATA->l_start_frame;
@@ -1174,7 +1179,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 
 		/* create loader */
 		struct aviloader_desc* loader = aviloader_init(_DATA->s_filename, _DATA->l_mem_preload);
-		_DATA->_filename = _DATA->s_filename;
+/*		_DATA->_filename = _DATA->s_filename; */
 
 		/* check second slot */
 		if(_DATA->_loaders[1])

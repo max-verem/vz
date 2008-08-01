@@ -1,0 +1,11 @@
+
+PLUGIN_EXPORT void notify(void* data, char* param_name)
+    This method will be called then some parameters of function
+    changed. During loading file is not called for each parameter
+    updated from project file - it called once after whole paramters
+    setted with param_name==NULL.
+    So, if param_name is NULL - it's first notify after projects loads,
+    On next notifies its called with defined parameter.....
+
+    
+   

@@ -639,7 +639,12 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 	WaitForSingleObject(_DATA->_lock_update, INFINITE);
 
 	/* check if parameter "s_filename" changed */
-	if(0 == strcmp(param_name, "s_filename"))
+	if
+	(
+		(NULL == param_name)
+		||
+		(0 == strcmp(param_name, "s_filename"))
+	)
 	{
 		// Wait until previous thread finish
 		if (INVALID_HANDLE_VALUE != _DATA->_async_image_loader)

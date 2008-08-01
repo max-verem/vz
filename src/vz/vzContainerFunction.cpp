@@ -74,7 +74,10 @@ vzContainerFunction::vzContainerFunction(DOMNodeX* parent_node,vzFunctions* func
 			// try to set parameters values
 			for(unsigned int i=0;i<_params->count();i++)
 				// detect type be param name prefix
-				::set_data_param_fromtext(_params->key(i),_params->value(i),_data,_function, this);
+				::set_data_param_fromtext(_params->key(i),_params->value(i),_data,_function, NULL);
+
+			/* notify about all params loaded */
+			_function->notify(_data, NULL);
 		};
 	};
 };
