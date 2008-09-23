@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2008-09-23:
+		*vzTVSpec rework
+
     2005-06-08:
 		*Base parameters in struct that describe dims and time of TV frame.
 		Adopting for multiple tv system required variable for width, height
@@ -31,13 +34,38 @@ ChangeLog:
 #ifndef VZTVSPEC_H
 #define VZTVSPEC_H
 
-typedef struct
+struct _vzTVSpecSA
 {
-	long TV_FRAME_DUR_MS;	// frame length (time period) (ms)
+	int x[2];
+	int y[2];
+};
+
+struct _vzTVSpec
+{
+	char* NAME;					/** mode name */
+
+	/* geom */
 	long TV_FRAME_HEIGHT;	// frame height (px)
 	long TV_FRAME_WIDTH;	// frame width (px)
-	long TV_FRAME_1ST;		// first field in frame
-	unsigned long TV_FRAME_PS; // frames per seconds
-} vzTVSpec;
+
+	/* progressive interlaced */
+	long TV_FRAME_INTERLACED;	/** interlaced module should used */
+	long TV_FRAME_1ST;			/** first field in frame */
+
+	/* frame rate */
+	long TV_FRAME_PS_NOM;		/** frame per sec nominator (chislitel) */
+	long TV_FRAME_PS_DEN;		/** frame per sec nominator (znamenatel) */
+
+	/* display/pixel aspect ratios */
+	long TV_FRAME_DAR_H;		/** display aspect ratio (16:, 4:)*/
+	long TV_FRAME_DAR_V;		/** display aspect ratio (:9, :3)*/
+
+	long TV_FRAME_PAR_H;		/** pixel aspect ratio */
+	long TV_FRAME_PAR_V;		/** pixel aspect ratio */
+
+	/* safe area */
+	struct _vzTVSpecSA* sa;
+};
+typedef struct _vzTVSpec vzTVSpec;
 
 #endif

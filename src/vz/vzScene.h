@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2008-09-23:
+		*vzTVSpec rework
+
 	2005-06-13:
 		*Added parameter for selecting field-based or frame-based rendering mode.
 
@@ -71,7 +74,6 @@ class vzScene
 	long _enable_GL_SRC_ALPHA_SATURATE;
 
 	// use fields based
-	long _fields;
 	long _stencil_done;
 
 	void draw(long frame,long field,long fill,long key,long order);

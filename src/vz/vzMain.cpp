@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2008-09-23:
+		*vzTVSpec rework
+
 	2007-11-16: 
 		*Visual Studio 2005 migration.
 
@@ -163,45 +166,212 @@ VZMAIN_API char* vzConfigAttr(void* config, char* module, char* name)
 --------------------------------------------------------------------------
 */
 
-
-static vzTVSpec _default_vzTVSpec =		// Default is PAL
+static struct _vzTVSpecSA _safe_PAL_4_3 =
 {
-	40,		///	long TV_FRAME_DUR_MS;	// frame length (time period) (ms)
-	576,	/// long TV_FRAME_HEIGHT;	// frame height (px)
-	720,	/// long TV_FRAME_WIDTH;	// frame width (px)
-	0,		/// long TV_FRAME_1ST;		// first field of frame (interlaced)
-	25,		/// long TV_FRAME_PS;		// frames per seconds
+	{33, 71},
+	{28, 57}
+};
+
+static struct _vzTVSpecSA _safe_NTSC_4_3 =
+{
+	{33, 71},
+	{28, 57}
+};
+
+static struct _vzTVSpec _known_tv_modes[] = 
+{
+	/* PAL interlaced frame */
+	{
+		"576i",		/** NAME					*/
+		576,		/** TV_FRAME_HEIGHT			*/
+		720,		/** TV_FRAME_WIDTH			*/
+		1,			/** TV_FRAME_INTERLACED		*/
+		0,			/** TV_FRAME_1ST			*/
+		25,			/** TV_FRAME_PS_NOM			*/
+		1,			/** TV_FRAME_PS_DEN			*/
+		4,			/** TV_FRAME_DAR_H			*/
+		3,			/** TV_FRAME_DAR_V			*/
+		1,			/** TV_FRAME_PAR_H			*/
+		1,			/** TV_FRAME_PAR_V			*/
+		&_safe_PAL_4_3 /** safe area markers */
+	},
+
+	/* PAL progressive frame */
+	{
+		"576p",		/** NAME					*/
+		576,		/** TV_FRAME_HEIGHT			*/
+		720,		/** TV_FRAME_WIDTH			*/
+		0,			/** TV_FRAME_INTERLACED		*/
+		0,			/** TV_FRAME_1ST			*/
+		25,			/** TV_FRAME_PS_NOM			*/
+		1,			/** TV_FRAME_PS_DEN			*/
+		4,			/** TV_FRAME_DAR_H			*/
+		3,			/** TV_FRAME_DAR_V			*/
+		1,			/** TV_FRAME_PAR_H			*/
+		1,			/** TV_FRAME_PAR_V			*/
+		&_safe_PAL_4_3 /** safe area markers */
+	},
+
+	/* NTSC interlaced frame */
+	{
+		"480i",		/** NAME					*/
+		480,		/** TV_FRAME_HEIGHT			*/
+		720,		/** TV_FRAME_WIDTH			*/
+		1,			/** TV_FRAME_INTERLACED		*/
+		1,			/** TV_FRAME_1ST			*/
+		30000,		/** TV_FRAME_PS_NOM			*/
+		1001,		/** TV_FRAME_PS_DEN			*/
+		4,			/** TV_FRAME_DAR_H			*/
+		3,			/** TV_FRAME_DAR_V			*/
+		1,			/** TV_FRAME_PAR_H			*/
+		1,			/** TV_FRAME_PAR_V			*/
+		&_safe_NTSC_4_3 /** safe area markers */
+	},
+
+	/* NTSC progressive frame */
+	{
+		"480p",		/** NAME					*/
+		480,		/** TV_FRAME_HEIGHT			*/
+		720,		/** TV_FRAME_WIDTH			*/
+		0,			/** TV_FRAME_INTERLACED		*/
+		0,			/** TV_FRAME_1ST			*/
+		30000,		/** TV_FRAME_PS_NOM			*/
+		1001,		/** TV_FRAME_PS_DEN			*/
+		4,			/** TV_FRAME_DAR_H			*/
+		3,			/** TV_FRAME_DAR_V			*/
+		1,			/** TV_FRAME_PAR_H			*/
+		1,			/** TV_FRAME_PAR_V			*/
+		&_safe_NTSC_4_3 /** safe area markers */
+	},
+
+	/* HD mode:  System 1 (S1) with 1280 horizontal 
+	samples and 720 active lines in progressive scan 
+	with a frame rate of 50Hz, 16 x 9 aspect ratio. */
+	{
+		"720p50",	/** NAME					*/
+		720,		/** TV_FRAME_HEIGHT			*/
+		1280,		/** TV_FRAME_WIDTH			*/
+		0,			/** TV_FRAME_INTERLACED		*/
+		0,			/** TV_FRAME_1ST			*/
+		50,			/** TV_FRAME_PS_NOM			*/
+		1,			/** TV_FRAME_PS_DEN			*/
+		16,			/** TV_FRAME_DAR_H			*/
+		9,			/** TV_FRAME_DAR_V			*/
+		1,			/** TV_FRAME_PAR_H			*/
+		1,			/** TV_FRAME_PAR_V			*/
+		NULL		/** safe area markers */
+	},
+
+	/* HD mode:  System 2 (S2) with 1920 horizontal samples
+	and 1080 active lines in interlaced scan with a frame rate
+	of 25Hz, 16 x 9 aspect ratio. */
+	{
+		"1080i25",	/** NAME					*/
+		1080,		/** TV_FRAME_HEIGHT			*/
+		1920,		/** TV_FRAME_WIDTH			*/
+		1,			/** TV_FRAME_INTERLACED		*/
+		0,			/** TV_FRAME_1ST			*/
+		25,			/** TV_FRAME_PS_NOM			*/
+		1,			/** TV_FRAME_PS_DEN			*/
+		16,			/** TV_FRAME_DAR_H			*/
+		9,			/** TV_FRAME_DAR_V			*/
+		1,			/** TV_FRAME_PAR_H			*/
+		1,			/** TV_FRAME_PAR_V			*/
+		NULL		/** safe area markers */
+	},
+
+	/* HD mode:  System 3 (S3) with 1920 horizontal samples
+	and 1080 active lines in progressive scan and a frame rate
+	of 25Hz, 16 x 9 aspect ratio. */
+	{
+		"1080p25",	/** NAME					*/
+		1080,		/** TV_FRAME_HEIGHT			*/
+		1920,		/** TV_FRAME_WIDTH			*/
+		0,			/** TV_FRAME_INTERLACED		*/
+		0,			/** TV_FRAME_1ST			*/
+		25,			/** TV_FRAME_PS_NOM			*/
+		1,			/** TV_FRAME_PS_DEN			*/
+		16,			/** TV_FRAME_DAR_H			*/
+		9,			/** TV_FRAME_DAR_V			*/
+		1,			/** TV_FRAME_PAR_H			*/
+		1,			/** TV_FRAME_PAR_V			*/
+		NULL		/** safe area markers */
+	},
+
+	/* HD mode:  System 4 (S4) with 1920 horizontal samples
+	and 1080 active lines in progressive scan at a frame rate
+	of 50Hz, 16 x 9 aspect ratio. */
+	{
+		"1080p50",	/** NAME					*/
+		1080,		/** TV_FRAME_HEIGHT			*/
+		1920,		/** TV_FRAME_WIDTH			*/
+		0,			/** TV_FRAME_INTERLACED		*/
+		0,			/** TV_FRAME_1ST			*/
+		50,			/** TV_FRAME_PS_NOM			*/
+		1,			/** TV_FRAME_PS_DEN			*/
+		16,			/** TV_FRAME_DAR_H			*/
+		9,			/** TV_FRAME_DAR_V			*/
+		1,			/** TV_FRAME_PAR_H			*/
+		1,			/** TV_FRAME_PAR_V			*/
+		NULL		/** safe area markers */
+	},
+
+	/* list terminator */
+	{
+		NULL
+	}
+};
+
+static struct _vzTVSpec* lookup_tv_mode(char* name)
+{
+	int i;
+
+	if(NULL != name)
+	{
+		for(i = 0; NULL != _known_tv_modes[i].NAME; i++)
+			if(0 == _stricmp(name, _known_tv_modes[i].NAME))
+				return &_known_tv_modes[i];
+	}
+	else
+		return &_known_tv_modes[0];
+
+	/* default mode */
+	return NULL;
 };
 
 VZMAIN_API void vzConfigTVSpec(void* config, char* module, void* spec)
 {
-	vzTVSpec* temp = (vzTVSpec*) spec;
+	char* v;
+	vzTVSpec* temp;
 	
-	// first set default values to struct
-	*temp = _default_vzTVSpec;
+	/* set default */
+	memcpy(spec, lookup_tv_mode(NULL), sizeof(struct _vzTVSpec));
 
 	// if config not defined - return
-	if(!(config))
-		return;
+	if(NULL == config) return;
 
-	// load parameters
-	char* v;
+	/* try to override mode */
+	if(NULL != (v = vzConfigParam(config, module, "TV_MODE")))
+		if(NULL != (temp = lookup_tv_mode(v)))
+			memcpy(spec, temp, sizeof(struct _vzTVSpec));
 
-	if (v = vzConfigParam(config, module, "TV_FRAME_DUR_MS") )
-		temp->TV_FRAME_DUR_MS = atol(v);
+	/* override parameters */
+	temp = (vzTVSpec*) spec;
 
-	if (v = vzConfigParam(config, module, "TV_FRAME_HEIGHT") )
-		temp->TV_FRAME_HEIGHT = atol(v);
+#define MAP_P(VAR) \
+	if(NULL != (v = vzConfigParam(config, module, #VAR))) \
+			temp->VAR = atol(v);
 
-	if (v = vzConfigParam(config, module, "TV_FRAME_WIDTH") )
-		temp->TV_FRAME_WIDTH = atol(v);
-
-	if (v = vzConfigParam(config, module, "TV_FRAME_1ST") )
-		temp->TV_FRAME_1ST = atol(v);
-
-	if (v = vzConfigParam(config, module, "TV_FRAME_PS") )
-		temp->TV_FRAME_PS = atol(v);
-
+	MAP_P(TV_FRAME_HEIGHT);
+	MAP_P(TV_FRAME_WIDTH);
+	MAP_P(TV_FRAME_INTERLACED);
+	MAP_P(TV_FRAME_1ST);
+	MAP_P(TV_FRAME_PS_NOM);
+	MAP_P(TV_FRAME_PS_DEN);
+	MAP_P(TV_FRAME_DAR_H);
+	MAP_P(TV_FRAME_DAR_V);
+	MAP_P(TV_FRAME_PAR_H);
+	MAP_P(TV_FRAME_PAR_V);
 };
 
 /* --------------------------------------------------------------------------

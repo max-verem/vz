@@ -186,7 +186,7 @@ unsigned long WINAPI output_loop(void* obj)
 					*dstA = (unsigned char*)input_buffers[2*c],
 					*dstB = (unsigned char*)input_buffers[2*c + 1];
 
-				for(i = 0; i < 576; i++)
+				for(i = 0; i < _tv->TV_FRAME_HEIGHT; i++)
 				{
 					/* calc case number */
 					int d = 

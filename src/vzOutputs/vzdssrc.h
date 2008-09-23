@@ -22,6 +22,9 @@
 
 
 ChangeLog:
+	2008-09-23:
+		*vzTVSpec rework
+
 	2007-11-17
 		*Starting minimal DirectShow source.
 
@@ -187,7 +190,7 @@ HRESULT CVZPushPin::GetMediaType(CMediaType *pMediaType)
 	ZeroMemory(pvi, sizeof(VIDEOINFO)); 
 	
 	/* setup framerate - in 100-nanosecond units*/
-	pvi->AvgTimePerFrame = _tv->TV_FRAME_DUR_MS * 1000 * 10;
+	pvi->AvgTimePerFrame = (10000000LL * _tv->TV_FRAME_PS_DEN) / _tv->TV_FRAME_PS_NOM;
 
 	/* setup dimensions and colur depth */
     BITMAPINFOHEADER *pBmi = &(pvi->bmiHeader);
@@ -291,7 +294,7 @@ HRESULT CVZPushPin::FillBuffer(IMediaSample *pSample)
 
 	/* setup sample time */
 	long long sample_time_current = sample_time;
-	sample_time += _tv->TV_FRAME_DUR_MS * 1000 * 10;
+	sample_time += (10000000LL * _tv->TV_FRAME_PS_DEN) / _tv->TV_FRAME_PS_NOM;
 	pSample->SetTime(&sample_time_current, &sample_time);
 
 #ifdef TIME_DUMP_POINTS

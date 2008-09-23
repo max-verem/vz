@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2008-09-23:
+		*vzTVSpec rework
+
 	2007-11-16: 
 		*Visual Studio 2005 migration.
 
@@ -124,7 +127,6 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 
 	// parameters from config
 	_enable_GL_SRC_ALPHA_SATURATE = (_config->param("vzMain","enable_GL_SRC_ALPHA_SATURATE"))?1:0;
-	_fields = (_config->param("vzMain","fields"))?1:0;
 };
 
 
@@ -253,7 +255,7 @@ void vzScene::display(long frame)
 
 
 	/* setup stencil */
-	if(0 == _fields)
+	if(0 == _tv->TV_FRAME_INTERLACED)
 	{
 		/* setup stencil buffer if no fields */
 		glStencilMask(0xFF);
@@ -294,7 +296,7 @@ void vzScene::display(long frame)
 			glEnable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, tex);
 
-			for(float X = 0.0f, Y = 1.0f , W = 1024.0f, H = 1.0f; Y < 720.0f; Y += 2)
+			for(float X = 0.0f, Y = 1.0f , W = 2048.0f, H = 1.0f; Y < _tv->TV_FRAME_HEIGHT; Y += 2)
 			{
 
 				// Draw a quad (ie a square)
@@ -324,7 +326,7 @@ void vzScene::display(long frame)
 	};
 
 	// draw fields/frame
-	for(int field = 0; field<=_fields;field++)
+	for(int field = 0; field <= _tv->TV_FRAME_INTERLACED; field++)
 	{
 		// set directors for propper position
 		if(_motion)

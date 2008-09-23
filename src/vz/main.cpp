@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2008-09-23:
+		*vzTVSpec rework
+
 	2007-03-11:
 		*Program version controled from "vzVersion.h"
 
@@ -163,7 +166,7 @@ static unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
 	while(0 == f_exit)
 	{
 		// sleep
-		Sleep(tv.TV_FRAME_DUR_MS);
+		Sleep((1000 * tv.TV_FRAME_PS_DEN) / tv.TV_FRAME_PS_NOM);
 
 		// call frame counter
 		if (fc) fc();
@@ -225,10 +228,21 @@ static struct
 	unsigned int fb;
 	unsigned int stencil_rb;
 	unsigned int color_tex[2];
+	unsigned int color_tex_width;
+	unsigned int color_tex_height;
 	unsigned int depth_rb;
 	unsigned int stencil_depth_rb;
 	unsigned int bg_tex;
+	unsigned int bg_tex_width;
+	unsigned int bg_tex_height;
 } fbo;
+
+inline unsigned long POT(unsigned long v)
+{
+	unsigned long i;
+	for(i=1;(i!=0x80000000)&&(i<v);i<<=1);
+	return i;
+};
 
 static int init_fbo()
 {	
@@ -242,6 +256,10 @@ static int init_fbo()
 	/* check if FBO supported (extensions loaded) */
 	if (NULL == glGenFramebuffersEXT)
 		return -1;
+
+	/* init fbo texture width/height */
+	fbo.color_tex_width = POT(tv.TV_FRAME_WIDTH);
+	fbo.color_tex_height = POT(tv.TV_FRAME_HEIGHT);
 
 	/* generate framebuffer */
 	glGenFramebuffersEXT(1, &fbo.fb);
@@ -261,7 +279,7 @@ static int init_fbo()
 			GL_TEXTURE_2D, 
 			0, 
 			GL_RGBA8, 
-			1024, 1024, 
+			fbo.color_tex_width, fbo.color_tex_height, 
 			0, 
 			GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
 			NULL
@@ -279,7 +297,7 @@ static int init_fbo()
 
 	glGenRenderbuffersEXT(1, &fbo.stencil_depth_rb);
 	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
-	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, 1024, 1024);
+	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, fbo.color_tex_width, fbo.color_tex_height);
 	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,  GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
 	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
 
@@ -295,7 +313,7 @@ static int init_fbo()
 		GL_TEXTURE_2D, 
 		0, 
 		GL_RGBA8, 
-		16, 16, 
+		(fbo.bg_tex_width = 16), (fbo.bg_tex_height = 16),
 		0, 
 		GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
 		fb_bg_text_data
@@ -454,11 +472,8 @@ static void vz_scene_display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT /*| GL_STENCIL_BUFFER_BIT */); 
 
 	/* draw safe areas markers */
+	if(NULL != tv.sa)
 	{
-		static int 
-			safe_offsets_x[2] = {33, 71},
-			safe_offsets_y[2] = {28, 57};
-
 		for(int i = 0; i<2; i++)
 		{
 			if(0 == i)
@@ -470,10 +485,10 @@ static void vz_scene_display(void)
 
 			glBegin(GL_LINE_LOOP);
 
-			glVertex3i(safe_offsets_x[i], safe_offsets_y[i], 0);
-			glVertex3i(tv.TV_FRAME_WIDTH - safe_offsets_x[i], safe_offsets_y[i], 0);
-			glVertex3i(tv.TV_FRAME_WIDTH - safe_offsets_x[i], tv.TV_FRAME_HEIGHT - safe_offsets_y[i], 0);
-			glVertex3i(safe_offsets_x[i], tv.TV_FRAME_HEIGHT - safe_offsets_y[i], 0);
+			glVertex3i(tv.sa->x[i], tv.sa->y[i], 0);
+			glVertex3i(tv.TV_FRAME_WIDTH - tv.sa->x[i], tv.sa->y[i], 0);
+			glVertex3i(tv.TV_FRAME_WIDTH - tv.sa->x[i], tv.TV_FRAME_HEIGHT - tv.sa->y[i], 0);
+			glVertex3i(tv.sa->x[i], tv.TV_FRAME_HEIGHT - tv.sa->y[i], 0);
 
 			glEnd();
 		};
@@ -500,13 +515,13 @@ static void vz_scene_display(void)
 		glVertex3f(X, Y, 0.0f);
 
 		glTexCoord2f(0.0f, 1.0f);
-		glVertex3f(X, Y + 1024.0f, 0.0f);
+		glVertex3f(X, Y + (float)fbo.color_tex_height, 0.0f);
 
 		glTexCoord2f(1.0f, 1.0f);
-		glVertex3f(X + 1024.0f, Y + 1024.0f, 0.0f);
+		glVertex3f(X + (float)fbo.color_tex_width, Y + (float)fbo.color_tex_height, 0.0f);
 
 		glTexCoord2f(1.0f, 0.0f);
-		glVertex3f(X + 1024.0f, Y, 0.0f);
+		glVertex3f(X + (float)fbo.color_tex_width, Y, 0.0f);
 
 		glEnd(); // Stop drawing QUADS 
 
@@ -523,17 +538,38 @@ static void vz_scene_display(void)
 
 		glColor4f(1.0f,1.0f,1.0f,1.0f);
 
-		glTexCoord2f(0.0f, 0.0f);
-		glVertex3f(X, Y, 0.0f);
+		glTexCoord2f(
+			0.0f,
+			0.0f);
+		glVertex3f(
+			X, 
+			Y, 
+			0.0f);
 
-		glTexCoord2f(0.0f, 576.0f / 16.0f);
-		glVertex3f(X, Y + 576.0f, 0.0f);
+		glTexCoord2f(
+			0.0f, 
+			(float)(tv.TV_FRAME_HEIGHT/fbo.bg_tex_height));
+		glVertex3f(
+			X,
+			Y + (float)(tv.TV_FRAME_HEIGHT),
+			0.0f);
 
-		glTexCoord2f(720.0f / 16.0f, 576.0f / 16.0f);
-		glVertex3f(X + 720.0f, Y + 576.0f, 0.0f);
+		glTexCoord2f(
+			(float)(tv.TV_FRAME_WIDTH/fbo.bg_tex_width), 
+			(float)(tv.TV_FRAME_HEIGHT/fbo.bg_tex_height));
 
-		glTexCoord2f(720.0f / 16.0f, 0.0f);
-		glVertex3f(X + 720.0f, Y, 0.0f);
+		glVertex3f(
+			X + (float)(tv.TV_FRAME_WIDTH),
+			Y + (float)(tv.TV_FRAME_HEIGHT),
+			0.0f);
+
+		glTexCoord2f(
+			(float)(tv.TV_FRAME_WIDTH/fbo.bg_tex_width), 
+			0.0f);
+		glVertex3f(
+			X + (float)(tv.TV_FRAME_WIDTH), 
+			Y, 
+			0.0f);
 
 		glEnd(); // Stop drawing QUADS
 
@@ -555,7 +591,7 @@ static void vz_scene_display(void)
 	ReleaseMutex(vz_window_desc.lock);
 
 	/* check if we need to update frames rendering info */
-	if((global_frame_no - last_title_update) > tv.TV_FRAME_PS)
+	if((global_frame_no - last_title_update) > ((unsigned)(tv.TV_FRAME_PS_NOM / tv.TV_FRAME_PS_DEN)))
 	{
 		char buf[100];
 		sprintf

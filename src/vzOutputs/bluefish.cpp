@@ -22,6 +22,9 @@
 
 
 ChangeLog:
+	2008-09-23:
+		*vzTVSpec rework
+
 	2007-06-30:
 		*Linked with release 5.4.26.
 		*Attempt to spread dropped frame recyling in long period: no more
@@ -95,7 +98,6 @@ ChangeLog:
 #define O_SINGLE_INPUT			"SINGLE_INPUT"
 #define O_DUAL_INPUT			"DUAL_INPUT"
 #define O_VIDEO_MODE			"VIDEO_MODE"
-#define O_PAL					"PAL"
 #define O_ONBOARD_KEYER			"ONBOARD_KEYER"
 #define O_H_PHASE_OFFSET		"H_PHASE_OFFSET"
 #define O_V_PHASE_OFFSET		"V_PHAZE_OFFSET"
@@ -246,7 +248,7 @@ static unsigned long WINAPI demux_fields(void* p)
 			*dstA = (unsigned char*)desc->buffers[0],
 			*dstB = (unsigned char*)desc->buffers[1];
 		dump_line;
-		for(i = 0; i < 576; i++)
+		for(i = 0; i < _tv->TV_FRAME_HEIGHT; i++)
 		{
 			/* calc case number */
 			int d = 
@@ -1177,18 +1179,29 @@ static void bluefish_configure(void)
 {
 	int r = 0, i=0;
 	char* temp;
-
-
-	/* detect PAL/NTSC */
-	if(NULL == (temp = CONFIG_O(O_VIDEO_MODE)))
-		video_format = VID_FMT_PAL;
-	else
+	static struct
 	{
-		if(0 == stricmp(temp, O_PAL))
-			video_format = VID_FMT_PAL;
-		else
-			video_format = VID_FMT_NTSC;
+		char* name;
+		EVideoMode mode;
+	}
+	video_format_map[] = 
+	{
+		{ "576p",		VID_FMT_PAL },
+		{ "480p",		VID_FMT_NTSC },
+		{ "576i",		VID_FMT_576I_5000 },
+		{ "480i",		VID_FMT_486I_5994 },
+		{ "720p50",	VID_FMT_720P_5000 },
+		{ "1080i25",	VID_FMT_1080I_5000 },
+		{ "1080p25",	VID_FMT_1080P_2500 },
+		{ "1080p50",	VID_FMT_INVALID },
+		{ NULL, VID_FMT_INVALID}
 	};
+
+	/* setup video mode */
+	video_format = VID_FMT_INVALID;
+	for(i = 0; NULL != video_format_map[i].name; i++)
+		if(0 == _stricmp((char*)video_format_map[i].name, _tv->NAME))
+			video_format = (EVideoMode)video_format_map[i].mode;
 
 	/* setup default channels */
 	{
