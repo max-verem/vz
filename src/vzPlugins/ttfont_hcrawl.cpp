@@ -291,8 +291,8 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			CloseHandle(_DATA->_txt_msg[i]->async);
 			_DATA->_txt_msg[i]->async = INVALID_HANDLE_VALUE;
 #ifdef _DEBUG
-			fprintf(stderr, DEBUG_LINE_ARG  
-				"detected async proc finish for obj %d\n", DEBUG_LINE_PARAM, i);
+			logger_printf(0, DEBUG_LINE_ARG  
+				"detected async proc finish for obj %d", DEBUG_LINE_PARAM, i);
 #endif /* _DEBUG */
 		};
 
@@ -308,8 +308,8 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		{
 			_DATA->_txt_msg[i]->status = 1;
 #ifdef _DEBUG
-			fprintf(stderr, DEBUG_LINE_ARG  
-				"obj %d been rised status to '1'\n", DEBUG_LINE_PARAM, i);
+			logger_printf(0, DEBUG_LINE_ARG  
+				"obj %d been rised status to '1'", DEBUG_LINE_PARAM, i);
 #endif /* _DEBUG */
 		};
 
@@ -318,8 +318,8 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		if(_DATA->_txt_msg[i]->id < 0)
 		{
 #ifdef _DEBUG
-			fprintf(stderr, DEBUG_LINE_ARG  
-				"obj %d deleted from queue\n", DEBUG_LINE_PARAM, i);
+			logger_printf(2, DEBUG_LINE_ARG  
+				"obj %d deleted from queue", DEBUG_LINE_PARAM, i);
 #endif /* _DEBUG */
 
 			struct txt_msg_descr* tmp = _DATA->_txt_msg[i];
@@ -357,8 +357,8 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 				_DATA->_txt_msg[0]->status = 2;
 
 #ifdef _DEBUG
-				fprintf(stderr, DEBUG_LINE_ARG  
-					"new objects got pos='%f'\n", DEBUG_LINE_PARAM, _DATA->_txt_msg[0]->pos);
+				logger_printf(2, DEBUG_LINE_ARG  
+					"new objects got pos='%f'", DEBUG_LINE_PARAM, _DATA->_txt_msg[0]->pos);
 #endif /* _DEBUG */
 
 			};
@@ -412,7 +412,7 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 			if (( (long)_DATA->_txt_msg[0]->pos + _DATA->_txt_msg[0]->width) <= 0)
 			{
 #ifdef _DEBUG
-				fprintf(stderr, DEBUG_LINE_ARG  "object out of loop\n", DEBUG_LINE_PARAM);
+				logger_printf(0, DEBUG_LINE_ARG  "object out of loop", DEBUG_LINE_PARAM);
 #endif /* _DEBUG */
 
 				/* first item is out of visible area */
@@ -426,7 +426,7 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 					/* mark this container dead */
 					_DATA->_txt_msg[0]->id = -1;
 #ifdef _DEBUG
-					fprintf(stderr, DEBUG_LINE_ARG  "and will be destroyed\n", DEBUG_LINE_PARAM);
+					logger_printf(0, DEBUG_LINE_ARG  "and will be destroyed", DEBUG_LINE_PARAM);
 #endif /* _DEBUG */
 
 				};
@@ -491,7 +491,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 		_DATA->_texture_initialized = 1;
 
 #ifdef _DEBUG
-		fprintf(stderr, DEBUG_LINE_ARG  "generated new texture (%d x %d)\n", DEBUG_LINE_PARAM, w, h);
+		logger_printf(0, DEBUG_LINE_ARG  "generated new texture (%d x %d)", DEBUG_LINE_PARAM, w, h);
 #endif /* _DEBUG */
 
 	};
@@ -600,8 +600,8 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 unsigned long WINAPI _msg_layouter(void* param)
 {
 #ifdef _DEBUG
-		fprintf(stderr, DEBUG_LINE_ARG
-			"Started '_msg_layouter'\n", DEBUG_LINE_PARAM );
+		logger_printf(0, DEBUG_LINE_ARG
+			"Started '_msg_layouter'", DEBUG_LINE_PARAM );
 #endif /* _DEBUG */
 
 	/* source data */
@@ -618,8 +618,8 @@ unsigned long WINAPI _msg_layouter(void* param)
 		txt_msg->id = font->compose(txt_msg->buffer, &_DATA->font_layout);
 		txt_msg->width = font->get_symbol_width(txt_msg->id);
 #ifdef _DEBUG
-		fprintf(stderr, DEBUG_LINE_ARG 
-			"Composed: txt_msg->id='%d'txt_msg->width='%d'\n", DEBUG_LINE_PARAM, 
+		logger_printf(2, DEBUG_LINE_ARG 
+			"Composed: txt_msg->id='%d' txt_msg->width='%d'", DEBUG_LINE_PARAM, 
 			txt_msg->id, txt_msg->width);
 #endif /* _DEBUG */
 	}
@@ -635,7 +635,7 @@ unsigned long WINAPI _msg_layouter(void* param)
 	/* free buffer used */
 	free(txt_msg->buffer); txt_msg->buffer = NULL;
 
-//	DEBUG_OUT("Finished '_msg_layouter'\n");
+//	DEBUG_OUT("Finished '_msg_layouter'");
 
 	/* Return */
 	ExitThread(0);
@@ -724,8 +724,8 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 	if(NULL != _DATA->s_trig_append)
 	{
 #ifdef _DEBUG
-		fprintf(stderr, DEBUG_LINE_ARG 
-			"Detected flag '_DATA->_s_trig_append'\n", DEBUG_LINE_PARAM);
+		logger_printf(0, DEBUG_LINE_ARG 
+			"Detected flag '_DATA->_s_trig_append'", DEBUG_LINE_PARAM);
 #endif /* _DEBUG */
 
 		/* reallocate queue */

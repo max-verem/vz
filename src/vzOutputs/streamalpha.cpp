@@ -22,6 +22,9 @@
 
 	
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
 	2006-12-02:
 		*New scheme of buffers config.
 
@@ -76,6 +79,7 @@ ChangeLog:
 #include "../vz/vzOutputInternal.h"
 #include "../vz/vzMain.h"
 #include "../vz/vzTVSpec.h"
+#include "../vz/vzLogger.h"
 
 #include <stdio.h>
 #include <SlBoardIoctl.h>
@@ -332,8 +336,6 @@ VZOUTPUTS_EXPORT long vzOutput_FindBoard(char** error_log = NULL)
 VZOUTPUTS_EXPORT void vzOutput_SetConfig(void* config)
 {
 	_config = config;
-//	char* temp = vzConfigParam(_config,"streamalpha","test");
-//	printf("'%s'",temp);
 };
 
 
@@ -348,7 +350,7 @@ VZOUTPUTS_EXPORT long vzOutput_SelectBoard(unsigned long id,char** error_log = N
 	// set id
 	_id = id;
 
-	printf("streamalpha[%s]",_titles[_boards[_id]]);
+	logger_printf(0, "streamalpha[%s]", _titles[_boards[_id]]);
 
 	if (error_log) *error_log = _titles[_boards[_id]];
 
@@ -400,11 +402,11 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 	char* config_option;
 	unsigned int settings = 0;
 
-	printf("streamalpha: general settings:\n");
+	logger_printf(0, "streamalpha: general settings");
 	for(int i=0;vzAlphaStreamOptionsNames[i];i++)
 		if(vzConfigParam(_config,"streamalpha",(char*)vzAlphaStreamOptionsNames[i]))
 		{
-			printf("\t'%s'\n",vzAlphaStreamOptionsNames[i]);
+			logger_printf(0, "streamalpha: |- '%s'",vzAlphaStreamOptionsNames[i]);
 			ALPHA_SET_CONTROL(settings,i,(_boards[_id] == ALPHA_TM)?1:0);
 		};
 
@@ -415,21 +417,21 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 	{
 		unsigned char phase = (unsigned char)atol(config_option);
 		Alpha_SetColorSubcarrierPhase(ALPHA_BOARD,phase);
-		printf("\t'ColorSubcarrierPhase'='%d\n",(unsigned int)phase);
+		logger_printf(0, "streamalpha: |- 'ColorSubcarrierPhase'='%d",(unsigned int)phase);
 	};
 
 	// set "the offset of source video signal according to sync. signal"
 	if(config_option = vzConfigParam(_config,"streamalpha","SDEL"))
 	{
 		Alpha_SetSDEL(ALPHA_BOARD,atol(config_option));
-		printf("\t'SDEL'='%ld\n",atol(config_option));
+		logger_printf(0, "streamalpha: |- 'SDEL'='%ld",atol(config_option));
 	};
 
 	// set "(the offset of the alpha-channel (Key) according to the source signal (Fill))"
 	if(config_option = vzConfigParam(_config,"streamalpha","ADEL"))
 	{
 		Alpha_SetADEL(ALPHA_BOARD,atol(config_option));
-		printf("\t'ADEL'='%ld\n",atol(config_option));
+		logger_printf(0, "streamalpha: |- 'ADEL'='%ld",atol(config_option));
 	};
 
 	// clear picture
@@ -455,7 +457,7 @@ static unsigned long WINAPI output_loop(void* obj)
 
 	vzOutput* tbc = (vzOutput*)obj;
 
-	printf("streamalpha: Output loop started!\n");
+	logger_printf(0, "streamalpha: Output loop started!");
 
 	// define framebuffers queue
 	unsigned long vfb_in = vfb4_info.user;
@@ -535,12 +537,12 @@ VZOUTPUTS_EXPORT void vzOutput_StartOutputLoop(void* obj)
 
 	// events
 	if(!(_fields_event[0] = CreateEvent(NULL, TRUE, FALSE, NULL)))//field0 VSync
-		printf("streamalpha: Unable to Create Event #0\n");
+		logger_printf(1, "streamalpha: Unable to Create Event #0");
 	if(!(_fields_event[1] = CreateEvent(NULL, TRUE, FALSE, NULL)))//field1 VSync
-		printf("streamalpha: Unable to Create Event #1\n");
+		logger_printf(1, "streamalpha: Unable to Create Event #1");
 	if(!(_fields_event[2] = CreateEvent(NULL, TRUE, FALSE, NULL)))
-		printf("streamalpha: Unable to Create Event #2\n");
-	
+		logger_printf(1, "streamalpha: Unable to Create Event #2");
+
 	Alpha_SetNotificationEvent(ALPHA_BOARD,_fields_event);
 
 	loop_thread = CreateThread
@@ -882,14 +884,14 @@ static int init_vfb4_info(vfb4_data *vfb4_info)
 	// open device
 	if (!(vdf_dev = CreateFile(VFB4_API_DEV, GENERIC_READ | GENERIC_WRITE | FILE_FLAG_NO_BUFFERING, 0, NULL, OPEN_EXISTING, 0, NULL)))
 	{
-		printf("Error opening '%s'. Please see vfb4.txt\n",VFB4_API_DEV);
+		logger_printf(1, "streamalpha: Error opening '%s'. Please see vfb4.txt", VFB4_API_DEV);
 		return 0;
 	};
 
 	// read data
 	if(!ReadFile(vdf_dev, vfb4_info, sizeof(vfb4_data), &ret, NULL))
 	{
-		printf("Error reading '%s'. Please see vfb4.txt\n",VFB4_API_DEV,GetLastError());
+		logger_printf(1, "streamalpha: Error reading '%s'. Please see vfb4.txt", VFB4_API_DEV, GetLastError());
 		return 0;
 	};
 

@@ -70,7 +70,6 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 
 PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 {
-//	DEBUG_PROC_ENTRY("contructor","enter")
 	// init memmory for structure
 	vzPluginData* data = (vzPluginData*)malloc(sizeof(vzPluginData));
 
@@ -78,15 +77,12 @@ PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 	*data = default_value;
 
 	// return pointer
-//	DEBUG_PROC_ENTRY("contructor","exit")
 	return data;
 };
 
 PLUGIN_EXPORT void destructor(void* data)
 {
-//	DEBUG_PROC_ENTRY("destructor","enter")
 	free(data);
-//	DEBUG_PROC_ENTRY("destructor","exit")
 };
 
 PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)

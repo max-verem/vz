@@ -21,6 +21,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
 
 	2006-11-26:
 		Code start.
@@ -30,6 +32,7 @@ ChangeLog:
 #include <stdio.h>
 #include <string.h>
 #include "vzGlExt.h"
+#include "vzLogger.h"
 
 BOOL APIENTRY DllMain
 (
@@ -129,37 +132,34 @@ VZGLEXT_API int  glExtInitDone = 0;;
 // function
 VZGLEXT_API void vzGlExtInit()
 {
+	char* msg;
 	char* gl_extensions = (char*)glGetString(GL_EXTENSIONS);
 
 	// check if string not null
 	if(!(gl_extensions))
 	{
-		printf("vzGlExt: 'glGetString' Failed!\n");
+		logger_printf(1, "vzGlExt: 'glGetString' Failed!");
 		return;
 	}
 	else
-		printf("vzGlExt: OpenGL extensions supported: %s\n", gl_extensions);
+		logger_printf(0, "vzGlExt: OpenGL extensions supported: %s", gl_extensions);
 
 	// notify about loading extensions
-	printf("vzGlExt: Loading extensions...\n");
+	logger_printf(0, "vzGlExt: Loading extensions...");
 
 	/* enum extensions */
 	for(int i=0;_gl_extensions_list[i][0];i++)
 	{
-		printf("\t'%s':",(char*)_gl_extensions_list[i][0]);
 		if(strstr(gl_extensions,(char*)_gl_extensions_list[i][0]))
 		{
-			printf("loading '%s'...",(char*)_gl_extensions_list[i][1] );
 			*((unsigned long*)_gl_extensions_list[i][2]) = (unsigned long)wglGetProcAddress((char*)_gl_extensions_list[i][1]);
-			printf("%s", (_gl_extensions_list[i][2])?"OK":"FAILED");
+			msg = (_gl_extensions_list[i][2])?"OK":"FAILED";
 		}
 		else
-			printf("not supported");
-		printf("\n");
+			msg = "not supported";
+		
+		logger_printf(0, "vzGlExt: '%s': %s",(char*)_gl_extensions_list[i][1], msg);
 	};
 
 	glExtInitDone = 1;
 };
-
-
-

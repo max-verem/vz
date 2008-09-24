@@ -99,7 +99,7 @@ static unsigned long WINAPI timers_reader_proc(void* data)
 {
 	char* serial_port_name = (char*)data;
 
-	fprintf(stdout, DEBUG_LINE_ARG "Starting 'timers_reader_proc' for port '%s'\n", DEBUG_LINE_PARAM, serial_port_name);
+	logger_printf(0, DEBUG_LINE_ARG "Starting 'timers_reader_proc' for port '%s'", DEBUG_LINE_PARAM, serial_port_name);
 
 	/* open port */
 	HANDLE com_port = CreateFile
@@ -116,7 +116,7 @@ static unsigned long WINAPI timers_reader_proc(void* data)
 	/* check port opens */
 	if (com_port == INVALID_HANDLE_VALUE)
 	{
-		fprintf(stderr, DEBUG_LINE_ARG " ERROR opening port '%s'\n", DEBUG_LINE_PARAM, serial_port_name);
+		logger_printf(0, DEBUG_LINE_ARG " ERROR opening port '%s'", DEBUG_LINE_PARAM, serial_port_name);
 		return 0;
 	};
 
@@ -132,7 +132,7 @@ static unsigned long WINAPI timers_reader_proc(void* data)
 	lpdcb.fBinary = 1;
 	if (!(SetCommState(com_port, &lpdcb)))
 	{
-		fprintf(stderr, DEBUG_LINE_ARG " ERROR configuring port '%s'\n", DEBUG_LINE_PARAM, serial_port_name);
+		logger_printf(1, DEBUG_LINE_ARG " ERROR configuring port '%s'", DEBUG_LINE_PARAM, serial_port_name);
 		CloseHandle(com_port);
 		return 0;
 	};
@@ -146,7 +146,7 @@ static unsigned long WINAPI timers_reader_proc(void* data)
     comTimeOut.WriteTotalTimeoutConstant = MAXDWORD; //2;
 	if (!(SetCommTimeouts(com_port,&comTimeOut)))
 	{
-		fprintf(stderr, DEBUG_LINE_ARG " ERROR in 'SetCommTimeouts' for port '%s'\n", DEBUG_LINE_PARAM, serial_port_name);
+		logger_printf(1, DEBUG_LINE_ARG " ERROR in 'SetCommTimeouts' for port '%s'", DEBUG_LINE_PARAM, serial_port_name);
 		CloseHandle(com_port);
 		return 0;
 	};
@@ -167,7 +167,7 @@ static unsigned long WINAPI timers_reader_proc(void* data)
 		if(EQUIPE_CMD_LEN != read_len)
 		{
 #ifdef _DEBUG
-			fprintf(stderr, DEBUG_LINE_ARG " (EQUIPE_CMD_LEN != read_len) - 'read_len=%d' \n", DEBUG_LINE_PARAM, read_len);
+			logger_printf(1, DEBUG_LINE_ARG " (EQUIPE_CMD_LEN != read_len) - 'read_len=%d'", DEBUG_LINE_PARAM, read_len);
 #endif
 			PurgeComm(com_port, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 			continue;
@@ -177,7 +177,7 @@ static unsigned long WINAPI timers_reader_proc(void* data)
 		if (0x50 != (0xF0 & cmd_buffer[0]))
 		{
 #ifdef _DEBUG
-			fprintf(stderr, DEBUG_LINE_ARG " (0x50 != (0xF0 & cmd_buffer[0]) \n", DEBUG_LINE_PARAM);
+			logger_printf(0, DEBUG_LINE_ARG " (0x50 != (0xF0 & cmd_buffer[0])", DEBUG_LINE_PARAM);
 #endif
 			PurgeComm(com_port, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 			continue;
@@ -189,7 +189,7 @@ static unsigned long WINAPI timers_reader_proc(void* data)
 		if(cs != cmd_buffer[EQUIPE_CMD_LEN - 1])
 		{
 #ifdef _DEBUG
-			fprintf(stderr, DEBUG_LINE_ARG " (cs != cmd_buffer[EQUIPE_CMD_LEN - 1]) \n", DEBUG_LINE_PARAM);
+			logger_printf(0, DEBUG_LINE_ARG " (cs != cmd_buffer[EQUIPE_CMD_LEN - 1])", DEBUG_LINE_PARAM);
 #endif
 			PurgeComm(com_port, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 			continue;
@@ -292,11 +292,11 @@ PLUGIN_EXPORT void configure(void* config_ptr)
 	{
 		/* run async reader */
 		unsigned long thread;
-		fprintf(stdout, DEBUG_LINE_ARG " running 'timers_reader_proc'\n", DEBUG_LINE_PARAM);
+		logger_printf(0, DEBUG_LINE_ARG " running 'timers_reader_proc'", DEBUG_LINE_PARAM);
 		timers_reader = CreateThread(0, 0, timers_reader_proc, serial_port_name, 0, &thread);
 	}
 	else
-		fprintf(stderr, DEBUG_LINE_ARG " Warning 'serial_port_name' in section 'equipe_timer' not defined!\n", DEBUG_LINE_PARAM);
+		logger_printf(1, DEBUG_LINE_ARG " Warning 'serial_port_name' in section 'equipe_timer' not defined!", DEBUG_LINE_PARAM);
 };
 
 

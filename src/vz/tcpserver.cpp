@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
 	2007-11-18:
 		*VS2005 migrations patches
 
@@ -43,6 +46,7 @@ ChangeLog:
 #include "vzMain.h"
 #include "vzImage.h"
 #include "vzTVSpec.h"
+#include "vzLogger.h"
 
 extern int f_exit;
 extern void* scene;	// scene loaded
@@ -184,7 +188,7 @@ static int tcpserver_client_exec(char* buffer, char** error_log)
 {
 	*error_log = shell_error_recog;
 
-	printf("recieved: '%s'\n",buffer);
+	logger_printf(0, "recieved: '%s'",buffer);
 
 	// clear escape characters
 	for(char* p = buffer; (*p) ; p++)
@@ -214,14 +218,14 @@ static int tcpserver_client_exec(char* buffer, char** error_log)
 	// process command here
 	if(FIND_FROM_LITERAL(buffer, TAG_QUIT))
 	{
-		printf("tcpserver: CMD quit recieved\n");
+		logger_printf(0, "tcpserver: CMD quit recieved");
 		*error_log = shell_bye;
 		return 1;
 	}
 	else if (FIND_FROM_LITERAL(buffer,TAG_SCENE))
 	{
 		// send command tp
-		printf("tcpserver: CMD scene \"%s\" recieved\n",buffer);
+		logger_printf(0, "tcpserver: CMD scene \"%s\" recieved",buffer);
 		*error_log = shell_ok_scene; 
 					
 		// lock scene
@@ -240,7 +244,7 @@ static int tcpserver_client_exec(char* buffer, char** error_log)
 		{
 			// buf contains name of file
 			// where scene name is stored
-			printf("tcpserver: CMD load \"%s\" recieved\n",buf);
+			logger_printf(0, "tcpserver: CMD load \"%s\" recieved",buf);
 			*error_log = shell_ok_load;
 			CMD_loadscene(buf,error_log);
 		}
@@ -257,7 +261,7 @@ static int tcpserver_client_exec(char* buffer, char** error_log)
 		{
 			// buf contains name of file
 			// where screenshot stored
-			printf("tcpserver: CMD screenshot \"%s\" recieved\n",buf);
+			logger_printf(0, "tcpserver: CMD screenshot \"%s\" recieved",buf);
 			*error_log = shell_ok_screenshot;
 			CMD_screenshot(buf,error_log);
 		}
@@ -369,7 +373,7 @@ static unsigned long WINAPI tcpserver_client(void* _socket)
 		};
 	};
 
-	printf("tcpserver: closing connection.\n");
+	logger_printf(0, "tcpserver: closing connection.");
 
 	free(in_buffer);
 	closesocket(socket);
@@ -404,7 +408,7 @@ unsigned long WINAPI tcpserver(void* _config)
 	// check if server is enabled
 	if(!vzConfigParam(_config,"tcpserver","enable"))
 	{
-		printf("tcpserver: disabled\n");
+		logger_printf(0, "tcpserver: disabled");
 		ExitThread(0);
 	};
 
@@ -420,7 +424,7 @@ unsigned long WINAPI tcpserver(void* _config)
 	WSADATA wsaData;
 	if ( WSAStartup( ((unsigned long)WS_VER_MAJOR) | (((unsigned long)WS_VER_MINOR)<<8), &wsaData ) != 0 )
 	{
-		printf("tcpserver: WSAStartup() failed\n");
+		logger_printf(1, "tcpserver: WSAStartup() failed");
 		ExitThread(0);
 		return 0;
 	};
@@ -428,7 +432,7 @@ unsigned long WINAPI tcpserver(void* _config)
 	// create socket
 	if (INVALID_SOCKET == (socket_listen = socket(AF_INET, SOCK_STREAM, 0)))
 	{
-		printf("tcpserver: socket() failed\n");
+		logger_printf(1, "tcpserver: socket() failed");
 		ExitThread(0);
 		return 0;
 	};
@@ -442,7 +446,7 @@ unsigned long WINAPI tcpserver(void* _config)
 	// try to bind addr struct to socket
 	if (bind(socket_listen,(sockaddr*)&s_local, sizeof(sockaddr_in)) == SOCKET_ERROR) 
 	{
-		printf("tcpserver: bind() failed\n");
+		logger_printf(1, "tcpserver: bind() failed");
 		ExitThread(0);
 		return 0;
 	};
@@ -462,12 +466,12 @@ unsigned long WINAPI tcpserver(void* _config)
 		// check if socket is valid
 		if(socket_incoming == INVALID_SOCKET)
 		{
-			printf("tcpserver: accept() failed\n");
+			logger_printf(1, "tcpserver: accept() failed");
 		}
 		else
 		{
 			// notify system about incoming connection
-			printf("tcpserver: accepted connection from %s:%ld\n",inet_ntoa(s_remote.sin_addr),s_remote.sin_port);
+			logger_printf(1, "tcpserver: accepted connection from %s:%ld",inet_ntoa(s_remote.sin_addr),s_remote.sin_port);
 
 			// create thread for client operation
 			for(j=0;j<MAX_CLIENTS;j++)

@@ -22,6 +22,9 @@
 
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
 	2007-11-17
 		*Module start.
 
@@ -36,6 +39,7 @@ ChangeLog:
 #include "../vz/vzOutputInternal.h"
 #include "../vz/vzMain.h"
 #include "../vz/vzTVSpec.h"
+#include "../vz/vzLogger.h"
 
 #include "DecklinkInterface.h"
 #pragma comment(lib, "DecklinkInterface.lib")
@@ -102,16 +106,14 @@ static char
 
 ------------------------------------------------------------------ */
 
-#define NOTIFY_RESULT(MSG) fprintf(stderr, MODULE_PREFIX MSG "... ");
+#define NOTIFY_RESULT(MSG) logger_printf(1, MODULE_PREFIX MSG "... ");
 #define CHECK_RESULT						\
 	if (FAILED(hr))							\
 	{										\
-		fprintf(stderr, "failed\n");		\
-		fflush(stderr);						\
+		logger_printf(1, MODULE_PREFIX "+- failed"); \
 		return 0;							\
 	}										\
-	fprintf(stderr, "OK\n");				\
-	fflush(stderr);
+	logger_printf(0, MODULE_PREFIX "+- OK");
 
 static void decklink_configure(void)
 {
@@ -128,17 +130,17 @@ static void decklink_configure(void)
 
 	/* setup keyer */
 	{
-		fprintf
+		logger_printf
 		(
-			stderr, "Setting %s keyer... ", 
+			0, MODULE_PREFIX "Setting %s keyer... ", 
 			(NULL != CONFIG_O(O_ONBOARD_KEYER))?"INTERNAL":"EXTERNAL"
 		);
 
 		hr = decklink_keyer->set_AlphaBlendModeOn((NULL == CONFIG_O(O_ONBOARD_KEYER))?1:0);
 
-		if(S_OK == hr) fprintf(stderr, "OK\n");
-		else if(E_PROP_ID_UNSUPPORTED == hr) fprintf(stderr, "UNSUPPORTED\n");
-		else fprintf(stderr, "FAILED\n");
+		if(S_OK == hr) logger_printf(0, MODULE_PREFIX " +- OK");
+		else if(E_PROP_ID_UNSUPPORTED == hr) logger_printf(1, MODULE_PREFIX " +- UNSUPPORTED");
+		else logger_printf(1, MODULE_PREFIX " +- FAILED");
 	};
 
 	/* set video input O_VIDEO_INPUT */
@@ -166,7 +168,7 @@ static void decklink_configure(void)
 				video_output = DECKLINK_VIDEOINPUT_SDI;
 				break;
 		};
-		fprintf(stderr, "Setting video input to %s ... ", video_output_name);
+		logger_printf(0, MODULE_PREFIX "Setting video input to %s ... ", video_output_name);
 		
 		hr = decklink_ioctl->SetVideoInput2
 		(
@@ -175,9 +177,9 @@ static void decklink_configure(void)
 			(NULL == CONFIG_O(O_IN_COMPONENT_LEVEL_SMPTE))?1:0
 		);
 
-		if(S_OK == hr) fprintf(stderr, "OK\n");
-		else if(E_INVALIDARG == hr) fprintf(stderr, "INVALIDARG\n");
-		else fprintf(stderr, "FAILED\n");
+		if(S_OK == hr) logger_printf(0, MODULE_PREFIX " +- OK");
+		else if(E_INVALIDARG == hr) logger_printf(1, MODULE_PREFIX " +- INVALIDARG");
+		else logger_printf(1, MODULE_PREFIX " +- FAILED");
 	};
 
 	/* setup analoge output */
@@ -201,7 +203,7 @@ static void decklink_configure(void)
 				video_output = DECKLINK_VIDEOOUTPUT_COMPONENT;
 				break;
 		};
-		fprintf(stderr, "Setting analogue video output to %s ... ", video_output_name);
+		logger_printf(0, MODULE_PREFIX "Setting analogue video output to %s ... ", video_output_name);
 		
 		hr = decklink_ioctl->SetAnalogueOutput2
 		(
@@ -210,21 +212,21 @@ static void decklink_configure(void)
 			(NULL == CONFIG_O(O_OUT_COMPONENT_LEVEL_SMPTE))?1:0
 		);
 
-		if(S_OK == hr) fprintf(stderr, "OK\n");
-		else if(E_INVALIDARG == hr) fprintf(stderr, "INVALIDARG\n");
-		else fprintf(stderr, "FAILED\n");
+		if(S_OK == hr) logger_printf(0, MODULE_PREFIX " +- OK");
+		else if(E_INVALIDARG == hr) logger_printf(1, MODULE_PREFIX " +- INVALIDARG");
+		else logger_printf(1, MODULE_PREFIX " +- FAILED");
 	};
 
 	/* setup timing of the genlock input  */
 	if(NULL != CONFIG_O(O_TIMING_OFFSET))
 	{
 		int offset = atol(CONFIG_O(O_TIMING_OFFSET));
-		fprintf(stderr, "Setting timing of the genlock input to %d ... ", offset);
+		logger_printf(0, MODULE_PREFIX "Setting timing of the genlock input to %d ... ", offset);
 		hr = decklink_ioctl->SetGenlockTiming(offset);
 
-		if(S_OK == hr) fprintf(stderr, "OK\n");
-		else if(E_INVALIDARG == hr) fprintf(stderr, "INVALIDARG\n");
-		else fprintf(stderr, "FAILED\n");
+		if(S_OK == hr) logger_printf(0, MODULE_PREFIX " +- OK");
+		else if(E_INVALIDARG == hr) logger_printf(1, MODULE_PREFIX " +- INVALIDARG");
+		else logger_printf(1, MODULE_PREFIX " +- FAILED");
 	};
 };
 
@@ -248,7 +250,7 @@ static int decklink_init()
 {
 	HRESULT hr;
 
-	fprintf(stderr, MODULE_PREFIX "init...\n");
+	logger_printf(0, MODULE_PREFIX "init...");
 	/*
 		Create graph 
 	*/
@@ -277,14 +279,14 @@ static int decklink_init()
 	CHECK_RESULT;
 
 	hr = decklink_ioctl->GetIOFeatures(&decklink_ioctl_state);
-	fprintf
+	logger_printf
 	(
-		stderr, 
-		MODULE_PREFIX "Decklink IO options available:\n"
+		0, 
+		MODULE_PREFIX "Decklink IO options available:"
 	);
 #define DECKLINK_IO_OPTION_OUTPUT(F, M) \
 	if(decklink_ioctl_state & F)		\
-		fprintf(stderr, "\t+ " M /* " [" #F "]" */ "\n");
+		logger_printf(0, MODULE_PREFIX " +- " M /* " [" #F "]" */);
 	DECKLINK_IO_OPTION_OUTPUT(DECKLINK_IOFEATURES_SUPPORTSRGB10BITCAPTURE, "DeckLink card supports 10-bit RGB capture. ");
 	DECKLINK_IO_OPTION_OUTPUT(DECKLINK_IOFEATURES_SUPPORTSRGB10BITPLAYBACK, "DeckLink card supports 10-bit RGB playback. ");
 	DECKLINK_IO_OPTION_OUTPUT(DECKLINK_IOFEATURES_SUPPORTSINTERNALKEY, "DeckLink card supports internal keying. ");
@@ -315,13 +317,13 @@ static int decklink_init()
 	CHECK_RESULT;
 	NOTIFY_RESULT("get_DeviceSupportsKeying");
 	if (FAILED(decklink_keyer->get_DeviceSupportsKeying()))
-		fprintf(stderr, "does NOT support alpha keying!\n");
+		logger_printf(1, MODULE_PREFIX "does NOT support alpha keying!");
 	else
-		fprintf(stderr, "DOES support alpha keying!\n");
+		logger_printf(0, MODULE_PREFIX "DOES support alpha keying!");
 	if (FAILED(decklink_keyer->get_DeviceSupportsExternalKeying()))
-		fprintf(stderr, "does NOT support external keying!\n");
+		logger_printf(1, MODULE_PREFIX "does NOT support external keying!");
 	else
-		fprintf(stderr, "DOES support external keying!\n");
+		logger_printf(0, MODULE_PREFIX "DOES support external keying!");
 
 	/*
 		IDecklinkStatus
@@ -343,11 +345,13 @@ static int decklink_init()
 		case DECKLINK_GENLOCK_LOCKED: decklink_genlock_status_text="Genlock is available and is locked to the input."; break;
 		case DECKLINK_GENLOCK_NOTLOCKED: decklink_genlock_status_text="Genlock is available but is not locked to the input."; break;
 	};
-	fprintf
+	logger_printf
 	(
-		stderr, 
-		MODULE_PREFIX "Decklink video status: %s\n"
-		MODULE_PREFIX "Decklink Genlock status: %s\n", 
+		0, 
+		MODULE_PREFIX 
+		"Decklink video status: %s"
+		" /"
+		"Decklink Genlock status: %s", 
 		decklink_video_status_text, decklink_genlock_status_text
 	);
 
@@ -368,14 +372,14 @@ VZOUTPUTS_EXPORT long vzOutput_FindBoard(char** error_log = NULL)
 	/* 
 		Start by calling CoInitialize to initialize the COM library
 	*/
-	fprintf(stderr, MODULE_PREFIX "CoInitializeEx...");
+	logger_printf(0, MODULE_PREFIX "CoInitializeEx...");
 	hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 	if (FAILED(hr))
 	{
-		fprintf(stderr, "Error\n");
+		logger_printf(1, MODULE_PREFIX " +- Error");
 		return 0;
 	};
-	fprintf(stderr, "OK\n");
+	logger_printf(0, MODULE_PREFIX " +- OK");
 
 	timeBeginPeriod(1);
 
@@ -447,7 +451,7 @@ VZOUTPUTS_EXPORT void vzOutput_StartOutputLoop(void* tbc)
 	/* check if graph built */
 	if(NULL == pGraph) 
 	{
-		fprintf(stderr, MODULE_PREFIX "ERROR: graph not initialized\n");
+		logger_printf(1, MODULE_PREFIX "ERROR: graph not initialized");
 		return;
 	};
 
@@ -459,18 +463,22 @@ VZOUTPUTS_EXPORT void vzOutput_StartOutputLoop(void* tbc)
 	hr = pGraph->QueryInterface(IID_IMediaControl, (void **)&pMediaControl);
 	if (FAILED(hr))
 	{
-		fprintf(stderr, "failed\n");
+		logger_printf(1, MODULE_PREFIX " +- failed");
 		return;
-	} else fprintf(stderr, "OK\n");
+	}
+	else
+		logger_printf(0, MODULE_PREFIX " +- OK");
 
 	/* Start graph */
 	NOTIFY_RESULT("IID_IMediaControl::Run");
 	hr = pMediaControl->Run();
 	if (FAILED(hr))
 	{
-		fprintf(stderr, "failed\n");
+		logger_printf(1, MODULE_PREFIX " +- failed");
 		return;
-	} else fprintf(stderr, "OK\n");
+	}
+	else
+		logger_printf(0, MODULE_PREFIX " +- OK");
 };
 
 VZOUTPUTS_EXPORT void vzOutput_StopOutputLoop()
@@ -495,8 +503,6 @@ VZOUTPUTS_EXPORT void vzOutput_AssignBuffers(struct vzOutputBuffers* b)
 
 VZOUTPUTS_EXPORT long vzOutput_SetSync(frames_counter_proc fc)
 {
-//	return 0;
-//fprintf(stderr, "HERE1\n");
 	return (long)(_fc =  fc);
 };
 
@@ -552,16 +558,16 @@ BOOL APIENTRY DllMain
 			timeEndPeriod(1);
 			
 			/* wait all finished */
-			fprintf(stderr, MODULE_PREFIX "trying to stop graphs\n");
+			logger_printf(0, MODULE_PREFIX "trying to stop graphs");
 			if(NULL != pMediaControl)
 				pMediaControl->Stop();
 
 			/* deinit */
-			fprintf(stderr, MODULE_PREFIX "force decklink deinit\n");
+			logger_printf(0, MODULE_PREFIX "force decklink deinit");
 			decklink_destroy();
 
 			CoUninitialize();
-			fprintf(stderr, MODULE_PREFIX "decklink.dll finished\n");
+			logger_printf(0, MODULE_PREFIX "decklink.dll finished");
 
 			break;
     }

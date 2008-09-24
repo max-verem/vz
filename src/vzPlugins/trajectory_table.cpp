@@ -164,7 +164,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		/* sync */
 		_DATA->_s_filename = _DATA->s_filename;
 
-		printf("trajectory_table: table '%s' has %d rows\n", _DATA->s_filename, _DATA->_table_len);
+		logger_printf(0, "trajectory_table: table '%s' has %d rows", _DATA->s_filename, _DATA->_table_len);
 	};
 
 
@@ -182,7 +182,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		_DATA->_s_map = _DATA->s_map;
 
 		/* verbose */
-		printf("trajectory_table: map '%s' has %d pairs\n", _DATA->s_map, _DATA->_map_len);
+		logger_printf(0, "trajectory_table: map '%s' has %d pairs", _DATA->s_map, _DATA->_map_len);
 	};
 
 	// unlock

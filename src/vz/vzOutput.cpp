@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
 	2007-11-18:
 		*More timing dumping support added to understand what problem
 		with decklink.
@@ -100,6 +103,7 @@ unsigned _buffers_pos_driver = 0;
 #include "vzOutput.h"
 #include "vzOutputInternal.h"
 #include "vzMain.h"
+#include "vzLogger.h"
 
 static struct vzOutputBuffers* _global_buffers_info = NULL;
 static double Ak = logl(10) / 20.0;
@@ -231,7 +235,7 @@ void vzOutput::lock_io_bufs(void** v_output, void*** v_input, void** a_output, v
 			/* check drop count */
 			if(_buffers.pos_driver_dropped)
 			{
-				fprintf(stderr, "vzOutput: dropped %d frames[driver]\n", _buffers.pos_driver_dropped);
+				logger_printf(1, "vzOutput: dropped %d frames[driver]", _buffers.pos_driver_dropped);
 				_buffers.pos_driver_dropped = 0;
 			};
 		}
@@ -371,7 +375,7 @@ void vzOutput::pre_render()
 			/* check drop count */
 			if(_buffers.pos_render_dropped)
 			{
-				fprintf(stderr, "vzOutput: dropped %d frames[render]\n", _buffers.pos_render_dropped);
+				logger_printf(1, "vzOutput: dropped %d frames[render]", _buffers.pos_render_dropped);
 				_buffers.pos_render_dropped = 0;
 			};
 		}
@@ -607,7 +611,7 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 	char filename[1024];
 	sprintf(filename,"outputs/%s.dll",name);
 
-	printf("vzOuput: Loading '%s' ... ",filename);
+	logger_printf(0, "vzOuput: Loading '%s' ... ",filename);
 
 	// try load
 	_lib = LoadLibrary(filename);
@@ -615,12 +619,12 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 	// check if lib is loaded
 	if (!_lib)
 	{
-		printf("Failed!\n");
+		logger_printf(1, "vzOuput: Failed to load '%s'",filename);
 		return;
 	};
-	printf("Loaded!\n");
+	logger_printf(0, "vzOuput: Loaded '%s'",filename);
 
-	printf("vzOuput: Looking for procs ... ");
+	logger_printf(0, "vzOuput: Looking for procs ... ");
 	// try to load pionters to libs
 	if
 	(
@@ -641,31 +645,31 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 		(AssignBuffers = (output_proc_vzOutput_AssignBuffers)GetProcAddress(_lib,"vzOutput_AssignBuffers"))
 	)
 	{
-		printf("OK!\n");
 		// all loaded
+		logger_printf(0, "vzOuput: All procs loaded");
 
 		// set config
-		printf("vzOutput: submitting config ... ");
+		logger_printf(0, "vzOutput: submitting config");
 		SetConfig(_config);
-		printf("OK\n");
+		logger_printf(0, "vzOutput: config submitted");
 
 		// initializ
-		printf("vzOuput: find output board '%s' ... ",name);
+		logger_printf(0, "vzOuput: found output board '%s'",name);
 		int c = FindBoard(NULL);
-		printf(" Found %d boards\n",c);
 		if(c)
 		{
 			int board_id = 0;
+			logger_printf(0, "vzOuput: found %d output boards '%s'", c, name);
 
 			// selecting board
-			printf("vzOutput: Selecting board '%d' ... ",board_id);
+			logger_printf(0, "vzOutput: Selecting board '%s:%d' ... ", name, board_id);
 			SelectBoard(0,NULL);
-			printf("OK\n");
+			logger_printf(0, "vzOutput: Selected board '%s:%d'", name, board_id);
 
 			// init board
-			printf("vzOutput: Init board '%d' ... ",board_id);
+			logger_printf(0, "vzOutput: Init board '%s:%d' ... ", name, board_id);
 			InitBoard(_tv);
-			printf("OK\n");
+			logger_printf(0, "vzOutput: Initizalized board '%s:%d'", name, board_id);
 
 			/* init INPUT/OUTPUT buffers here */
 			{
@@ -790,15 +794,14 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 			SetSync = (output_proc_vzOutput_SetSync)GetProcAddress(_lib,"vzOutput_SetSync");
 
 			// starting loop
-			printf("vzOutput: Start Ouput Thread... ");
+			logger_printf(0, "vzOutput: Start Ouput Thread... ");
 			StartOutputLoop(this);
-			printf("OK\n");
-
+			logger_printf(0, "vzOutput: Started Ouput Thread");
 			return;
 		};
 	};
 
-	printf("Failed!\n");
+	logger_printf(1, "vzOuput: Failed procs lookup");
 
 	// unload library
 	FreeLibrary(_lib);

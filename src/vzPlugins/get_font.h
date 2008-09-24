@@ -34,7 +34,7 @@ static vzTTFont* get_font(char* name, struct vzTTFontParams* params)
 	if(!temp->ready())
 	{
 #ifdef _DEBUG
-		printf("FAILED(not loaded)\n");
+		logger_printf(0, "get_font.h: FAILED(not loaded)");
 #endif
 
 		delete temp;
@@ -48,7 +48,7 @@ static vzTTFont* get_font(char* name, struct vzTTFontParams* params)
 	ReleaseMutex(_fonts_list_lock);
 
 #ifdef _DEBUG
-		printf("OK(added)\n");
+		logger_printf(0, "get_font.h: OK(added)");
 #endif
 
 	

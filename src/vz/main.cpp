@@ -23,6 +23,7 @@
 ChangeLog:
     2008-09-24:
         *VGA screen scale support
+		*logger use for message outputs
 
 	2008-09-23:
 		*vzTVSpec rework
@@ -77,6 +78,7 @@ ChangeLog:
 #include "vzImage.h"
 #include "vzTVSpec.h"
 #include "vzTTFont.h"
+#include "vzLogger.h"
 
 #include "tcpserver.h"
 #include "serserver.h"
@@ -747,7 +749,7 @@ static int vz_create_window()
 	/* register the window class */
 	if (RegisterClassEx(&wndClass) == 0)
 	{
-		fprintf(stderr, "ERROR: Failed to register the window class!\n");
+		logger_printf(1, "ERROR: Failed to register the window class!");
 		return -1;
 	};
 
@@ -786,7 +788,7 @@ static int vz_create_window()
 	);					
 	if(0 == vz_window_desc.wnd ) 
     {
-		fprintf(stderr, "ERROR: Unable to create window! [%d]\n", GetLastError());
+		logger_printf(1, "ERROR: Unable to create window! [%d]", GetLastError());
 		vz_destroy_window();
 		return -2;
     };
@@ -796,7 +798,7 @@ static int vz_create_window()
 	if (!vz_window_desc.hdc ) 
     {
 		vz_destroy_window();
-		fprintf( stderr, "ERROR: Unable to get a device context!\n");
+		logger_printf(1, "ERROR: Unable to get a device context!");
 		return -3;
     };
 
@@ -825,7 +827,7 @@ static int vz_create_window()
 	if(0 == PixelFormat)
 	{
 		vz_destroy_window();
-		fprintf( stderr, "ERROR: Unable to find a suitable pixel format\n");
+		logger_printf(1, "ERROR: Unable to find a suitable pixel format");
 		return -4;
     };
 
@@ -834,7 +836,7 @@ static int vz_create_window()
 	if(!SetPixelFormat(vz_window_desc.hdc, PixelFormat, &pfd))
     {
 		vz_destroy_window();
-		fprintf( stderr, "ERROR: Unable to set the pixel format\n");
+		logger_printf(1, "ERROR: Unable to set the pixel format");
 		return -5;
     };
 
@@ -843,7 +845,7 @@ static int vz_create_window()
 	if(0 == vz_window_desc.glrc)
     {
 		vz_destroy_window();
-		fprintf( stderr, "ERROR: Unable to create an OpenGL rendering context\n");
+		logger_printf(1, "ERROR: Unable to create an OpenGL rendering context");
 		return -6;
     };
 
@@ -851,7 +853,7 @@ static int vz_create_window()
 	if(!wglMakeCurrent (vz_window_desc.hdc, vz_window_desc.glrc))
     {
 		vz_destroy_window();
-		fprintf( stderr, "ERROR: Unable to activate OpenGL rendering context");
+		logger_printf(1, "ERROR: Unable to activate OpenGL rendering context");
 		return -7;
     };
 
@@ -862,7 +864,7 @@ static int vz_create_window()
 	if (0 != init_fbo())
 	{
 		vz_destroy_window();
-		fprintf( stderr, "ERROR: FBO not supported by hardware\n");
+		logger_printf(1, "ERROR: FBO not supported by hardware");
 		return -7;
     };
 
@@ -932,9 +934,6 @@ int main(int argc, char** argv)
 }
 #endif /* _DEBUG */
 
-	// hello message
-	printf("%s (vz-%s) [controller]\n",VZ_TITLE, VZ_VERSION);
-
 	// analization of params
 	application = *argv;
 	argc--;argv++;	// skip own name
@@ -960,10 +959,16 @@ int main(int argc, char** argv)
 			parse_args = 0;
 	};
 
+	/* setup logger */
+	logger_setup("vz.log", 3600*24, 0);
+
+	/* hello message */
+	logger_printf(0, "%s (vz-%s) [controller]",VZ_TITLE, VZ_VERSION);
+
 	// loading config
-	printf("Loading config file '%s'...",config_file);
+	logger_printf(0, "Loading config file '%s'...", config_file);
 	config = vzConfigOpen(config_file);
-	printf("Loaded!\n");
+	logger_printf(0, "Config file Loaded!");
 
 	// clear screenshot filename
 	screenshot_file[0] = 0;
@@ -975,15 +980,15 @@ int main(int argc, char** argv)
 	char *output_module_name = vzConfigParam(config,"main","output");
 	if(output_module_name)
 	{
-		printf("Loading output module '%s'...",output_module_name);
+		logger_printf(0, "Loading output module '%s'...", output_module_name);
 		output_module = vzOutputNew(config,output_module_name,&tv);
 		if (!(vzOutputReady(output_module)))
 		{
-			printf("Failed\n");
+			logger_printf(1, "Failed to load '%s'", output_module_name);
 			vzOutputFree(output_module);
 		}
 		else
-			printf("OK\n");
+			logger_printf(0, "Module '%s' loaded", output_module_name);
 	};
 
 	/* add font path */
@@ -1046,7 +1051,7 @@ int main(int argc, char** argv)
 			scene = vzMainSceneNew(functions,config,&tv);
 			if (!vzMainSceneLoad(scene, scene_file))
 			{
-				printf("Error!!! Unable to load scene '%s'\n",scene_file);
+				logger_printf(1, "Unable to load scene '%s'",scene_file);
 				vzMainSceneFree(scene);
 			};
 			scene_file = NULL;

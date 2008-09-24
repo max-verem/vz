@@ -22,6 +22,9 @@
 
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
 	2008-09-23:
 		*vzTVSpec rework
 
@@ -68,6 +71,7 @@ ChangeLog:
 #include "../vz/vzOutputInternal.h"
 #include "../vz/vzMain.h"
 #include "../vz/vzTVSpec.h"
+#include "../vz/vzLogger.h"
 
 #include <stdio.h>
 
@@ -82,7 +86,7 @@ ChangeLog:
 
 #define dump_line {};
 #ifndef dump_line
-#define dump_line fprintf(stderr, __FILE__ ":%d\n", __LINE__); fflush(stderr);
+#define dump_line logger_printf(w, __FILE__ ":%d", __LINE__);
 #endif
 
 /* ------------------------------------------------------------------
@@ -372,7 +376,7 @@ static unsigned long WINAPI io_in_a(void* p)
 
 #ifdef _DEBUG
 	/* log status */
-	fprintf(stderr, "n=%d, tail=%d, l=%d, l1=%d, l2=%d\n", n, ca.tail, l, l1, l2);
+	logger_printf(2, MODULE_PREFIX "n=%d, tail=%d, l=%d, l1=%d, l2=%d", n, ca.tail, l, l1, l2);
 #endif /* _DEBUG */
 
 	/* demultiplex buffers */
@@ -399,12 +403,12 @@ static unsigned long WINAPI io_in_a(void* p)
 	/* check under/overflow */
 	if(ca.tail < 0)
 	{
-		fprintf(stderr, "audio resync #1: tail=%d\n", ca.tail);
+		logger_printf(2, MODULE_PREFIX "audio resync #1: tail=%d", ca.tail);
 		ca.tail = 0;//VZOUTPUT_AUDIO_SAMPLES*ca.sample_size;
 	};
 	if(ca.tail >= (2*VZOUTPUT_AUDIO_SAMPLES)) 
 	{
-		fprintf(stderr, "audio resync #2: tail=%d\n", ca.tail);
+		logger_printf(2, MODULE_PREFIX "audio resync #2: tail=%d", ca.tail);
 		ca.tail = 0;//VZOUTPUT_AUDIO_SAMPLES*ca.sample_size;
 	};
 
@@ -441,7 +445,7 @@ static unsigned long WINAPI io_out_a(void* p)
 	dump_line;
 
 #ifdef _DEBUG
-//		fprintf(stderr, "a_out: c=%d, l1=%d, l2=%d\n", c, l1, l2);
+//	logger_printf(2, MODULE_PREFIX "a_out: c=%d, l1=%d, l2=%d", c, l1, l2);
 #endif /* _DEBUG */
 
 	};
@@ -485,12 +489,12 @@ static unsigned long WINAPI io_out(void* p)
 		}
 		else
 		{
-			fprintf(stderr, MODULE_PREFIX "'buffer_id' failed for 'video_playback_allocate'\n");
+			logger_printf(1, MODULE_PREFIX "'buffer_id' failed for 'video_playback_allocate'");
 		};
 	}
 	else
 	{
-		fprintf(stderr, MODULE_PREFIX "'video_playback_allocate' failed\n");
+		logger_printf(1, MODULE_PREFIX "'video_playback_allocate' failed");
 	};
 
 	return 0;
@@ -577,7 +581,7 @@ static unsigned long WINAPI io_in(void* p)
 				if(remain_count < MAX_FRAMES_REMAINS)
 				{
 					/* notify */
-					fprintf(stderr, MODULE_PREFIX "dropped frames counter %d+%d\n", 
+					logger_printf(2, MODULE_PREFIX "dropped frames counter %d+%d", 
 						dropped_counts[desc->id], dropped_count - dropped_counts[desc->id]);
 
 					/* sync */
@@ -601,7 +605,7 @@ static unsigned long WINAPI io_in(void* p)
 					bluefish[desc->id]->video_capture_compost(buffer_id);
 
 					/* notify */
-					fprintf(stderr, MODULE_PREFIX "(%ld) recycled on [%d] 1 frame, remains = %d->%d, buffer_id=%d\n", 
+					logger_printf(0, MODULE_PREFIX "(%ld) recycled on [%d] 1 frame, remains = %d->%d, buffer_id=%d", 
 						timeGetTime(), desc->id, remain_count, remain_count_temp, buffer_id);
 
 					/* update last recylced time */
@@ -615,7 +619,7 @@ static unsigned long WINAPI io_in(void* p)
 			if (dropped_count != dropped_counts[desc->id])
 			{
 				/* notify */
-				fprintf(stderr, MODULE_PREFIX "[%d] dropped %d->%d (remain=%d)\n", 
+				logger_printf(1, MODULE_PREFIX "[%d] dropped %d->%d (remain=%d)", 
 					desc->id, dropped_counts[desc->id], dropped_count, remain_count);
 
 				/* sync */
@@ -629,12 +633,12 @@ static unsigned long WINAPI io_in(void* p)
 		}
 		else
 		{
-			fprintf(stderr, MODULE_PREFIX "'buffer_id' failed for 'video_capture_harvest[%d]'\n", desc->id);
+			logger_printf(1, MODULE_PREFIX "'buffer_id' failed for 'video_capture_harvest[%d]'", desc->id);
 		};
 	}
 	else
 	{
-		fprintf(stderr, MODULE_PREFIX "failed 'video_capture_harvest[%d]'\n", desc->id);
+		logger_printf(1, MODULE_PREFIX "failed 'video_capture_harvest[%d]'", desc->id);
 	};
 
 	dump_line;
@@ -691,7 +695,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 			};
 		};
 	};
-	fprintf(stdout, MODULE_PREFIX "input buffers: 0x%.8X/0x%.8X, 0x%.8X/0x%.8X\n", 
+	logger_printf(0, MODULE_PREFIX "input buffers: 0x%.8X/0x%.8X, 0x%.8X/0x%.8X", 
 		(unsigned long)input_mapped_buffers[0][0], (unsigned long)input_mapped_buffers[0][1],
 		(unsigned long)input_mapped_buffers[1][0], (unsigned long)input_mapped_buffers[1][1]);
 	
@@ -719,7 +723,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 		)
 	)
 	{
-		fprintf(stderr, MODULE_PREFIX "ERROR!! CRITICAL!!! RESTART PC - Buffers are NULL\n");
+		logger_printf(1, MODULE_PREFIX "ERROR!! CRITICAL!!! RESTART PC - Buffers are NULL");
 		exit(-1);
 	};
 
@@ -759,7 +763,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 
 
 	/* notify */
-	fprintf(stderr, MODULE_PREFIX "'main_io_loop' started\n");
+	logger_printf(0, MODULE_PREFIX "'main_io_loop' started");
 
 	/* skip 2 cyrcles */
 	bluefish[0]->wait_output_video_synch(update_format, f1);
@@ -883,7 +887,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 			else
 			{
 				/* notify about start of unsynced render */
-				fprintf(stderr, MODULE_PREFIX "unsync render started, this delays in %d milisec\n",  (B - A) - 40);
+				logger_printf(2, MODULE_PREFIX "unsync render started, this delays in %d milisec",  (B - A) - 40);
 			};
 
 			/* unsync render continues - 
@@ -896,7 +900,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 			/* no overrun happend - reset sskip sync and notify */
 			if(0 != skip_wait_sync)
 			{
-				fprintf(stderr, MODULE_PREFIX "sync render restored after %d frames\n",  skip_wait_sync);
+				logger_printf(2, MODULE_PREFIX "sync render restored after %d frames",  skip_wait_sync);
 				skip_wait_sync = 0;
 			};
 		};
@@ -951,7 +955,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 	};
 
 	/* notify */
-	fprintf(stderr, MODULE_PREFIX "'main_io_loop' finished\n");
+	logger_printf(0, MODULE_PREFIX "'main_io_loop' finished");
 
 	return 0;
 };
@@ -989,11 +993,11 @@ static int bluefish_init(int board_id)
 	bluefish[0] = BlueVelvetFactory4();
 	bluefish[1] = BlueVelvetFactory4();
 	bluefish[2] = BlueVelvetFactory4();
-	printf(MODULE_PREFIX "%s\n", BlueVelvetVersion());
+	logger_printf(0, MODULE_PREFIX "%s", BlueVelvetVersion());
 
 	/* find boards */
 	r = bluefish[0]->device_enumerate(boards_count);
-	printf(MODULE_PREFIX "Found %d boards\n", boards_count);
+	logger_printf(0, MODULE_PREFIX "Found %d boards", boards_count);
 
 	/* check for boards present */
 	if (0 == boards_count)
@@ -1038,7 +1042,7 @@ static void bluefish_configure_matrix(void)
 			routes[0].propType  = BLUE_CONNECTOR_PROP_SINGLE_LINK;
 			r = blue_set_connector_property(bluefish_obj, 1, routes);
 
-			fprintf(stdout, "bluefish: '%s=%s' is active (r=%d)\n", 
+			logger_printf(0, MODULE_PREFIX "'%s=%s' is active (r=%d)", 
 				O_PROGRAM_ANALOG_OUTPUT, CONFIG_O(O_PROGRAM_ANALOG_OUTPUT), r);
 
 			/* continue configure new routing matrix */
@@ -1063,7 +1067,7 @@ static void bluefish_configure_matrix(void)
 			r2 = blue_set_connector_property(bluefish_obj, 1, &routes[1]);
 
 			/* notify */
-			fprintf(stdout, "bluefish: '%s' is active (r1=%d, r2=%d)\n", O_PROGRAM_SDI_DUPLICATE, r1, r2);
+			logger_printf(0, MODULE_PREFIX "'%s' is active (r1=%d, r2=%d)", O_PROGRAM_SDI_DUPLICATE, r1, r2);
 		}
 		else
 		{
@@ -1072,7 +1076,7 @@ static void bluefish_configure_matrix(void)
 			{
 				routes[0].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_2;
 				routes[1].propType = BLUE_CONNECTOR_PROP_DUALLINK_LINK_1;
-				fprintf(stdout, "bluefish: '%s' is active\n", O_PROGRAM_OUTPUT_SWAP);
+				logger_printf(0, MODULE_PREFIX "'%s' is active", O_PROGRAM_OUTPUT_SWAP);
 			};
 
 			r = blue_set_connector_property(bluefish_obj, 2, routes);
@@ -1305,7 +1309,7 @@ static void bluefish_configure(void)
 
 	/* timing */
 	r = bluefish[0]->get_timing_adjust(h_phase, v_phase, h_phase_max, v_phase_max);
-	printf(MODULE_PREFIX "current h_phase=%ld, v_phase=%ld, h_phase_max=%ld, v_phase_max=%ld\n", h_phase, v_phase, h_phase_max, v_phase_max);
+	logger_printf(0, MODULE_PREFIX "current h_phase=%ld, v_phase=%ld, h_phase_max=%ld, v_phase_max=%ld", h_phase, v_phase, h_phase_max, v_phase_max);
 	/*warn about GENLOCK */
 	if
 	(
@@ -1313,7 +1317,7 @@ static void bluefish_configure(void)
 		||
 		(0 == v_phase_max)
 	)
-		printf(MODULE_PREFIX "WARNING! GENLOCK failed!\n");
+		logger_printf(1, MODULE_PREFIX "WARNING! GENLOCK failed!");
 	if(NULL != CONFIG_O(O_H_PHASE_OFFSET))
 		h_phase += atol(CONFIG_O(O_H_PHASE_OFFSET));
 	if(NULL != CONFIG_O(O_V_PHASE_OFFSET))
@@ -1358,9 +1362,10 @@ static void bluefish_configure(void)
 				(blue_auto_aes_to_emb_audio_encoder | blue_emb_audio_enable | blue_emb_audio_group1_enable)
 				:
 				0;
-			printf
+			logger_printf
 			(
-				MODULE_PREFIX "Enabling SDI embedded output (err=%d)\n",
+				0, 
+				MODULE_PREFIX "Enabling SDI embedded output (err=%d)",
 				r = blue_set_video_property(bluefish_obj, 1, &prop)
 			);
 		};
@@ -1403,7 +1408,7 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 	/* detect SSE2 support */
 	DUPL_LINES_ARCH_SSE2_DETECT;
 	/* report */
-	printf(MODULE_PREFIX "%s detected\n", (sse_supported)?"SSE2":"NO SEE2");
+	logger_printf(0, MODULE_PREFIX "%s detected", (sse_supported)?"SSE2":"NO SEE2");
 #endif /* DUPL_LINES_ARCH */
 
 	/* configure */
@@ -1567,7 +1572,7 @@ BOOL APIENTRY DllMain
 			timeEndPeriod(1);
 			
 			/* wait all finished */
-			fprintf(stderr, MODULE_PREFIX "waiting loop end\n");
+			logger_printf(0, MODULE_PREFIX "waiting loop end");
 			flag_exit = 1;
 			if (INVALID_HANDLE_VALUE != main_io_loop_thread)
 			{
@@ -1585,7 +1590,7 @@ BOOL APIENTRY DllMain
 				bluefish[2]->video_capture_stop(); */
 
 			/* deinit */
-			fprintf(stderr, MODULE_PREFIX "force bluefish deinit\n");
+			logger_printf(0, MODULE_PREFIX "force bluefish deinit");
 			bluefish_destroy();
 
 			/* free HANC buffers */

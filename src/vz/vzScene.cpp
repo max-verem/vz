@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
 	2008-09-23:
 		*vzTVSpec rework
 
@@ -109,6 +112,7 @@ ChangeLog:
 #include <windows.h>
 #include "vzGlExt.h"
 #include "../vzCmd/vz_cmd.h"
+#include "vzLogger.h"
 
 static const unsigned short tag_tree[] = {'t', 'r', 'e', 'e',0};
 static const unsigned short tag_motion[] = {'m', 'o', 't', 'i', 'o', 'n',0};
@@ -132,12 +136,12 @@ vzScene::vzScene(vzFunctions* functions, void* config, vzTVSpec* tv)
 
 int vzScene::load(char* file_name)
 {
-	printf("Loading scene '%s'... ",file_name);
+	logger_printf(0, "Loading scene '%s'... ",file_name);
 
 	//init parser
 	XercesDOMParserX *parser = new XercesDOMParserX;
 
-	printf("Parsing... ");
+	logger_printf(0, "Parsing scene '%s'... ",file_name);
 
     try
     {
@@ -146,7 +150,7 @@ int vzScene::load(char* file_name)
     catch (...)
     {
 		delete parser;
-		printf("Failed!\n");
+		logger_printf(1, "Failed to parse scene '%s'",file_name);
 		return 0;
     }
 
@@ -154,7 +158,7 @@ int vzScene::load(char* file_name)
 	DOMDocumentX* doc = parser->getDocument();
 	if(!doc)
 	{
-		fprintf(stderr, "Failed load scene (NO Document)!\n");
+		logger_printf(1, "Failed load scene (NO Document)!");
 		delete parser;
 		return 0;
 	};
@@ -164,7 +168,7 @@ int vzScene::load(char* file_name)
 	/* check if scene properly loaded */
 	if(!(scene))
 	{
-		fprintf(stderr, "Failed load scene (NO Element)!\n");
+		logger_printf(1, "Failed load scene (NO Element)!");
 		delete parser;
 		return 0;
 	};
@@ -173,7 +177,7 @@ int vzScene::load(char* file_name)
 
 	unsigned int i;
 
-	printf("Looking for tree... ");
+	logger_printf(0, "Looking for tree... ");
 	// Find First <tree> and load into container
 	for(i=0;(i<scene_components->getLength()) && (_tree == NULL);i++)
 	{
@@ -187,14 +191,14 @@ int vzScene::load(char* file_name)
 		// check node name
 		if (XMLStringX::compareIString(scene_component->getNodeName(),tag_tree) == 0)
 		{
-			printf("Found containers.... ");
+			logger_printf(0, "Found containers.... ");
 			_tree = new vzContainer(scene_component,_functions,this);
-			printf("Loaded ");
+			logger_printf(0, "Containers loaded");
 			continue;
 		};
 	};
 
-	printf("Looking for motion... ");
+	logger_printf(0, "Looking for motion");
 	// Find First <motion? and load into _motion
 	for(i=0;(i<scene_components->getLength()) && (_motion == NULL);i++)
 	{
@@ -208,16 +212,16 @@ int vzScene::load(char* file_name)
 		// check node name
 		if (XMLStringX::compareIString(scene_component->getNodeName(),tag_motion) == 0)
 		{
-			printf("Found Motion!!.... ");
+			logger_printf(0, "Found Motion!!");
 			_motion = new vzMotion(scene_component,this);
-			printf("Loaded ");
+			logger_printf(0, "Loaded montion");
 			continue;
 		};
 	};
 
 	delete parser;
 
-	printf("OK!\n");
+	logger_printf(0, "Scene loaded OK!");
 
 	return 1;
 };
@@ -480,21 +484,21 @@ void vzScene::list_registred()
 {
 	unsigned int i;
 
-	printf(__FILE__ "::\t" "Registred functions instances: ");
+	logger_printf(0, "vzScene: Registred functions instances: ");
 	for(i=0;i<_id_functions.count();i++)
-		printf("'%s' ", _id_functions.key(i));
+		logger_printf(0, "|- '%s'", _id_functions.key(i));
 
-	printf(__FILE__ "::\t" "Registred containers instances: ");
+	logger_printf(0, "vzScene: Registred containers instances: ");
 	for(i=0;i<_id_containers.count();i++)
-		printf("'%s' ", _id_containers.key(i));
+		logger_printf(0, "|- '%s'", _id_containers.key(i));
 
-	printf(__FILE__ "::\t" "Registred directors instances: ");
+	logger_printf(0, "vzScene: Registred directors instances: ");
 	for(i=0;i<_id_directors.count();i++)
-		printf("'%s' ", _id_directors.key(i));
+		logger_printf(0, "|- '%s'", _id_directors.key(i));
 
-	printf(__FILE__ "::\t" "Registred timelines instances: ");
+	logger_printf(0, "vzScene: Registred timelines instances: ");
 	for(i=0;i<_id_timelines.count();i++)
-		printf("'%s' ", _id_timelines.key(i));
+		logger_printf(0, "|- '%s'", _id_timelines.key(i));
 };
 #endif
 
@@ -916,7 +920,7 @@ int vzScene::command(int cmd, int index, void* buf)
 				)
 			)
 			{
-				printf("\t*('%s', '%s', '%s')\n", function_id, field_name, field_value);
+				logger_printf(0, "vzScene: VZ_CMD_SET('%s', '%s', '%s')", function_id, field_name, field_value);
 				vzContainerFunction* func = _id_functions.find(function_id);
 				if(func)
 					func->set_data_param_fromtext(field_name, field_value);
@@ -948,7 +952,7 @@ int vzScene::command(int cmd, int index, void* buf)
 				)
 			)
 			{
-				printf("\t*('%s', '%d')\n", container_id, *v);
+				logger_printf(0, "vzScene: VZ_CMD_CONTAINER_VISIBLE('%s', '%d')", container_id, *v);
 				vzContainer* container = _id_containers.find(container_id);
 				if(container)
 					container->visible(*v);
@@ -982,7 +986,7 @@ int vzScene::command(int cmd, int index, void* buf)
 				)
 			)
 			{
-				printf("\t*('%s', '%d')\n", director_id, (frame)?*frame:-1);
+				logger_printf(0, "vzScene: VZ_CMD_???_DIRECTOR('%s', '%d')\n", director_id, (frame)?*frame:-1);
 				vzMotionDirector* director = _id_directors.find(director_id);
 				if(director)
 				{

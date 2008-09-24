@@ -2,7 +2,7 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2005 Maksym Veremeyenko.
+    Copyright (C) 2008 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
     Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2005.
 
@@ -22,7 +22,7 @@
 
 ChangeLog:
     2008-09-24:
-        *VGA screen scale support
+        *intergrate logger code
 
 	2008-09-23:
 		*vzTVSpec rework
@@ -54,6 +54,7 @@ ChangeLog:
 #include "vzScene.h"
 #include "vzConfig.h"
 #include "vzTVSpec.h"
+#include "vzLogger.h"
 
 #include <stdio.h>
 
@@ -75,7 +76,6 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 				XMLPlatformUtilsX::Terminate();
 				return FALSE;
 		    }
-			printf("Loading vzMain-%s\n", VZ_VERSION);
 			break;
 		case DLL_THREAD_ATTACH:
 			break;

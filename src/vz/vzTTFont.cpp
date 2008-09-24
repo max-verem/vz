@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
 	2007-11-16: 
 		*Visual Studio 2005 migration.
 
@@ -42,6 +45,7 @@ ChangeLog:
 
 #include "vzTTFont.h"
 #include "unicode.h"
+#include "vzLogger.h"
 
 #include <windows.h>
 #include <math.h>
@@ -845,7 +849,7 @@ static inline void blit_glyph(unsigned long* dst, long dst_width, unsigned char*
 #ifdef _DEBUG
 			if (dst > dst_limit)
 			{
-				fprintf(stderr, "Assert in 'blit_glyph' - dst > dst_limit\n");
+				logger_printf(1, "vzTTFong: Assert in 'blit_glyph' - dst > dst_limit");
 			}
 			else
 			{
@@ -978,7 +982,7 @@ try
 catch(char *error_string)
 {
 	// try to log (may by utf convertion fails?
-	fprintf(stderr, "Error happens: '%s' \n", error_string);
+	logger_printf(1, "vzTTFont: Error happens: '%s'", error_string);
 };
 #endif
 

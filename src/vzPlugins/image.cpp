@@ -381,17 +381,31 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			);
 
 #ifdef VERBOSE1
-			printf
+			logger_printf
 			(
-				"\n"
-				"1: (%7.3f,%7.3f) -> (%7.3f,%7.3f)\n"
-				"2: (%7.3f,%7.3f) -> (%7.3f,%7.3f)\n"
-				"3: (%7.3f,%7.3f) -> (%7.3f,%7.3f)\n"
-				"4: (%7.3f,%7.3f) -> (%7.3f,%7.3f)\n",
+				1,
+				"image.cpp: 1: (%7.3f,%7.3f) -> (%7.3f,%7.3f)"
+				_DATA->f_x1, _DATA->f_y1, X1, Y1
+			);
 
-				_DATA->f_x1, _DATA->f_y1, X1, Y1,
-				_DATA->f_x2, _DATA->f_y2, X2, Y2,
-				_DATA->f_x3, _DATA->f_y3, X3, Y3,
+			logger_printf
+			(
+				1,
+				"image.cpp: 2: (%7.3f,%7.3f) -> (%7.3f,%7.3f)"
+				_DATA->f_x2, _DATA->f_y2, X2, Y2
+			);
+
+			logger_printf
+			(
+				1,
+				"image.cpp: 3: (%7.3f,%7.3f) -> (%7.3f,%7.3f)"
+				_DATA->f_x3, _DATA->f_y3, X3, Y3
+			);
+
+			logger_printf
+			(
+				1,
+				"image.cpp: 4: (%7.3f,%7.3f) -> (%7.3f,%7.3f)",
 				_DATA->f_x4, _DATA->f_y4, X4, Y4
 			);
 #endif	/* VERBOSE1 */
@@ -594,7 +608,7 @@ static unsigned long WINAPI imageloader_proc(void* d)
 	void* data = desc->data;
 
 	/* notify */
-	printf("image: imageloader_proc('%s')\n", desc->filename);
+	logger_printf(0, "image: imageloader_proc('%s')", desc->filename);
 
 	// load image
 	if(image = vzImageLoadTGA(desc->filename, &error_log))
@@ -619,7 +633,7 @@ static unsigned long WINAPI imageloader_proc(void* d)
 	}
 	else
 		// unable to load file
-		ERROR_LOG("Unable to load TGA file", error_log);
+		logger_printf(1, "image.cpp: Unable to load TGA file: [%s]", error_log);
 
 	/* free data */
 	free(d);
@@ -632,8 +646,6 @@ static unsigned long WINAPI imageloader_proc(void* d)
 PLUGIN_EXPORT void notify(void* data, char* param_name)
 {
 	struct imageloader_desc* desc;
-
-//	printf("image: notify('%s')\n", param_name);
 
 	//wait for mutext free
 	WaitForSingleObject(_DATA->_lock_update, INFINITE);

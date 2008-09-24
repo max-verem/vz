@@ -56,6 +56,7 @@ ChangeLog:
 #include "../vz/vzMain.h"
 #include "../vz/vzTVSpec.h"
 #include <stdio.h>
+#include "../vz/vzLogger.h"
 
 /* test patters */
 #define TP_COUNT 3
@@ -94,7 +95,7 @@ VZOUTPUTS_EXPORT void vzOutput_SetConfig(void* config)
 
 VZOUTPUTS_EXPORT long vzOutput_SelectBoard(unsigned long id,char** error_log = NULL)
 {
-	printf("nullvideo");
+	logger_printf(0, "nullvideo");
 	return id;
 };
 
@@ -270,12 +271,12 @@ unsigned long WINAPI output_loop(void* obj)
 			hr_sleep(&timer_data, 40 - C);
 		else
 		{
-			printf("nullvideo: %d miliseconds overrun\n", C - 40);
+			logger_printf(0, "nullvideo: %d miliseconds overrun", C - 40);
 			Sleep(0);
 		};
 
 #ifdef DEBUG_HARD_SYNC
-		printf("A=%d, B=%d, C=%d\n", A, B, C);
+		logger_printf(2, "A=%d, B=%d, C=%d", A, B, C);
 #endif /* DEBUG_HARD_SYNC */
 	};
 };
@@ -362,7 +363,7 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 	/* detect SSE2 support */
 	DUPL_LINES_ARCH_SSE2_DETECT;
 	/* report */
-	printf("nullvideo: %s detected\n", (sse_supported)?"SSE2":"NO SEE2");
+	logger_printf(0, "nullvideo: %s detected", (sse_supported)?"SSE2":"NO SEE2");
 #endif /* DUPL_LINES_ARCH */
 };
 

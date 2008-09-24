@@ -181,7 +181,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 	/* cast struct */
 	struct aviloader_desc* desc = (struct aviloader_desc*)p;
 
-	printf("avifile: aviloader_proc started('%s')\n", desc->filename);
+	logger_printf(0, "avifile: aviloader_proc started('%s')", desc->filename);
 
 	/* init AVI for this thread */
 #ifdef AVI_OP_LOCK
@@ -326,14 +326,14 @@ static unsigned long WINAPI aviloader_proc(void* p)
 										desc->buf_clear[i] = 0;
 										desc->buf_filled[i] = f + 1;
 #ifdef VERBOSE
-										printf("avifile: loaded frame %d into slot %d\n", f, i);
+										logger_printf(0, "avifile: loaded frame %d into slot %d", f, i);
 #endif /* VERBOSE */
 									}
 									else
 									{
 										/* setup flags */
 										desc->buf_fill[i] = 0;
-										printf("avifile: WARNING! AVIStreamGetFrame('%d') == NULL\n", desc->buf_frame[i]);
+										logger_printf(1, "avifile: WARNING! AVIStreamGetFrame('%d') == NULL", desc->buf_frame[i]);
 									}
 									Sleep(0);					/* allow context switch */
 								}
@@ -341,7 +341,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 								{
 									/* setup flags */
 									desc->buf_fill[i] = 0;
-									printf("avifile: WARNING! desc->buf_frame[%d] >= %d\n", desc->buf_frame[i], i, desc->frames_count);
+									logger_printf(1, "avifile: WARNING! desc->buf_frame[%d] >= %d", desc->buf_frame[i], i, desc->frames_count);
 								};
 							};
 
@@ -368,9 +368,9 @@ static unsigned long WINAPI aviloader_proc(void* p)
 					)
 					{
 						/* notify to console */
-						printf("avifile: aviloader_proc loaded '%s'\n", desc->filename);
+						logger_printf(0, "avifile: aviloader_proc loaded '%s'", desc->filename);
 #ifdef VERBOSE
-						printf("avifile: aviloader_proc waiting for real f_exit\n");
+						logger_printf(0, "avifile: aviloader_proc waiting for real f_exit");
 #endif /* VERBOSE */
 
 						desc->flag_exit = 0;
@@ -401,7 +401,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 				}
 				else
 				{
-					printf("avifile: ERROR! probe AVIStreamGetFrame(0) == NULL\n");
+					logger_printf(1, "avifile: ERROR! probe AVIStreamGetFrame(0) == NULL");
 				};
 
 				/* close frame pointer */
@@ -410,12 +410,12 @@ static unsigned long WINAPI aviloader_proc(void* p)
 			}
 			else
 			{
-				printf("avifile: ERROR! AVIStreamGetFrameOpen() == NULL\n");
+				logger_printf(1, "avifile: ERROR! AVIStreamGetFrameOpen() == NULL");
 			};
 		}
 		else
 		{
-			printf("avifile: ERROR! AVIStreamInfo() == 0x%.8X [%s]\n", hr, avi_err(hr));
+			logger_printf(1, "avifile: ERROR! AVIStreamInfo() == 0x%.8X [%s]", hr, avi_err(hr));
 		};
 
 		/* close avi stream */
@@ -428,7 +428,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 	}
 	else
 	{
-		printf("avifile: ERROR! AVIStreamOpenFromFile('%s') == 0x%.8X [%s]\n", desc->filename, hr, avi_err(hr));
+		logger_printf(1, "avifile: ERROR! AVIStreamOpenFromFile('%s') == 0x%.8X [%s]", desc->filename, hr, avi_err(hr));
 	};
 
 	/* setup flag of exiting */
@@ -443,7 +443,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 	ReleaseMutex(_avi_op_lock);
 #endif /* AVI_OP_LOCK */
 
-	printf("avifile: aviloader_proc exiting('%s')\n", desc->filename);
+	logger_printf(0, "avifile: aviloader_proc exiting('%s')", desc->filename);
 
 	/* exit thread */
 	return 0;
@@ -790,7 +790,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			/* free memory of fake image */
 			free(fake_frame);
 #ifdef VERBOSE
-			printf("avifile: reinitialized texture %dx%d\n", _DATA->_width, _DATA->_height);
+			logger_printf("avifile: reinitialized texture %dx%d", _DATA->_width, _DATA->_height);
 #endif /* VERBOSE */
 
 		};
@@ -825,7 +825,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			_DATA->_loaders[0]->buf_clear[ _DATA->_loaders[0]->cursor ] = 1;
 
 #ifdef VERBOSE
-			printf("avifile: loaded texture frame %d from slot %d\n", _DATA->_loaders[0]->buf_filled[ _DATA->_loaders[0]->cursor ], _DATA->_loaders[0]->cursor);
+			logger_printf(0, "avifile: loaded texture frame %d from slot %d", _DATA->_loaders[0]->buf_filled[ _DATA->_loaders[0]->cursor ], _DATA->_loaders[0]->cursor);
 #endif /* VERBOSE */
 		};
 
@@ -926,7 +926,7 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 			)
 			{
 #ifdef VERBOSE
-				printf("avifile: trying to shift cursor\n");
+				logger_printf(0, "avifile: trying to shift cursor");
 #endif /* VERBOSE */
 
 				/* determinate how shift frame position and cursor */
@@ -935,7 +935,7 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 					_DATA->_current_frame++;
 					_DATA->_loaders[0]->cursor = c;
 #ifdef VERBOSE
-					printf("avifile: shifted to current_frame=%d, _DATA->_loaders[0]->cursor=%d\n", _DATA->_current_frame, _DATA->_loaders[0]->cursor);
+					logger_printf(0, "avifile: shifted to current_frame=%d, _DATA->_loaders[0]->cursor=%d", _DATA->_current_frame, _DATA->_loaders[0]->cursor);
 #endif /* VERBOSE */
 				}
 				else
@@ -946,7 +946,7 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 						_DATA->_current_frame = 0;
 						_DATA->_loaders[0]->cursor = c;
 #ifdef VERBOSE
-						printf("avifile: loop condition detected\n");
+						logger_printf(0, "avifile: loop condition detected");
 #endif /* VERBOSE */
 
 					}
@@ -955,7 +955,7 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 						/* stop playing */
 						_DATA->_playing = 0;
 #ifdef VERBOSE
-						printf("avifile: end of file detected\n");
+						logger_printf(0, "avifile: end of file detected");
 #endif /* VERBOSE */
 					};
 				};
@@ -963,12 +963,12 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 			else
 			{
 #ifdef VERBOSE2
-				printf("avifile: no condition to shift cursor\n");
+				logger_printf(0, "avifile: no condition to shift cursor");
 #endif /* VERBOSE */
 
 #ifdef VERBOSE2
 			if(!(0 != _DATA->_loaders[0]->buf_filled[c]))
-				printf("avifile: _DATA->_loaders[0]->buf_filled[%d] == %d\n", c, _DATA->_loaders[0]->buf_filled[c]);
+				logger_printf(0, "avifile: _DATA->_loaders[0]->buf_filled[%d] == %d", c, _DATA->_loaders[0]->buf_filled[c]);
 #endif /* VERBOSE */
 
 			};
@@ -1097,7 +1097,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			center_vector(_DATA->L_center, _DATA->_loaders[0]->width, _DATA->_loaders[0]->height, co_X, co_Y);
 
 #ifdef VERBOSE2
-			printf("avifile: center_vector: co_X = %f, co_Y = %f\n", co_X, co_Y);
+			logger_printf(0, "avifile: center_vector: co_X = %f, co_Y = %f", co_X, co_Y);
 #endif /* VERBOSE */
 
 			// translate coordinate according to real image
@@ -1106,10 +1106,11 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 
 #ifdef VERBOSE2
 			if(_DATA->_playing)
-				printf
+				logger_printf
 				(
+					0,
 					"avifile: translate: co_X = %f, co_Y = %f "
-					"(_DATA->_loaders[0]->width=%d, _DATA->_loaders[0]->height=%d\n", 
+					"(_DATA->_loaders[0]->width=%d, _DATA->_loaders[0]->height=%d", 
 					co_X, co_Y,
 					_DATA->_loaders[0]->width, _DATA->_loaders[0]->height
 				); 

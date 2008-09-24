@@ -230,10 +230,10 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 #ifdef _DUMP_TEXT_PARAMS
 #define dump_text_params(___p)	\
 {								\
-	fprintf						\
+	logger_printf				\
 	(							\
-		stderr,					\
-		DEBUG_LINE_ARG  " text_params: s_text=%.8X, s_font=%.8X, l_height=%d, h_colour=%.8X\n", DEBUG_LINE_PARAM, \
+		2,					\
+		DEBUG_LINE_ARG  " text_params: s_text=%.8X, s_font=%.8X, l_height=%d, h_colour=%.8X", DEBUG_LINE_PARAM, \
 		(___p)->s_text, (___p)->s_font, (___p)->l_height, (___p)->h_colour	\
 	);							\
 };
@@ -258,7 +258,7 @@ static unsigned long WINAPI _async_renderer(void* data)
 	timeBeginPeriod(1);
 
 #ifdef _DEBUG
-	fprintf(stderr, DEBUG_LINE_ARG  "_async_renderer started\n", DEBUG_LINE_PARAM);
+	logger_printf(0, DEBUG_LINE_ARG  "_async_renderer started", DEBUG_LINE_PARAM);
 #endif /* _DEBUG */
 
 	while(!(_DATA->_exit_flag))
@@ -326,7 +326,7 @@ static unsigned long WINAPI _async_renderer(void* data)
 	};
 
 #ifdef _DEBUG
-	fprintf(stderr, DEBUG_LINE_ARG  "_async_renderer finished\n", DEBUG_LINE_PARAM);
+	logger_printf(0, DEBUG_LINE_ARG  "_async_renderer finished", DEBUG_LINE_PARAM);
 #endif /* _DEBUG */
 
 	timeEndPeriod(1);
@@ -384,7 +384,7 @@ PLUGIN_EXPORT void destructor(void* data)
 	if(WAIT_OBJECT_0 != (r = WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE)))
 	{
 #ifdef _DEBUG
-		fprintf(stderr, DEBUG_LINE_ARG  "unable to lock: %s\n", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
+		logger_printf(1, DEBUG_LINE_ARG  "unable to lock: %s", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
 #endif /* _DEBUG */
 		return;
 	};
@@ -598,7 +598,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 	}
 	else
 	{
-		fprintf(stderr, DEBUG_LINE_ARG  "unable to lock: %s\n", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
+		logger_printf(1, DEBUG_LINE_ARG  "unable to lock: %s", DEBUG_LINE_PARAM, (r == WAIT_ABANDONED)?"WAIT_ABANDONED":"WAIT_TIMEOUT");
 		return;
 #endif /* _DEBUG */
 	};

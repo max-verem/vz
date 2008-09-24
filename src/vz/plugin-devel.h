@@ -21,7 +21,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
-    2005-06-08: Code cleanup
+    2008-09-24:
+        *logger use for message outputs
+
+	2005-06-08: Code cleanup
 
 
 */
@@ -37,6 +40,7 @@ ChangeLog:
 #include <GL/glu.h>
 #include "vzGlExt.h"
 #include "vzVersion.h"
+#include "vzLogger.h"
 
 // dll exporst deals
 #define PLUGIN_EXPORT extern "C" __declspec(dllexport)
@@ -48,20 +52,6 @@ ChangeLog:
 // some debug output
 #define DEBUG_LINE_ARG "%s:%d: "
 #define DEBUG_LINE_PARAM __FILE__,__LINE__
-#ifdef _DEBUG
-#include <stdio.h>
-#define DEBUG_PROC_ENTRY(method,warning) printf(__FILE__ "::" method " '" warning "'\n");
-#else
-#define DEBUG_PROC_ENTRY(method,warning)
-#define DEBUG_LINE_ENTRY()
-#endif
-
-#ifdef _DEBUG
-#include <stdio.h>
-#define ERROR_LOG(MSG,LOG) fprintf(stderr, __FILE__ ":%d: " MSG " '%s'\n",__LINE__,LOG);
-#else
-#define ERROR_LOG(MSG,LOG) printf(__FILE__ ":%d: " MSG " '%s'\n",__LINE__,LOG);
-#endif
 
 #define _DATA ((vzPluginData*)data)
 /*

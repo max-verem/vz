@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
 	2007-11-18:
 		*VS2005 migrations patches
 
@@ -38,6 +41,7 @@ ChangeLog:
 #include "vzImage.h"
 #include "vzTVSpec.h"
 #include "../vzCmd/vz_cmd.h"
+#include "vzLogger.h"
 
 extern void* scene;	// scene loaded
 extern HANDLE scene_lock;
@@ -67,7 +71,7 @@ unsigned long WINAPI serserver(void* _config)
 	// check if server is enabled
 	if(!vzConfigParam(_config,"serserver","enable"))
 	{
-		printf("serserver: disabled\n");
+		logger_printf(0, "serserver: disabled");
 		ExitThread(0);
 	}
 
@@ -91,7 +95,7 @@ unsigned long WINAPI serserver(void* _config)
     // check port opens
     if (INVALID_HANDLE_VALUE == serial_port_handle)
     {
-    	printf("serserver: ERROR! Unable to open port '%s' [err: %d]\n",serial_port_name, GetLastError());
+    	logger_printf(1, "serserver: Unable to open port '%s' [err: %d]",serial_port_name, GetLastError());
     	ExitThread(0);
     };
 
@@ -107,7 +111,7 @@ unsigned long WINAPI serserver(void* _config)
     lpdcb.fBinary = 1;
     if (!(SetCommState(serial_port_handle, &lpdcb)))
     {
-	  	printf("serserver: ERROR! Unable to configure '%s' [err: %d]\n",serial_port_name, GetLastError());
+	  	logger_printf(1, "serserver: Unable to configure '%s' [err: %d]",serial_port_name, GetLastError());
     	ExitThread(0);
     };
 
@@ -120,7 +124,7 @@ unsigned long WINAPI serserver(void* _config)
     comTimeOut.WriteTotalTimeoutConstant = 250;
     if (!(SetCommTimeouts(serial_port_handle,&comTimeOut)))
     {
-    	printf("serserver: ERROR: Unable to setup timeouts\n");
+    	logger_printf(1, "serserver: Unable to setup timeouts");
     	ExitThread(0);
     };
 
@@ -132,7 +136,7 @@ unsigned long WINAPI serserver(void* _config)
 
 	/* "endless" loop */
 	int nak = 0;
-	printf("serserver: started on port %s\n", serial_port_name);
+	logger_printf(0, "serserver: started on port %s", serial_port_name);
 	for(;0 == f_exit;)
 	{
 		HRESULT h;
@@ -199,12 +203,11 @@ unsigned long WINAPI serserver(void* _config)
 			char* filename;
 			int cmd = vz_serial_cmd_id(buf, i);
 			char* cmd_name = vz_cmd_get_name(cmd);
-			printf("serserver: %s\n", cmd_name);
+			logger_printf(0, "serserver: %s", cmd_name);
 
 			switch(cmd)
 			{
 				case VZ_CMD_PING:
-//					printf("\n");
 					break;
 
 				case VZ_CMD_LOAD_SCENE:
@@ -213,7 +216,7 @@ unsigned long WINAPI serserver(void* _config)
 					vz_serial_cmd_parseNmap(buf, i, &filename);
 
 					/* notify */
-					printf("\t*('%s')\n", filename);
+					logger_printf(0, "serserver: *('%s')", filename);
 
 					// lock scene
 					WaitForSingleObject(scene_lock,INFINITE);
@@ -241,7 +244,7 @@ unsigned long WINAPI serserver(void* _config)
 					vz_serial_cmd_parseNmap(buf, i, &filename);
 					
 					/* notify */
-					printf("\t*('%s')\n", filename);
+					logger_printf(0, "('%s')", filename);
 
 					// lock scene
 					WaitForSingleObject(scene_lock, INFINITE);

@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *logger use for message outputs
+
     2005-06-08: Code cleanup
 
 */
@@ -28,6 +31,7 @@ ChangeLog:
 
 #include "vzFunctions.h"
 #include "plugin.h"
+#include "vzLogger.h"
 
 #include <io.h>
 #include <stdio.h>
@@ -60,7 +64,7 @@ void vzFunctions::load()
 			char function_file[1024];
 			sprintf(function_file, PLUGIN_PATH "%s",fd.name);
 
-			printf("Loading function file: '%s'... ",function_file);
+			logger_printf(0, "Loading function file: '%s'... ", function_file);
 			// init function object
 			vzFunction* function = new vzFunction();
 			// load
@@ -70,9 +74,11 @@ void vzFunctions::load()
 			{
 				// store
 				push(function_name,function);
-				printf
+				logger_printf
 				(
-					"OK! (%s-%s)\n",
+					0,
+					"Loaded function file: '%s' (%s-%s)",
+					function_file,
 					function->info()->name,
 					function->info()->version
 				);
@@ -81,7 +87,7 @@ void vzFunctions::load()
 			{
 				// wrong dll? - delete object
 				delete function;
-				printf("Failed!\n");
+				logger_printf(1, "Failed to load: '%s'... ", function_file);
 			};
 
 		}
