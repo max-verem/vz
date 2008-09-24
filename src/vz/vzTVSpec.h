@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *VGA screen scale support
+
 	2008-09-23:
 		*vzTVSpec rework
 
@@ -65,6 +68,11 @@ struct _vzTVSpec
 
 	/* safe area */
 	struct _vzTVSpecSA* sa;
+
+	/* vga display parameters */
+	long VGA_SCALE;
+	long vga_width;
+	long vga_height;
 };
 typedef struct _vzTVSpec vzTVSpec;
 

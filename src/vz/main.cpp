@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *VGA screen scale support
+
 	2008-09-23:
 		*vzTVSpec rework
 
@@ -441,6 +444,10 @@ static void vz_scene_render(void)
 static void vz_scene_display(void)
 {
 	float X, Y;
+	float W, H;
+
+	float kW = ((float)tv.vga_width) / tv.TV_FRAME_WIDTH;
+	float kH = ((float)tv.vga_height) / tv.TV_FRAME_HEIGHT;
 
 	/* check if extensions loaded */
 	if(!(glExtInitDone)) 
@@ -485,25 +492,29 @@ static void vz_scene_display(void)
 
 			glBegin(GL_LINE_LOOP);
 
-			glVertex3i(tv.sa->x[i], tv.sa->y[i], 0);
-			glVertex3i(tv.TV_FRAME_WIDTH - tv.sa->x[i], tv.sa->y[i], 0);
-			glVertex3i(tv.TV_FRAME_WIDTH - tv.sa->x[i], tv.TV_FRAME_HEIGHT - tv.sa->y[i], 0);
-			glVertex3i(tv.sa->x[i], tv.TV_FRAME_HEIGHT - tv.sa->y[i], 0);
+			glVertex3f(kW * tv.sa->x[i], kH * tv.sa->y[i], 0.0f);
+			glVertex3f(kW * (tv.TV_FRAME_WIDTH - tv.sa->x[i]), kH * tv.sa->y[i], 0.0f);
+			glVertex3f(kW * (tv.TV_FRAME_WIDTH - tv.sa->x[i]), kH * (tv.TV_FRAME_HEIGHT - tv.sa->y[i]), 0.0f);
+			glVertex3f(kW * tv.sa->x[i], kH * (tv.TV_FRAME_HEIGHT - tv.sa->y[i]), 0.0f);
 
 			glEnd();
 		};
 	};
-
 
 	/* draw texture */
 	{
 		// begin drawing
 		glEnable(GL_TEXTURE_2D);
 
+		/* calc texture geoms */
+		W = (float)fbo.color_tex_width;
+		H = (float)fbo.color_tex_height; 
+		W *= kW;
+		H *= kH;
 
 		// draw rendered image
 
-		X = 0.0f, Y = 0.0f;
+		X = 0.0f; Y = 0.0f;
 		glBindTexture(GL_TEXTURE_2D, fbo.color_tex[fbo.index]);
 
 		// Draw a quad (ie a square)
@@ -515,13 +526,13 @@ static void vz_scene_display(void)
 		glVertex3f(X, Y, 0.0f);
 
 		glTexCoord2f(0.0f, 1.0f);
-		glVertex3f(X, Y + (float)fbo.color_tex_height, 0.0f);
+		glVertex3f(X, Y + H, 0.0f);
 
 		glTexCoord2f(1.0f, 1.0f);
-		glVertex3f(X + (float)fbo.color_tex_width, Y + (float)fbo.color_tex_height, 0.0f);
+		glVertex3f(X + W, Y + H, 0.0f);
 
 		glTexCoord2f(1.0f, 0.0f);
-		glVertex3f(X + (float)fbo.color_tex_width, Y, 0.0f);
+		glVertex3f(X + W, Y, 0.0f);
 
 		glEnd(); // Stop drawing QUADS 
 
@@ -597,10 +608,13 @@ static void vz_scene_display(void)
 		sprintf
 		(
 			buf,
-			"Frame %ld, drawn in %ld miliseconds, distance in frames %ld",
+			"Frame: %ld; drawn in: %ld miliseconds; distance in frames: %ld; "
+			"tv mode: %s; vga scale: %d%%",
 			global_frame_no,
 			render_time,
-			global_frame_no - rendered_frames
+			global_frame_no - rendered_frames,
+			tv.NAME,
+			100 >> tv.VGA_SCALE
 		);
 		last_title_update = global_frame_no;
 		SetWindowText(vz_window_desc.wnd, buf);
@@ -750,9 +764,9 @@ static int vz_create_window()
 	/* prepare dimensions */
 	RECT rMain;
 	rMain.left		= 0;
-	rMain.right     = tv.TV_FRAME_WIDTH;
+	rMain.right     = tv.vga_width;
 	rMain.top       = 0;
-	rMain.bottom    = tv.TV_FRAME_HEIGHT;  
+	rMain.bottom    = tv.vga_height;  
 	AdjustWindowRect ( &rMain, dwStyle, 0);
 
 	/* Attempt to create the actual window. */

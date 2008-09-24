@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+    2008-09-24:
+        *VGA screen scale support
+
 	2008-09-23:
 		*vzTVSpec rework
 
@@ -372,6 +375,13 @@ VZMAIN_API void vzConfigTVSpec(void* config, char* module, void* spec)
 	MAP_P(TV_FRAME_DAR_V);
 	MAP_P(TV_FRAME_PAR_H);
 	MAP_P(TV_FRAME_PAR_V);
+	MAP_P(VGA_SCALE);
+
+	/* configure VGA screen parameters */
+
+	/* set scale */
+	temp->vga_height = temp->TV_FRAME_HEIGHT >> temp->VGA_SCALE;
+	temp->vga_width = temp->TV_FRAME_WIDTH >> temp->VGA_SCALE;
 };
 
 /* --------------------------------------------------------------------------
