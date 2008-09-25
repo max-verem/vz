@@ -373,8 +373,8 @@ VZMAIN_API void vzConfigTVSpec(void* config, char* module, void* spec)
 	MAP_P(TV_FRAME_PS_DEN);
 	MAP_P(TV_FRAME_DAR_H);
 	MAP_P(TV_FRAME_DAR_V);
-	MAP_P(TV_FRAME_PAR_H);
-	MAP_P(TV_FRAME_PAR_V);
+	MAP_P(TV_FRAME_PAR_NOM);
+	MAP_P(TV_FRAME_PAR_DEN);
 	MAP_P(VGA_SCALE);
 
 	/* configure VGA screen parameters */
@@ -382,6 +382,14 @@ VZMAIN_API void vzConfigTVSpec(void* config, char* module, void* spec)
 	/* set scale */
 	temp->vga_height = temp->TV_FRAME_HEIGHT >> temp->VGA_SCALE;
 	temp->vga_width = temp->TV_FRAME_WIDTH >> temp->VGA_SCALE;
+
+	/* check for wide */
+	if(NULL != (v = vzConfigParam(config, module, "WIDE_PAL")))
+	{
+		temp->TV_FRAME_PAR_NOM = 512;
+		temp->TV_FRAME_PAR_DEN = 351;
+	};
+	temp->vga_width = (temp->vga_width * temp->TV_FRAME_PAR_NOM) / temp->TV_FRAME_PAR_DEN;
 };
 
 /* --------------------------------------------------------------------------

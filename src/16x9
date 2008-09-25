@@ -1,0 +1,43 @@
+PAL wide mode (16:9) has pixel aspect ratio 512:351, so to honor that one
+it's possible to use config shortcut WIDE_PAL:
+
+vz.conf:
+[...]
+	<module name="tvspec">
+[...]
+		<param name="WIDE_PAL" value="defined"/>
+	</module>
+[...]
+
+or manualy override parameters, for example if you want 512:360, modifify
+config file:
+
+vz.conf:
+[...]
+	<module name="tvspec">
+[...]
+		<param name="TV_FRAME_PAR_NOM" value="512"/>
+		<param name="TV_FRAME_PAR_DEN" value="360"/>
+	</module>
+[...]
+
+Also scene additional midfications reqiured, you should assume that
+you will have a 1024 pixels width for scene (for PAL 16:9 mode), so
+if you want to center, translate to another H position:
+
+sample_scene.xml:
+[...]
+<tree visible="1">
+    <container visible="1">
+        <!-- center -->
+        <function name="translate">
+            <param name="f_x" value="512"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+            <!-- scene body here, assume width is 1024 -->
+[...]
+        </container>
+    </container>
+</tree>

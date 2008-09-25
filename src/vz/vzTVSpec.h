@@ -57,14 +57,14 @@ struct _vzTVSpec
 
 	/* frame rate */
 	long TV_FRAME_PS_NOM;		/** frame per sec nominator (chislitel) */
-	long TV_FRAME_PS_DEN;		/** frame per sec nominator (znamenatel) */
+	long TV_FRAME_PS_DEN;		/** frame per sec denominator (znamenatel) */
 
 	/* display/pixel aspect ratios */
 	long TV_FRAME_DAR_H;		/** display aspect ratio (16:, 4:)*/
 	long TV_FRAME_DAR_V;		/** display aspect ratio (:9, :3)*/
 
-	long TV_FRAME_PAR_H;		/** pixel aspect ratio */
-	long TV_FRAME_PAR_V;		/** pixel aspect ratio */
+	long TV_FRAME_PAR_NOM;		/** pixel aspect ratio nominator */
+	long TV_FRAME_PAR_DEN;		/** pixel aspect ratio denominator */
 
 	/* safe area */
 	struct _vzTVSpecSA* sa;

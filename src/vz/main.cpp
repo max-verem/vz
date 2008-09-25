@@ -630,7 +630,9 @@ static void vz_scene_display(void)
 -------------------------------------------------------------------------- */
 static void vz_window_reshape(int w, int h)
 {
-	w = tv.TV_FRAME_WIDTH; h = tv.TV_FRAME_HEIGHT;
+	w = (tv.TV_FRAME_WIDTH * tv.TV_FRAME_PAR_NOM) / tv.TV_FRAME_PAR_DEN;
+	h = tv.TV_FRAME_HEIGHT;
+
 	glViewport (0, 0, (GLsizei) w, (GLsizei) h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();

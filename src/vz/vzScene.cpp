@@ -379,9 +379,16 @@ void vzScene::display(long frame)
 				GL_ONE
 			);
 		};
-		
+
+		/* honor PAR - set H scale */
+		glPushMatrix();
+		glScalef(((float)_tv->TV_FRAME_PAR_DEN)/_tv->TV_FRAME_PAR_NOM, 1.0f, 1.0f);
+
 		/* draw */
 		draw(frame,field,1,1, 0);
+
+		/* honor PAR - restore H scale */
+		glPopMatrix();
 	};
 
 	// disable some features
