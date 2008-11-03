@@ -1069,37 +1069,60 @@ int main(int argc, char** argv)
 		/* event loop */
 		vz_window_event_loop();
 		f_exit = 1;
+		logger_printf(1, "main: vz_window_event_loop finished");
 
 		/* stop tcpserver/serial server */
+		logger_printf(1, "main: tcpserver_kill...");
 		tcpserver_kill();
+		logger_printf(1, "main: tcpserver_kill... DONE");
+
+		logger_printf(1, "main: serserver_kill...");
 		serserver_kill();
+		logger_printf(1, "main: serserver_kill... DONE");
+
+		logger_printf(1, "main: waiting for tcpserver_handle...");
 		WaitForSingleObject(tcpserver_handle, INFINITE);
+		logger_printf(1, "main: WaitForSingleObject(tcpserver_handle) finished");
+
+		logger_printf(1, "main: waiting for serserver_handle...");
 		WaitForSingleObject(serserver_handle, INFINITE);
+		logger_printf(1, "main: WaitForSingleObject(serserver_handle) finished");
+
 		CloseHandle(serserver_handle);
 		CloseHandle(tcpserver_handle);
 
 		/* stop sync render thread */
+		logger_printf(1, "main: waiting for sync_render_handle...");
 		WaitForSingleObject(sync_render_handle, INFINITE);
+		logger_printf(1, "main: WaitForSingleObject(sync_render_handle) finished");
 		CloseHandle(sync_render_handle);
 
 		/* stop internal sync generator */
 		if(INVALID_HANDLE_VALUE != internal_sync_generator_handle)
 		{
+			logger_printf(1, "main: waiting for internal_sync_generator_handle...");
 			WaitForSingleObject(internal_sync_generator_handle, INFINITE);
+			logger_printf(1, "main: WaitForSingleObject(internal_sync_generator_handle) finished");
 			CloseHandle(internal_sync_generator_handle);
 		};
 
 		/* unload scene */
 		if(NULL != scene)
 		{
+			logger_printf(1, "main: waiting for vzMainSceneFree(scene)...");
 			vzMainSceneFree(scene);
+			logger_printf(1, "main: vzMainSceneFree(scene) finished");
 			scene = NULL;
 		};
 
+		logger_printf(1, "main: waiting for vzMainFreeFunctionsList(functions)...");
 		vzMainFreeFunctionsList(functions);
+		logger_printf(1, "main: vzMainFreeFunctionsList(functions) finished");
 
 		/* destroy window */
+		logger_printf(1, "main: waiting for vz_destroy_window()...");
 		vz_destroy_window();
+		logger_printf(1, "main: vz_destroy_window() finished...");
 
 		/* close mutexes */
 		CloseHandle(scene_lock);
@@ -1109,10 +1132,13 @@ int main(int argc, char** argv)
 	/* cleanup */
 	if(output_module_name)
 	{
+		logger_printf(1, "main: waiting for vzOutputFree(output_module)...");
 		vzOutputFree(output_module);
+		logger_printf(1, "main: vzOutputFree(output_module) finished...");
 		output_module = NULL;
 	};
 
+	logger_printf(1, "main: Bye!");
 
 	return 0;
 };
