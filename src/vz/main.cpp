@@ -972,6 +972,10 @@ int main(int argc, char** argv)
 	config = vzConfigOpen(config_file);
 	logger_printf(0, "Config file Loaded!");
 
+	/* setup log to console if flag defined */
+	if(NULL != vzConfigParam(config, "main", "log_to_console"))
+		logger_dup_to_console();
+
 	// clear screenshot filename
 	screenshot_file[0] = 0;
 	

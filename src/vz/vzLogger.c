@@ -333,3 +333,9 @@ BOOL APIENTRY DllMain
     }
     return TRUE;
 }
+
+VZLOGGER_API int logger_dup_to_console()
+{
+	dup_to_stderr = 1;
+	return 0;
+};

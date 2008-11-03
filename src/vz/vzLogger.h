@@ -64,6 +64,11 @@ VZLOGGER_API int logger_setup(char* log_file, int rotate_interval, int dup_to_st
  */
 VZLOGGER_API int logger_printf(int type, char* message, ...);
 
+/**
+ * Enable output to console
+ */
+VZLOGGER_API int logger_dup_to_console();
+
 #ifdef __cplusplus
 };
 #endif /* __cplusplus */
