@@ -44,6 +44,7 @@ ChangeLog:
 
 #include "vzContainer.h"
 #include "unicode.h"
+#include "vzLogger.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -130,15 +131,26 @@ vzContainer::~vzContainer()
 	unsigned int i;
 	
 	// delete functions
+	TRACE_POINT();
 	for(i=0;i<_functions.count();i++)
+	{
+		TRACE_POINT();
 		delete (vzContainerFunction*)_functions.value(i);
+		TRACE_POINT();
+	}
 
 	// delete containers
+	TRACE_POINT();
 	for(i=0;i<_containers.count();i++)
+	{
+		TRACE_POINT();
 		delete (vzContainer*)_containers.value(i);
+		TRACE_POINT();
+	};
 
+	TRACE_POINT();
 	delete _attributes;
-
+	TRACE_POINT();
 };
 
 void vzContainer::draw(vzRenderSession* render_session)

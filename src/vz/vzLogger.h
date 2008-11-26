@@ -37,6 +37,16 @@ ChangeLog:
 #pragma comment(lib, "vzLogger.lib") 
 #endif
 
+/* do it for remote trace ops */
+/* #define ENABLE_TRACE_POINT */
+
+#ifndef ENABLE_TRACE_POINT
+#define TRACE_POINT()
+#else /* ENABLE_TRACE_POINT */
+#define TRACE_POINT() logger_printf(2, "TRACE:%s:%d:[%s]", __FILE__, __LINE__, __FUNCTION__);
+#endif /* ENABLE_TRACE_POINT */
+
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -68,6 +78,16 @@ VZLOGGER_API int logger_printf(int type, char* message, ...);
  * Enable output to console
  */
 VZLOGGER_API int logger_dup_to_console();
+
+/**
+ * init logger datas and start thread
+ */
+VZLOGGER_API int logger_init();
+
+/**
+ * stop logger output thread and realse some datas
+ */
+VZLOGGER_API int logger_release();
 
 #ifdef __cplusplus
 };

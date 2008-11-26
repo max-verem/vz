@@ -30,6 +30,7 @@ ChangeLog:
 
 
 #include "vzMotion.h"
+#include "vzLogger.h"
 #include <stdio.h>
 
 static const unsigned short tag_director[] = {'d', 'i', 'r', 'e', 'c', 't', 'o', 'r',0};
@@ -74,8 +75,13 @@ vzMotion::vzMotion(DOMNodeX* node,vzScene* scene) : vzHash<vzMotionDirector*>()
 
 vzMotion::~vzMotion()
 {
+	TRACE_POINT();
 	for(unsigned int i=0;i<count();i++)
+	{
+		TRACE_POINT();
 		delete value(i);
+		TRACE_POINT();
+	};
 };
 
 void vzMotion::assign(long frame, int field)

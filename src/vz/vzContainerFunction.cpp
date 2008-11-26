@@ -30,6 +30,7 @@ ChangeLog:
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "vzContainerFunction.h"
+#include "vzLogger.h"
 
 #include "unicode.h"
 
@@ -84,25 +85,39 @@ vzContainerFunction::vzContainerFunction(DOMNodeX* parent_node,vzFunctions* func
 
 vzContainerFunction::~vzContainerFunction()
 {
+	TRACE_POINT();
 	delete _attributes;
+	TRACE_POINT();
 	delete _params;
+	TRACE_POINT();
 	if(_function)
 	{
 		// free text params
+		TRACE_POINT();
 		for(unsigned int i=0;i<_function->count();i++)
 		{
+			TRACE_POINT();
 			vzPluginParameter* p = _function->value(i);
 			if(p->name[0] == 's')
 			{
+				TRACE_POINT();
 				void* param = get_data_param_ptr(p->name);
 				if(*((char**)param))
 					free((*((char**)param)));
 				*((char**)param) = NULL;
+				TRACE_POINT();
 			};
+			TRACE_POINT();
 		};
 
 		// destruct instance
-		if(_data) _function->destructor(_data);
+		TRACE_POINT();
+		if(_data)
+		{
+			TRACE_POINT();
+			_function->destructor(_data);
+			TRACE_POINT();
+		};
+		TRACE_POINT();
 	};
-		
 };

@@ -32,6 +32,7 @@ ChangeLog:
 */
 
 #include "vzMotionDirector.h"
+#include "vzLogger.h"
 #include <stdio.h>
 
 static const unsigned short tag_param[] = {'p', 'a', 'r', 'a', 'm',0};
@@ -113,13 +114,30 @@ vzMotionDirector::vzMotionDirector(DOMNodeX* node,vzScene* scene)
 
 vzMotionDirector::~vzMotionDirector()
 {
+	TRACE_POINT();
 	for(unsigned int i=0;i<_parameters.count();i++)
+	{
+		TRACE_POINT();
 		delete _parameters.value(i);
+		TRACE_POINT();
+	};
+	TRACE_POINT();
 	if (_control)
+	{
+		TRACE_POINT();
 		delete _control;
+		TRACE_POINT();
+	};
+	TRACE_POINT();
 	if(_attributes)
+	{
+		TRACE_POINT();
 		delete _attributes;
+		TRACE_POINT();
+	};
+	TRACE_POINT();
 	CloseHandle(_lock);
+	TRACE_POINT();
 };
 
 void vzMotionDirector::assign(long frame, int field)

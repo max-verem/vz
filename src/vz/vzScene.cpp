@@ -228,9 +228,17 @@ int vzScene::load(char* file_name)
 
 vzScene::~vzScene()
 {
+	TRACE_POINT();
 	CloseHandle(_lock_for_command);
+	TRACE_POINT();
+
+	TRACE_POINT();
 	if(_tree) delete _tree;
+	TRACE_POINT();
+
+	TRACE_POINT();
 	if(_motion) delete _motion;
+	TRACE_POINT();
 };
 
 

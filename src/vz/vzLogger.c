@@ -23,7 +23,7 @@ static int msg_q_tail;			/**< message tail pointer */
 static time_t rot_last = 0;		/**< last log file rotation process */
 static time_t rot_period = 24*3600;
 static int dup_to_stderr = 1;
-static char log_file_name[MAX_PATH] = "log";
+static char log_file_name[MAX_PATH] = "";
 
 static char* fetch_msg()
 {
@@ -73,6 +73,10 @@ static void output_msg(char* buf)
 	/* output to console */
 	if(0 != dup_to_stderr)
 		fprintf(stderr, buf);
+
+	/* check if filename is defined */
+	if(0 == log_file_name[0])
+		return;
 
 	/* check if log file should be rotated */
 	time( &ltime );
@@ -137,6 +141,8 @@ static unsigned long WINAPI logger_queue_proc(void* desc_)
 	/* ensure all messages sent */
 	process_queue();
 
+	ExitThread(0);
+
 	return 0;
 };
 
@@ -150,10 +156,9 @@ VZLOGGER_API int logger_setup(char* log_file, int rotate_interval, int dup_to_st
 	return 0;
 };
 
-static int logger_release()
+VZLOGGER_API int logger_release()
 {
 	int i, r;
-
     /* check if initialized */
     if
     (
@@ -169,14 +174,12 @@ static int logger_release()
 	f_exit = 1;
 
 	/* wait for thread end */
-	r = WaitForSingleObject(th_h, LOCK_TIMEOUT);
+	r = WaitForSingleObject(th_h, INFINITE);
     if(0 != r)
         return -2;
     CloseHandle(th_h);
-
 	/* destroy mutex */
 	CloseHandle(lock);
-
 	/* destroy queue and messages */
 	for(i = 0; i<MAX_MSG_CNT; i++)
 		if(NULL != msg_q_list[i])
@@ -186,7 +189,7 @@ static int logger_release()
 	return (0 == r)?0:-1;
 };
 
-static int logger_init()
+VZLOGGER_API int logger_init()
 {
     /* create mutex */
     lock = CreateMutex(NULL,FALSE,NULL);
@@ -220,6 +223,10 @@ VZLOGGER_API int logger_printf(int type, char* message, ...)
     static char *mili_seconds_template = ".%.03d] ";
 	struct tm *rtime;
 	time_t ltime;
+
+	/* check if logger inited */
+	if(NULL == msg_q_list)
+		return -1;
 
     /* save time */
     mili_seconds = timeGetTime();
@@ -318,7 +325,6 @@ BOOL APIENTRY DllMain
 	switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-			logger_init();
 			break;
 
 		case DLL_THREAD_ATTACH:
@@ -328,7 +334,6 @@ BOOL APIENTRY DllMain
 			break;
 
 		case DLL_PROCESS_DETACH:
-			logger_release();
 			break;
     }
     return TRUE;

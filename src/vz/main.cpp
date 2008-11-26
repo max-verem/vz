@@ -962,6 +962,7 @@ int main(int argc, char** argv)
 	};
 
 	/* setup logger */
+	logger_init();
 	logger_setup("vz.log", 3600*24, 0);
 
 	/* hello message */
@@ -1143,6 +1144,6 @@ int main(int argc, char** argv)
 	};
 
 	logger_printf(1, "main: Bye!");
-
+	logger_release();
 	return 0;
 };
