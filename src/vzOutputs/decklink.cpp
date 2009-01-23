@@ -141,6 +141,9 @@ static void decklink_configure(void)
 		if(S_OK == hr) logger_printf(0, MODULE_PREFIX " +- OK");
 		else if(E_PROP_ID_UNSUPPORTED == hr) logger_printf(1, MODULE_PREFIX " +- UNSUPPORTED");
 		else logger_printf(1, MODULE_PREFIX " +- FAILED");
+
+		/* setup alpha level to default */
+		hr = decklink_keyer->set_AlphaLevel(255);
 	};
 
 	/* set video input O_VIDEO_INPUT */
