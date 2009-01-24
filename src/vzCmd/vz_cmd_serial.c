@@ -2,7 +2,7 @@
     vz_cmd
     (VZ (ViZualizator) control protocol commands creator/parser)
 
-    Copyright (C) 2007 Maksym Veremeyenko.
+    Copyright (C) 2009 Maksym Veremeyenko.
     This file is part of Airforce project (tv broadcasting/production
     automation support)
 
@@ -212,26 +212,29 @@ int vz_serial_cmd_create_va(void* _buf, int* _len, va_list ap)
     /* retrieve args */    
     do
     {
-	/* pop command id */
-	id = va_arg(ap, int);
-	
-	/* lookup cmd */
-	desc = (struct vz_cmd_desc*)vz_cmd_lookup_by_id(id);
+		/* pop command id */
+		id = va_arg(ap, int);
 
-	/* check if id define */
-	if(NULL != desc)
-	{
-	    /* put command into packet */
-	    vz_serial_cmd_create_single(buf_data + 4, (int*)buf_data, id, &ap);
+		/* lookup cmd */
+		desc = (struct vz_cmd_desc*)vz_cmd_lookup_by_id(id);
 
-	    /* calc offset and lengths */
-	    l = *((int*)buf_data) + 4;
-	    *cmds_length = (*cmds_length) +  l;
-	    *cmds_count = (*cmds_count) + 1;
-	    buf_data += l;
-	}
-	else
-	    r = -VZ_EINVAL;
+		/* check if id define */
+		if(NULL != desc)
+		{
+			/* put command into packet */
+			vz_serial_cmd_create_single(buf_data + 4, (int*)buf_data, id, &ap);
+
+		    /* calc offset and lengths */
+			l = *((int*)buf_data) + 4;
+			*cmds_length = (*cmds_length) +  l;
+			*cmds_count = (*cmds_count) + 1;
+			buf_data += l;
+		}
+		else
+		{
+			if(0 != id)
+				r = -VZ_EINVAL;
+		}
     }
     while(NULL != desc);
     

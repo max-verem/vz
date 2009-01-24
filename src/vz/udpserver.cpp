@@ -38,14 +38,16 @@ ChangeLog:
 #include "main.h"
 #include "serserver.h"
 
+#include "../vzCmd/vz_cmd_send.h"
+
 #define MAX_CLIENTS 32
 
 // use winsock lib
 #pragma comment(lib, "ws2_32.lib") 
 
 // define buffer size and port
-static long UDPSERVER_PORT = 8002;
-static long UDPSERVER_BUFSIZE = 32768;
+static long UDPSERVER_PORT = VZ_CMD_SEND_UDP_PORT;
+static long UDPSERVER_BUFSIZE = VZ_CMD_SEND_UDP_BUF;
 
 static SOCKET socket_listen = INVALID_SOCKET;
 
