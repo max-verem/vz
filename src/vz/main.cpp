@@ -23,6 +23,7 @@
 ChangeLog:
 	2009-01-24:
 		*sceneload and screeshot define function moved tp main.cpp
+		*winsock initialization moved to main.c
 
     2008-09-24:
         *VGA screen scale support
@@ -88,6 +89,7 @@ ChangeLog:
 
 
 #pragma comment(lib, "winmm.lib")
+#pragma comment(lib, "ws2_32.lib") 
 
 /*
 ----------------------------------------------------------
@@ -1126,11 +1128,23 @@ int main(int argc, char** argv)
 			scene_file = NULL;
 		};
 
-		// start tcpserver/serial server
+		// start tcpserver
 		unsigned long thread;
-		HANDLE tcpserver_handle = CreateThread(0, 0, tcpserver, config, 0, &thread);
+		HANDLE tcpserver_handle = INVALID_HANDLE_VALUE;
+		// init winsock
+#define WS_VER_MAJOR 2
+#define WS_VER_MINOR 2
+		WSADATA wsaData;
+		if ( WSAStartup( ((unsigned long)WS_VER_MAJOR) | (((unsigned long)WS_VER_MINOR)<<8), &wsaData ) != 0 )
+			logger_printf(1, "main: WSAStartup() failed");
+		else
+		{
+			tcpserver_handle = CreateThread(0, 0, tcpserver, config, 0, &thread);
+			SetThreadPriority(tcpserver_handle , THREAD_PRIORITY_LOWEST);
+		};
+
+		/* start serial server */
 		HANDLE serserver_handle = CreateThread(0, 0, serserver, config, 0, &thread);
-		SetThreadPriority(tcpserver_handle , THREAD_PRIORITY_LOWEST);
 		SetThreadPriority(serserver_handle , THREAD_PRIORITY_LOWEST);
 
 		/* event loop */
@@ -1148,7 +1162,8 @@ int main(int argc, char** argv)
 		logger_printf(1, "main: serserver_kill... DONE");
 
 		logger_printf(1, "main: waiting for tcpserver_handle...");
-		WaitForSingleObject(tcpserver_handle, INFINITE);
+		if(INVALID_HANDLE_VALUE != tcpserver_handle)
+			WaitForSingleObject(tcpserver_handle, INFINITE);
 		logger_printf(1, "main: WaitForSingleObject(tcpserver_handle) finished");
 
 		logger_printf(1, "main: waiting for serserver_handle...");

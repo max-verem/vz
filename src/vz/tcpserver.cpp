@@ -23,6 +23,7 @@
 ChangeLog:
 	2009-01-24:
 		*code reorganization
+		*winsock initialization moved to main.c
 
     2008-09-24:
         *logger use for message outputs
@@ -374,17 +375,6 @@ unsigned long WINAPI tcpserver(void* _config)
 		TCPSERVER_PORT = atol(temp);
 	if(temp = vzConfigParam(_config,"tcpserver","bufsize"))
 		TCPSERVER_BUFSIZE = atol(temp);
-
-	// init winsock
-#define WS_VER_MAJOR 2
-#define WS_VER_MINOR 2
-	WSADATA wsaData;
-	if ( WSAStartup( ((unsigned long)WS_VER_MAJOR) | (((unsigned long)WS_VER_MINOR)<<8), &wsaData ) != 0 )
-	{
-		logger_printf(1, "tcpserver: WSAStartup() failed");
-		ExitThread(0);
-		return 0;
-	};
 
 	// create socket
 	if (INVALID_SOCKET == (socket_listen = socket(AF_INET, SOCK_STREAM, 0)))
