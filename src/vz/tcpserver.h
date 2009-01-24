@@ -2,9 +2,9 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2005 Maksym Veremeyenko.
+    Copyright (C) 2009 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2005.
+    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2009.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

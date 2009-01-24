@@ -2,9 +2,9 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2005 Maksym Veremeyenko.
+    Copyright (C) 2009 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2005.
+    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2009.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2009-01-24:
+		*sceneload and screeshot define function moved tp main.cpp
+
     2008-09-24:
         *VGA screen scale support
 		*logger use for message outputs
@@ -113,6 +116,65 @@ void* output_module = NULL; // output module
 char start_path[1024];
 char* application;
 char screenshot_file[1024];
+
+/* -------------------------------------------------------- */
+int CMD_screenshot(char* filename, char** error_log)
+{
+	/* notify */
+	logger_printf(0, "CMD_screenshot [%s]", filename);
+
+	// lock scene
+	WaitForSingleObject(scene_lock, INFINITE);
+
+	// copy filename
+	strcpy(screenshot_file, filename);
+
+	// unlock scene
+	ReleaseMutex(scene_lock);
+
+	return 0;
+};
+
+int CMD_loadscene(char* filename, char** error_log)
+{
+	/* notify */
+	logger_printf(0, "CMD_loadscene [%s]", filename);
+
+	// lock scene
+	if (WAIT_OBJECT_0 != WaitForSingleObject(scene_lock, INFINITE))
+	{
+		logger_printf(2, "Unable to lock scene handle");
+
+		if(NULL != error_log)
+			*error_log = "Error! Unable to lock scene handle";
+
+		return -1;
+	};
+
+	if(scene)
+		vzMainSceneFree(scene);
+
+	scene = vzMainSceneNew(functions,config,&tv);
+
+	if (!vzMainSceneLoad(scene, filename))
+	{
+		logger_printf(2, "Unable to load scene [%s]", filename);
+
+		if(NULL != error_log)
+			*error_log = "Error! Unable to load scene";
+		
+		vzMainSceneFree(scene);
+
+		scene = NULL;
+
+		return -2;
+	};
+
+	// unlock scene
+	ReleaseMutex(scene_lock);
+
+	return 0;
+};
 
 /* -------------------------------------------------------- */
 

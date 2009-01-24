@@ -2,9 +2,9 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2005 Maksym Veremeyenko.
+    Copyright (C) 2009 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2005.
+    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2009.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2009-01-24:
+		*code reorganization
+
     2008-09-24:
         *logger use for message outputs
 
@@ -48,55 +51,9 @@ ChangeLog:
 #include "vzTVSpec.h"
 #include "vzLogger.h"
 
-extern int f_exit;
-extern void* scene;	// scene loaded
-extern HANDLE scene_lock;
-extern void* functions;
-extern int main_stage;
-extern char screenshot_file[1024];
-extern void* config;
-extern vzTVSpec tv;
+#include "main.h"
 
 #define MAX_CLIENTS 32
-
-static void CMD_screenshot(char* filename,char** error_log)
-{
-	// lock scene
-	WaitForSingleObject(scene_lock,INFINITE);
-
-	// copy filename
-	strcpy(screenshot_file,filename);
-
-	// unlock scene
-	ReleaseMutex(scene_lock);
-};
-
-static void CMD_loadscene(char* filename,char** error_log)
-{
-	// lock scene
-	if (WaitForSingleObject(scene_lock,INFINITE) != WAIT_OBJECT_0)
-	{
-		*error_log = "Error! Unable to lock scene handle";
-		return;
-	};
-
-	if(scene)
-		vzMainSceneFree(scene);
-
-	scene = vzMainSceneNew(functions,config,&tv);
-
-	if (!vzMainSceneLoad(scene, filename))
-	{
-		*error_log = "Error! Unable to load scene";
-		vzMainSceneFree(scene);
-		scene = NULL;
-	};
-
-	// unlock scene
-	ReleaseMutex(scene_lock);
-};
-
-
 
 // use winsock lib
 #pragma comment(lib, "ws2_32.lib") 

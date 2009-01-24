@@ -2,9 +2,9 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2007 Maksym Veremeyenko.
+    Copyright (C) 2009 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1.tv, 2007.
+    Contributed by Maksym Veremeyenko, verem@m1.tv, 2009.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,6 +21,11 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ChangeLog:
+	2009-01-24:
+		*block command code split: serserver_cmd is now standalone
+		*externs removed to main.h, tcpserver common code now provided 
+		from main.c
+
     2008-09-24:
         *logger use for message outputs
 
@@ -43,15 +48,7 @@ ChangeLog:
 #include "../vzCmd/vz_cmd.h"
 #include "vzLogger.h"
 
-extern void* scene;	// scene loaded
-extern HANDLE scene_lock;
-extern void* functions;
-extern vzTVSpec tv;
-
-extern int main_stage;
-extern char screenshot_file[1024];
-extern void* config;
-extern int f_exit;
+#include "main.h"
 
 #define SERIAL_BUF_SIZE 65536
 
@@ -60,6 +57,60 @@ static HANDLE serial_port_handle;
 void serserver_kill(void)
 {
 	CloseHandle(serial_port_handle);
+};
+
+int serserver_cmd(void* buf, int *p_bytes)
+{
+	int r, i, commands_count, cmd;
+	char *filename, *cmd_name;
+
+	/* probe */
+	r = vz_serial_cmd_probe(buf, p_bytes);
+
+	/* check if probe success */
+	if(r < 0)
+		return r;
+
+	/* detect command count in block */
+	commands_count = vz_serial_cmd_count(buf);
+	for(i = 0; i<commands_count; i++)
+	{
+		cmd = vz_serial_cmd_id(buf, i);
+		cmd_name = vz_cmd_get_name(cmd);
+		logger_printf(0, "serserver_cmd: %s (%d)", cmd_name, i);
+
+		switch(cmd)
+		{
+			case VZ_CMD_PING:
+				break;
+
+			case VZ_CMD_LOAD_SCENE:
+
+				/* map variable */
+				vz_serial_cmd_parseNmap(buf, i, &filename);
+
+				/* do it */
+				CMD_loadscene(filename, NULL);
+				break;
+
+			case VZ_CMD_SCREENSHOT:
+
+				/* map variable */
+				vz_serial_cmd_parseNmap(buf, i, &filename);
+
+				/* do it */
+				CMD_screenshot(filename, NULL);
+				break;
+
+			default:
+				if(scene)
+					vzMainSceneCommand(scene, cmd, i, buf);
+				break;
+
+		};
+	};
+
+	return commands_count;
 };
 
 unsigned long WINAPI serserver(void* _config)
@@ -172,7 +223,7 @@ unsigned long WINAPI serserver(void* _config)
 
 		/* try to parse buffer */
 		int p_bytes = (int)r_bytes + (buf_ptr - (unsigned char*)buf);
-		int r = vz_serial_cmd_probe(buf, &p_bytes);
+		int r = serserver_cmd(buf, &p_bytes);
 
 		/* detect incorrect or partial command */
 		if
@@ -197,72 +248,6 @@ unsigned long WINAPI serserver(void* _config)
 
 		/* here command is good */
 		buf_ptr = (unsigned char*)buf;
-		int commands_count = vz_serial_cmd_count(buf);
-		for(int i = 0; i<commands_count; i++)
-		{
-			char* filename;
-			int cmd = vz_serial_cmd_id(buf, i);
-			char* cmd_name = vz_cmd_get_name(cmd);
-			logger_printf(0, "serserver: %s", cmd_name);
-
-			switch(cmd)
-			{
-				case VZ_CMD_PING:
-					break;
-
-				case VZ_CMD_LOAD_SCENE:
-
-					/* map variable */
-					vz_serial_cmd_parseNmap(buf, i, &filename);
-
-					/* notify */
-					logger_printf(0, "serserver: *('%s')", filename);
-
-					// lock scene
-					WaitForSingleObject(scene_lock,INFINITE);
-
-					/* delete curent scene */
-					if(scene) vzMainSceneFree(scene);
-
-					/* create new scene */
-					scene = vzMainSceneNew(functions, config, &tv);
-
-					/* check if it loaded ok */
-					if (!vzMainSceneLoad(scene, filename))
-					{
-						vzMainSceneFree(scene);
-						scene = NULL;
-					};
-
-					// unlock scene
-					ReleaseMutex(scene_lock);
-					break;
-
-				case VZ_CMD_SCREENSHOT:
-
-					/* map variable */
-					vz_serial_cmd_parseNmap(buf, i, &filename);
-					
-					/* notify */
-					logger_printf(0, "('%s')", filename);
-
-					// lock scene
-					WaitForSingleObject(scene_lock, INFINITE);
-
-					// copy filename
-					strcpy(screenshot_file, filename);
-
-					// unlock scene
-					ReleaseMutex(scene_lock);
-					break;
-
-				default:
-					if(scene)
-						vzMainSceneCommand(scene, cmd, i, buf);
-					break;
-
-			};
-		};
 		nak = 0x04;
 	};
 

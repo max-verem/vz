@@ -4,7 +4,7 @@
 
     Copyright (C) 2009 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2009.
+    Contributed by Maksym Veremeyenko, verem@m1.tv, 2009.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,20 +22,16 @@
 
 ChangeLog:
 	2009-01-24:
-		*copyright year update
-
-    2005-06-08: Code cleanup
-
-
+		*all func and variable defenition for XXXservers moved here
 */
 
-#ifndef VZVERSION_H
-#define VZVERSION_H
+#ifndef MAIN_H
+#define MAIN_H
 
-#define VZ_TITLE "ViZualizator"
-#define VZ_VERSION_NUMBER "1.0"
-#define VZ_VERSION_SUFFIX "fix3"
-#define VZ_VERSION VZ_VERSION_NUMBER "-" VZ_VERSION_SUFFIX
+extern int f_exit;
+extern void* scene;	// scene loaded
+extern void* config;
+int CMD_screenshot(char* filename,char** error_log);
+int CMD_loadscene(char* filename,char** error_log);
 
-
-#endif /* VZVERSION_H */
+#endif /* MAIN_H */

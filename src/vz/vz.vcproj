@@ -269,6 +269,10 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
+				RelativePath=".\main.h"
+				>
+			</File>
+			<File
 				RelativePath="serserver.h"
 				>
 			</File>
