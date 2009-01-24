@@ -65,7 +65,7 @@ static void info()
 int main(int argc, char** argv)
 {
 	int r;
-	char error[1024];
+	char error[1024] = "";
 
 	/* check if all arguments added */
 	if(argc < 3)
@@ -87,6 +87,12 @@ int main(int argc, char** argv)
 
 	/* transform symbols */
 	r = vz_cmd_send_strlist_udp(argv[1], &argv[2], argc - 2, error);
+	if (0 != r)
+	{
+		info();
+		fprintf(stderr, MSG_PREFIX "vz_cmd_send_strlist_udp FAILED with code %d, [%s]\n", r, error);
+	};
+
 
 	/* release sender */
 	r = vz_cmd_send_release();

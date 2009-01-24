@@ -266,13 +266,13 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 			/* error notify for required arg */
 			if(-2 == e)
 				if(NULL != error)
-					sprintf(error, "unknown command [%s]\n", cmd_name);
+					sprintf(error, "unknown command [%s]", cmd_name);
 		}
 		else
 		{
 			e = -1;
 			if(NULL != error)
-				sprintf(error, "unknown command [%s]\n", cmd_name);
+				sprintf(error, "unknown command [%s]", cmd_name);
 		};
 	};
 
