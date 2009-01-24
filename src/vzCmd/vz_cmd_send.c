@@ -27,10 +27,19 @@ ChangeLog:
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <string.h>
 
 #ifdef __linux__
+#include <unistd.h>
+#include <netdb.h>
+#include <sys/types.h>          /* See NOTES */
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #define SNPRINTF snprintf
 #else /* __linux__ */
 #define WS_VER_MAJOR 2
@@ -273,7 +282,7 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 	return (0 == e)?cmd_cnt:e;
 };
 
-int __stdcall vz_cmd_send_strlist_udp(char* host, char** argv, int argc, char* error)
+int VZCMDSEND_API_STDCALL vz_cmd_send_strlist_udp(char* host, char** argv, int argc, char* error)
 {
 	int r;
 	struct vz_cmd_send_target dst;

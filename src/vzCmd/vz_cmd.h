@@ -25,6 +25,7 @@
 #define VZ_CMD_H
 
 #ifdef __linux__
+#define VZCMD_API
 #else
 
 #ifdef VZCMD_EXPORTS
