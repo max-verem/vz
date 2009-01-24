@@ -49,11 +49,17 @@ ChangeLog:
 "    %s  <host[:port]> <CMD> [<CMD> ... ]\n" \
 "Where:\n" \
 "    <host[:port]        - hostname where command to send\n" \
-"    <CMD>               - command, see UDP_CONTROL.txt for more info\n"
+"    <CMD>               - command, see control_udp.txt for more info\n"
 
 static void usage()
 {
     fprintf(stderr, PROGRAM_USAGE, PROGRAM_NAME);
+};
+
+static void info()
+{
+	/* output info */
+    fprintf(stderr, PROGRAM_NAME PROGRAM_VER " Copyright by Maksym Veremeyenko, 2009\n");
 };
 
 int main(int argc, char** argv)
@@ -61,12 +67,10 @@ int main(int argc, char** argv)
 	int r;
 	char error[1024];
 
-	/* output info */
-    fprintf(stderr, PROGRAM_NAME PROGRAM_VER " Copyright by Maksym Veremeyenko, 2009\n");
-
 	/* check if all arguments added */
 	if(argc < 3)
 	{
+		info();
 		fprintf(stderr, MSG_PREFIX "ERROR! Not enough arguments\n");
 		usage();
 		return 1;
@@ -76,6 +80,7 @@ int main(int argc, char** argv)
 	r = vz_cmd_send_init();
 	if (0 != r)
 	{
+		info();
 		fprintf(stderr, MSG_PREFIX "vz_cmd_send_init FAILED with code %d\n", -r);
 		return 1;
 	};

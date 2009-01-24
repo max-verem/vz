@@ -1,0 +1,40 @@
+Newer API and helper function provides additional control interface
+over UDP protocol.
+
+Datagrams been sent vz application, composed by vzCmdSend API and could
+provide more fast and sessionless control path for "pilot" application.
+
+Basic tool for sending command is vzCmdSend. It can send futher list
+of commands for scene and vz control:
+
+LOAD_SCENE <filename>
+START_DIRECTOR <director> <pos>
+RESET_DIRECTOR <director> <pos>
+CONTINUE_DIRECTOR <director>
+STOP_DIRECTOR <director>
+SET <container> <param> <value>
+CONTAINER_VISIBLE <container> <flag>
+
+Make sure udpserver is allowed to start:
+[...]
+	<module name="udpserver">
+		<param name="enable" value="defined"/>
+<!--		<param name="port" value="8001"/>
+		<param name="bufsize" value="8192"/> -->
+	</module>
+[...]
+
+Some examples:
+
+    # load new scene
+    vzCmdSender.exe localhost LOAD_SCENE "./projects/demo1.xml"
+
+    # Set text fields
+    vzCmdSender.exe localhost SET text_2 s_text "Senior Deputy Officer" SET text_1 s_text "Vasilij Pupkin"
+
+    # start animation
+    vzCmdSender.exe localhost START_DIRECTOR main 0
+
+    # continue (hide) animation
+    vzCmdSender.exe localhost CONTINUE_DIRECTOR main
+

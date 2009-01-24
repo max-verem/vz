@@ -120,6 +120,7 @@ unsigned long WINAPI udpserver(void* _config)
 		else
 		{
 			/* try to execute command */
+			l = r;
 			r = serserver_cmd(buf, &l);
 
 			/* output error */
