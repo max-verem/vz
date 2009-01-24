@@ -263,6 +263,10 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath=".\udpserver.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -278,6 +282,10 @@
 			</File>
 			<File
 				RelativePath="tcpserver.h"
+				>
+			</File>
+			<File
+				RelativePath=".\udpserver.h"
 				>
 			</File>
 			<File

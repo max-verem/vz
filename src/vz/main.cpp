@@ -86,6 +86,7 @@ ChangeLog:
 
 #include "tcpserver.h"
 #include "serserver.h"
+#include "udpserver.h"
 
 
 #pragma comment(lib, "winmm.lib")
@@ -1128,9 +1129,10 @@ int main(int argc, char** argv)
 			scene_file = NULL;
 		};
 
-		// start tcpserver
+		// start (tcp|udp)server
 		unsigned long thread;
 		HANDLE tcpserver_handle = INVALID_HANDLE_VALUE;
+		HANDLE udpserver_handle = INVALID_HANDLE_VALUE;
 		// init winsock
 #define WS_VER_MAJOR 2
 #define WS_VER_MINOR 2
@@ -1141,6 +1143,8 @@ int main(int argc, char** argv)
 		{
 			tcpserver_handle = CreateThread(0, 0, tcpserver, config, 0, &thread);
 			SetThreadPriority(tcpserver_handle , THREAD_PRIORITY_LOWEST);
+			udpserver_handle = CreateThread(0, 0, udpserver, config, 0, &thread);
+			SetThreadPriority(udpserver_handle , THREAD_PRIORITY_LOWEST);
 		};
 
 		/* start serial server */
@@ -1152,26 +1156,47 @@ int main(int argc, char** argv)
 		f_exit = 1;
 		logger_printf(1, "main: vz_window_event_loop finished");
 
+		/* stop udpserver server */
+		if(INVALID_HANDLE_VALUE != udpserver_handle)
+		{
+			logger_printf(1, "main: udpserver_kill...");
+			udpserver_kill();
+			logger_printf(1, "main: udpserver_kill... DONE");
+		};
+
 		/* stop tcpserver/serial server */
-		logger_printf(1, "main: tcpserver_kill...");
-		tcpserver_kill();
-		logger_printf(1, "main: tcpserver_kill... DONE");
+		if(INVALID_HANDLE_VALUE != tcpserver_handle)
+		{
+			logger_printf(1, "main: tcpserver_kill...");
+			tcpserver_kill();
+			logger_printf(1, "main: tcpserver_kill... DONE");
+		};
 
 		logger_printf(1, "main: serserver_kill...");
 		serserver_kill();
 		logger_printf(1, "main: serserver_kill... DONE");
 
-		logger_printf(1, "main: waiting for tcpserver_handle...");
+		if(INVALID_HANDLE_VALUE != udpserver_handle)
+		{
+			logger_printf(1, "main: waiting for udpserver_handle...");
+			WaitForSingleObject(udpserver_handle, INFINITE);
+			logger_printf(1, "main: WaitForSingleObject(udpserver_handle) finished");
+			CloseHandle(udpserver_handle);
+		};
+
 		if(INVALID_HANDLE_VALUE != tcpserver_handle)
+		{
+			logger_printf(1, "main: waiting for tcpserver_handle...");
 			WaitForSingleObject(tcpserver_handle, INFINITE);
-		logger_printf(1, "main: WaitForSingleObject(tcpserver_handle) finished");
+			logger_printf(1, "main: WaitForSingleObject(tcpserver_handle) finished");
+			CloseHandle(tcpserver_handle);
+		};
 
 		logger_printf(1, "main: waiting for serserver_handle...");
 		WaitForSingleObject(serserver_handle, INFINITE);
 		logger_printf(1, "main: WaitForSingleObject(serserver_handle) finished");
 
 		CloseHandle(serserver_handle);
-		CloseHandle(tcpserver_handle);
 
 		/* stop sync render thread */
 		logger_printf(1, "main: waiting for sync_render_handle...");
