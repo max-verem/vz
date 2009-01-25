@@ -159,6 +159,7 @@ Private Sub demo1_director_start_Click()
     ' Setup command
     argv(0).cmd = VZ_CMD_START_DIRECTOR
     argv(1).cmd = "main"
+    argv(2).cmd = "0"
 
     send_vz_data argv
 End Sub
