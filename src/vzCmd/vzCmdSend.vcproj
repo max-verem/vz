@@ -214,6 +214,10 @@
 				RelativePath=".\vz_cmd_send.c"
 				>
 			</File>
+			<File
+				RelativePath=".\vz_cmd_send_VB.c"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

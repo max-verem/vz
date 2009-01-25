@@ -282,7 +282,7 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 	return (0 == e)?cmd_cnt:e;
 };
 
-int VZCMDSEND_API_STDCALL vz_cmd_send_strlist_udp(char* host, char** argv, int argc, char* error)
+int vz_cmd_send_strlist_udp(char* host, char** argv, int argc, char* error)
 {
 	int r;
 	struct vz_cmd_send_target dst;

@@ -64,7 +64,7 @@ VZCMDSEND_API int vz_cmd_send_init();
 VZCMDSEND_API int vz_cmd_send_release();
 VZCMDSEND_API int vz_cmd_send(struct vz_cmd_send_target* dst, ...);
 VZCMDSEND_API int vz_cmd_send_va(struct vz_cmd_send_target* dst, va_list ap);
-VZCMDSEND_API int VZCMDSEND_API_STDCALL vz_cmd_send_strlist_udp(char* host, char** argv, int argc, char* error);
+VZCMDSEND_API int vz_cmd_send_strlist_udp(char* host, char** argv, int argc, char* error);
 
 #ifdef __cplusplus
 };
