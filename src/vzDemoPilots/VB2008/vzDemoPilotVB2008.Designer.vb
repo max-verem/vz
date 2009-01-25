@@ -24,6 +24,10 @@ Partial Class MainForm
     Private Sub InitializeComponent()
         Me.TabControl1 = New System.Windows.Forms.TabControl
         Me.TabPage1 = New System.Windows.Forms.TabPage
+        Me.b_demo1_director_reset = New System.Windows.Forms.Button
+        Me.b_demo1_director_continue = New System.Windows.Forms.Button
+        Me.b_demo1_director_start = New System.Windows.Forms.Button
+        Me.b_demo1_load_text = New System.Windows.Forms.Button
         Me.t_demo1_t2 = New System.Windows.Forms.TextBox
         Me.Label3 = New System.Windows.Forms.Label
         Me.t_demo1_t1 = New System.Windows.Forms.TextBox
@@ -33,12 +37,10 @@ Partial Class MainForm
         Me.TabPage3 = New System.Windows.Forms.TabPage
         Me.Label1 = New System.Windows.Forms.Label
         Me.t_hostname = New System.Windows.Forms.TextBox
-        Me.b_demo1_load_text = New System.Windows.Forms.Button
-        Me.b_demo1_director_start = New System.Windows.Forms.Button
-        Me.b_demo1_director_continue = New System.Windows.Forms.Button
-        Me.b_demo1_director_reset = New System.Windows.Forms.Button
+        Me.b_demo3_load_scene = New System.Windows.Forms.Button
         Me.TabControl1.SuspendLayout()
         Me.TabPage1.SuspendLayout()
+        Me.TabPage2.SuspendLayout()
         Me.SuspendLayout()
         '
         'TabControl1
@@ -70,6 +72,42 @@ Partial Class MainForm
         Me.TabPage1.TabIndex = 0
         Me.TabPage1.Text = "demo1.xml"
         Me.TabPage1.UseVisualStyleBackColor = True
+        '
+        'b_demo1_director_reset
+        '
+        Me.b_demo1_director_reset.Location = New System.Drawing.Point(459, 121)
+        Me.b_demo1_director_reset.Name = "b_demo1_director_reset"
+        Me.b_demo1_director_reset.Size = New System.Drawing.Size(120, 23)
+        Me.b_demo1_director_reset.TabIndex = 8
+        Me.b_demo1_director_reset.Text = "Reset Animation"
+        Me.b_demo1_director_reset.UseVisualStyleBackColor = True
+        '
+        'b_demo1_director_continue
+        '
+        Me.b_demo1_director_continue.Location = New System.Drawing.Point(345, 121)
+        Me.b_demo1_director_continue.Name = "b_demo1_director_continue"
+        Me.b_demo1_director_continue.Size = New System.Drawing.Size(108, 23)
+        Me.b_demo1_director_continue.TabIndex = 7
+        Me.b_demo1_director_continue.Text = "Continue Animation"
+        Me.b_demo1_director_continue.UseVisualStyleBackColor = True
+        '
+        'b_demo1_director_start
+        '
+        Me.b_demo1_director_start.Location = New System.Drawing.Point(230, 121)
+        Me.b_demo1_director_start.Name = "b_demo1_director_start"
+        Me.b_demo1_director_start.Size = New System.Drawing.Size(109, 23)
+        Me.b_demo1_director_start.TabIndex = 6
+        Me.b_demo1_director_start.Text = "Start Animation"
+        Me.b_demo1_director_start.UseVisualStyleBackColor = True
+        '
+        'b_demo1_load_text
+        '
+        Me.b_demo1_load_text.Location = New System.Drawing.Point(7, 121)
+        Me.b_demo1_load_text.Name = "b_demo1_load_text"
+        Me.b_demo1_load_text.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo1_load_text.TabIndex = 5
+        Me.b_demo1_load_text.Text = "Load Texts"
+        Me.b_demo1_load_text.UseVisualStyleBackColor = True
         '
         't_demo1_t2
         '
@@ -116,12 +154,13 @@ Partial Class MainForm
         '
         'TabPage2
         '
+        Me.TabPage2.Controls.Add(Me.b_demo3_load_scene)
         Me.TabPage2.Location = New System.Drawing.Point(4, 22)
         Me.TabPage2.Name = "TabPage2"
         Me.TabPage2.Padding = New System.Windows.Forms.Padding(3)
         Me.TabPage2.Size = New System.Drawing.Size(585, 352)
         Me.TabPage2.TabIndex = 1
-        Me.TabPage2.Text = "TabPage2"
+        Me.TabPage2.Text = "demo3.xml"
         Me.TabPage2.UseVisualStyleBackColor = True
         '
         'TabPage3
@@ -151,41 +190,14 @@ Partial Class MainForm
         Me.t_hostname.TabIndex = 2
         Me.t_hostname.Text = "localhost"
         '
-        'b_demo1_load_text
+        'b_demo3_load_scene
         '
-        Me.b_demo1_load_text.Location = New System.Drawing.Point(7, 121)
-        Me.b_demo1_load_text.Name = "b_demo1_load_text"
-        Me.b_demo1_load_text.Size = New System.Drawing.Size(75, 23)
-        Me.b_demo1_load_text.TabIndex = 5
-        Me.b_demo1_load_text.Text = "Load Texts"
-        Me.b_demo1_load_text.UseVisualStyleBackColor = True
-        '
-        'b_demo1_director_start
-        '
-        Me.b_demo1_director_start.Location = New System.Drawing.Point(230, 121)
-        Me.b_demo1_director_start.Name = "b_demo1_director_start"
-        Me.b_demo1_director_start.Size = New System.Drawing.Size(109, 23)
-        Me.b_demo1_director_start.TabIndex = 6
-        Me.b_demo1_director_start.Text = "Start Animation"
-        Me.b_demo1_director_start.UseVisualStyleBackColor = True
-        '
-        'b_demo1_director_continue
-        '
-        Me.b_demo1_director_continue.Location = New System.Drawing.Point(345, 121)
-        Me.b_demo1_director_continue.Name = "b_demo1_director_continue"
-        Me.b_demo1_director_continue.Size = New System.Drawing.Size(108, 23)
-        Me.b_demo1_director_continue.TabIndex = 7
-        Me.b_demo1_director_continue.Text = "Continue Animation"
-        Me.b_demo1_director_continue.UseVisualStyleBackColor = True
-        '
-        'b_demo1_director_reset
-        '
-        Me.b_demo1_director_reset.Location = New System.Drawing.Point(459, 121)
-        Me.b_demo1_director_reset.Name = "b_demo1_director_reset"
-        Me.b_demo1_director_reset.Size = New System.Drawing.Size(120, 23)
-        Me.b_demo1_director_reset.TabIndex = 8
-        Me.b_demo1_director_reset.Text = "Reset Animation"
-        Me.b_demo1_director_reset.UseVisualStyleBackColor = True
+        Me.b_demo3_load_scene.Location = New System.Drawing.Point(7, 7)
+        Me.b_demo3_load_scene.Name = "b_demo3_load_scene"
+        Me.b_demo3_load_scene.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo3_load_scene.TabIndex = 0
+        Me.b_demo3_load_scene.Text = "Load Scene"
+        Me.b_demo3_load_scene.UseVisualStyleBackColor = True
         '
         'MainForm
         '
@@ -200,6 +212,7 @@ Partial Class MainForm
         Me.TabControl1.ResumeLayout(False)
         Me.TabPage1.ResumeLayout(False)
         Me.TabPage1.PerformLayout()
+        Me.TabPage2.ResumeLayout(False)
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
@@ -219,5 +232,6 @@ Partial Class MainForm
     Friend WithEvents b_demo1_director_reset As System.Windows.Forms.Button
     Friend WithEvents b_demo1_director_continue As System.Windows.Forms.Button
     Friend WithEvents b_demo1_director_start As System.Windows.Forms.Button
+    Friend WithEvents b_demo3_load_scene As System.Windows.Forms.Button
 
 End Class

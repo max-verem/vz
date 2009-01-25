@@ -70,4 +70,13 @@
 
         send_vz_data(argv)
     End Sub
+
+    Private Sub b_demo3_load_scene_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles b_demo3_load_scene.Click
+        Dim argv(0 To 1) As String
+
+        argv(0) = VZ_CMD_LOAD_SCENE
+        argv(1) = "./projects/demo3.xml"
+
+        send_vz_data(argv)
+    End Sub
 End Class
