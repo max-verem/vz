@@ -34,13 +34,49 @@ Partial Class MainForm
         Me.Label2 = New System.Windows.Forms.Label
         Me.b_demo1_load_scene = New System.Windows.Forms.Button
         Me.TabPage2 = New System.Windows.Forms.TabPage
+        Me.b_demo3_load_scene = New System.Windows.Forms.Button
         Me.TabPage3 = New System.Windows.Forms.TabPage
         Me.Label1 = New System.Windows.Forms.Label
         Me.t_hostname = New System.Windows.Forms.TextBox
-        Me.b_demo3_load_scene = New System.Windows.Forms.Button
+        Me.Label4 = New System.Windows.Forms.Label
+        Me.t_demo3_text = New System.Windows.Forms.TextBox
+        Me.b_demo3_append = New System.Windows.Forms.Button
+        Me.b_demo3_loop_on = New System.Windows.Forms.Button
+        Me.b_demo3_loop_off = New System.Windows.Forms.Button
+        Me.b_demo3_reset = New System.Windows.Forms.Button
+        Me.Label5 = New System.Windows.Forms.Label
+        Me.b_demo3_speed10 = New System.Windows.Forms.Button
+        Me.b_demo3_speed15 = New System.Windows.Forms.Button
+        Me.b_demo3_speed20 = New System.Windows.Forms.Button
+        Me.b_demo3_speed25 = New System.Windows.Forms.Button
+        Me.b_demo3_speed30 = New System.Windows.Forms.Button
+        Me.b_demo5_load_scene = New System.Windows.Forms.Button
+        Me.Label6 = New System.Windows.Forms.Label
+        Me.b_demo5_f1 = New System.Windows.Forms.Button
+        Me.b_demo5_f3 = New System.Windows.Forms.Button
+        Me.b_demo5_f2 = New System.Windows.Forms.Button
+        Me.Label7 = New System.Windows.Forms.Label
+        Me.b_demo5_start = New System.Windows.Forms.Button
+        Me.b_demo5_stop = New System.Windows.Forms.Button
+        Me.b_demo5_reset = New System.Windows.Forms.Button
+        Me.b_demo5_cont = New System.Windows.Forms.Button
+        Me.Label8 = New System.Windows.Forms.Label
+        Me.Label9 = New System.Windows.Forms.Label
+        Me.t_demo5_start_value = New System.Windows.Forms.TextBox
+        Me.b_demo5_set_start = New System.Windows.Forms.Button
+        Me.Label10 = New System.Windows.Forms.Label
+        Me.t_demo5_stop_value = New System.Windows.Forms.TextBox
+        Me.b_demo5_set_stop = New System.Windows.Forms.Button
+        Me.TabPage4 = New System.Windows.Forms.TabPage
+        Me.b_load_other_1 = New System.Windows.Forms.Button
+        Me.Label11 = New System.Windows.Forms.Label
+        Me.b_load_other_2 = New System.Windows.Forms.Button
+        Me.Label12 = New System.Windows.Forms.Label
         Me.TabControl1.SuspendLayout()
         Me.TabPage1.SuspendLayout()
         Me.TabPage2.SuspendLayout()
+        Me.TabPage3.SuspendLayout()
+        Me.TabPage4.SuspendLayout()
         Me.SuspendLayout()
         '
         'TabControl1
@@ -48,6 +84,7 @@ Partial Class MainForm
         Me.TabControl1.Controls.Add(Me.TabPage1)
         Me.TabControl1.Controls.Add(Me.TabPage2)
         Me.TabControl1.Controls.Add(Me.TabPage3)
+        Me.TabControl1.Controls.Add(Me.TabPage4)
         Me.TabControl1.Location = New System.Drawing.Point(12, 49)
         Me.TabControl1.Name = "TabControl1"
         Me.TabControl1.SelectedIndex = 0
@@ -154,6 +191,18 @@ Partial Class MainForm
         '
         'TabPage2
         '
+        Me.TabPage2.Controls.Add(Me.b_demo3_speed30)
+        Me.TabPage2.Controls.Add(Me.b_demo3_speed25)
+        Me.TabPage2.Controls.Add(Me.b_demo3_speed20)
+        Me.TabPage2.Controls.Add(Me.b_demo3_speed15)
+        Me.TabPage2.Controls.Add(Me.b_demo3_speed10)
+        Me.TabPage2.Controls.Add(Me.Label5)
+        Me.TabPage2.Controls.Add(Me.b_demo3_reset)
+        Me.TabPage2.Controls.Add(Me.b_demo3_loop_off)
+        Me.TabPage2.Controls.Add(Me.b_demo3_loop_on)
+        Me.TabPage2.Controls.Add(Me.b_demo3_append)
+        Me.TabPage2.Controls.Add(Me.t_demo3_text)
+        Me.TabPage2.Controls.Add(Me.Label4)
         Me.TabPage2.Controls.Add(Me.b_demo3_load_scene)
         Me.TabPage2.Location = New System.Drawing.Point(4, 22)
         Me.TabPage2.Name = "TabPage2"
@@ -163,14 +212,40 @@ Partial Class MainForm
         Me.TabPage2.Text = "demo3.xml"
         Me.TabPage2.UseVisualStyleBackColor = True
         '
+        'b_demo3_load_scene
+        '
+        Me.b_demo3_load_scene.Location = New System.Drawing.Point(7, 7)
+        Me.b_demo3_load_scene.Name = "b_demo3_load_scene"
+        Me.b_demo3_load_scene.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo3_load_scene.TabIndex = 0
+        Me.b_demo3_load_scene.Text = "Load Scene"
+        Me.b_demo3_load_scene.UseVisualStyleBackColor = True
+        '
         'TabPage3
         '
+        Me.TabPage3.Controls.Add(Me.b_demo5_set_stop)
+        Me.TabPage3.Controls.Add(Me.b_demo5_set_start)
+        Me.TabPage3.Controls.Add(Me.t_demo5_stop_value)
+        Me.TabPage3.Controls.Add(Me.t_demo5_start_value)
+        Me.TabPage3.Controls.Add(Me.Label10)
+        Me.TabPage3.Controls.Add(Me.Label9)
+        Me.TabPage3.Controls.Add(Me.Label8)
+        Me.TabPage3.Controls.Add(Me.b_demo5_cont)
+        Me.TabPage3.Controls.Add(Me.b_demo5_reset)
+        Me.TabPage3.Controls.Add(Me.b_demo5_stop)
+        Me.TabPage3.Controls.Add(Me.b_demo5_start)
+        Me.TabPage3.Controls.Add(Me.Label7)
+        Me.TabPage3.Controls.Add(Me.b_demo5_f2)
+        Me.TabPage3.Controls.Add(Me.b_demo5_f3)
+        Me.TabPage3.Controls.Add(Me.b_demo5_f1)
+        Me.TabPage3.Controls.Add(Me.Label6)
+        Me.TabPage3.Controls.Add(Me.b_demo5_load_scene)
         Me.TabPage3.Location = New System.Drawing.Point(4, 22)
         Me.TabPage3.Name = "TabPage3"
         Me.TabPage3.Padding = New System.Windows.Forms.Padding(3)
         Me.TabPage3.Size = New System.Drawing.Size(585, 352)
         Me.TabPage3.TabIndex = 2
-        Me.TabPage3.Text = "TabPage3"
+        Me.TabPage3.Text = "demo5.xml"
         Me.TabPage3.UseVisualStyleBackColor = True
         '
         'Label1
@@ -190,14 +265,313 @@ Partial Class MainForm
         Me.t_hostname.TabIndex = 2
         Me.t_hostname.Text = "localhost"
         '
-        'b_demo3_load_scene
+        'Label4
         '
-        Me.b_demo3_load_scene.Location = New System.Drawing.Point(7, 7)
-        Me.b_demo3_load_scene.Name = "b_demo3_load_scene"
-        Me.b_demo3_load_scene.Size = New System.Drawing.Size(75, 23)
-        Me.b_demo3_load_scene.TabIndex = 0
-        Me.b_demo3_load_scene.Text = "Load Scene"
-        Me.b_demo3_load_scene.UseVisualStyleBackColor = True
+        Me.Label4.AutoSize = True
+        Me.Label4.Location = New System.Drawing.Point(7, 37)
+        Me.Label4.Name = "Label4"
+        Me.Label4.Size = New System.Drawing.Size(83, 13)
+        Me.Label4.TabIndex = 1
+        Me.Label4.Text = "Text to Append:"
+        '
+        't_demo3_text
+        '
+        Me.t_demo3_text.Location = New System.Drawing.Point(10, 54)
+        Me.t_demo3_text.Name = "t_demo3_text"
+        Me.t_demo3_text.Size = New System.Drawing.Size(569, 20)
+        Me.t_demo3_text.TabIndex = 2
+        Me.t_demo3_text.Text = "NEWS: VZ has a simple VB2008 integration"
+        '
+        'b_demo3_append
+        '
+        Me.b_demo3_append.Location = New System.Drawing.Point(10, 81)
+        Me.b_demo3_append.Name = "b_demo3_append"
+        Me.b_demo3_append.Size = New System.Drawing.Size(90, 23)
+        Me.b_demo3_append.TabIndex = 3
+        Me.b_demo3_append.Text = "Append Text"
+        Me.b_demo3_append.UseVisualStyleBackColor = True
+        '
+        'b_demo3_loop_on
+        '
+        Me.b_demo3_loop_on.Location = New System.Drawing.Point(339, 81)
+        Me.b_demo3_loop_on.Name = "b_demo3_loop_on"
+        Me.b_demo3_loop_on.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo3_loop_on.TabIndex = 4
+        Me.b_demo3_loop_on.Text = "Loop ON"
+        Me.b_demo3_loop_on.UseVisualStyleBackColor = True
+        '
+        'b_demo3_loop_off
+        '
+        Me.b_demo3_loop_off.Location = New System.Drawing.Point(421, 81)
+        Me.b_demo3_loop_off.Name = "b_demo3_loop_off"
+        Me.b_demo3_loop_off.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo3_loop_off.TabIndex = 5
+        Me.b_demo3_loop_off.Text = "Loop OFF"
+        Me.b_demo3_loop_off.UseVisualStyleBackColor = True
+        '
+        'b_demo3_reset
+        '
+        Me.b_demo3_reset.Location = New System.Drawing.Point(503, 81)
+        Me.b_demo3_reset.Name = "b_demo3_reset"
+        Me.b_demo3_reset.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo3_reset.TabIndex = 6
+        Me.b_demo3_reset.Text = "Reset"
+        Me.b_demo3_reset.UseVisualStyleBackColor = True
+        '
+        'Label5
+        '
+        Me.Label5.AutoSize = True
+        Me.Label5.Location = New System.Drawing.Point(7, 117)
+        Me.Label5.Name = "Label5"
+        Me.Label5.Size = New System.Drawing.Size(73, 13)
+        Me.Label5.TabIndex = 7
+        Me.Label5.Text = "Speed control"
+        '
+        'b_demo3_speed10
+        '
+        Me.b_demo3_speed10.Location = New System.Drawing.Point(10, 134)
+        Me.b_demo3_speed10.Name = "b_demo3_speed10"
+        Me.b_demo3_speed10.Size = New System.Drawing.Size(38, 23)
+        Me.b_demo3_speed10.TabIndex = 8
+        Me.b_demo3_speed10.Text = "1.0"
+        Me.b_demo3_speed10.UseVisualStyleBackColor = True
+        '
+        'b_demo3_speed15
+        '
+        Me.b_demo3_speed15.Location = New System.Drawing.Point(54, 134)
+        Me.b_demo3_speed15.Name = "b_demo3_speed15"
+        Me.b_demo3_speed15.Size = New System.Drawing.Size(38, 23)
+        Me.b_demo3_speed15.TabIndex = 9
+        Me.b_demo3_speed15.Text = "1.5"
+        Me.b_demo3_speed15.UseVisualStyleBackColor = True
+        '
+        'b_demo3_speed20
+        '
+        Me.b_demo3_speed20.Location = New System.Drawing.Point(98, 134)
+        Me.b_demo3_speed20.Name = "b_demo3_speed20"
+        Me.b_demo3_speed20.Size = New System.Drawing.Size(38, 23)
+        Me.b_demo3_speed20.TabIndex = 10
+        Me.b_demo3_speed20.Text = "2.0"
+        Me.b_demo3_speed20.UseVisualStyleBackColor = True
+        '
+        'b_demo3_speed25
+        '
+        Me.b_demo3_speed25.Location = New System.Drawing.Point(142, 134)
+        Me.b_demo3_speed25.Name = "b_demo3_speed25"
+        Me.b_demo3_speed25.Size = New System.Drawing.Size(38, 23)
+        Me.b_demo3_speed25.TabIndex = 11
+        Me.b_demo3_speed25.Text = "2.5"
+        Me.b_demo3_speed25.UseVisualStyleBackColor = True
+        '
+        'b_demo3_speed30
+        '
+        Me.b_demo3_speed30.Location = New System.Drawing.Point(186, 134)
+        Me.b_demo3_speed30.Name = "b_demo3_speed30"
+        Me.b_demo3_speed30.Size = New System.Drawing.Size(38, 23)
+        Me.b_demo3_speed30.TabIndex = 12
+        Me.b_demo3_speed30.Text = "3.0"
+        Me.b_demo3_speed30.UseVisualStyleBackColor = True
+        '
+        'b_demo5_load_scene
+        '
+        Me.b_demo5_load_scene.Location = New System.Drawing.Point(6, 6)
+        Me.b_demo5_load_scene.Name = "b_demo5_load_scene"
+        Me.b_demo5_load_scene.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo5_load_scene.TabIndex = 1
+        Me.b_demo5_load_scene.Text = "Load Scene"
+        Me.b_demo5_load_scene.UseVisualStyleBackColor = True
+        '
+        'Label6
+        '
+        Me.Label6.AutoSize = True
+        Me.Label6.Location = New System.Drawing.Point(7, 53)
+        Me.Label6.Name = "Label6"
+        Me.Label6.Size = New System.Drawing.Size(73, 13)
+        Me.Label6.TabIndex = 2
+        Me.Label6.Text = "Timer formats:"
+        '
+        'b_demo5_f1
+        '
+        Me.b_demo5_f1.Location = New System.Drawing.Point(6, 70)
+        Me.b_demo5_f1.Name = "b_demo5_f1"
+        Me.b_demo5_f1.Size = New System.Drawing.Size(97, 23)
+        Me.b_demo5_f1.TabIndex = 3
+        Me.b_demo5_f1.Text = "MM:SS.DDD"
+        Me.b_demo5_f1.UseVisualStyleBackColor = True
+        '
+        'b_demo5_f3
+        '
+        Me.b_demo5_f3.Location = New System.Drawing.Point(191, 70)
+        Me.b_demo5_f3.Name = "b_demo5_f3"
+        Me.b_demo5_f3.Size = New System.Drawing.Size(88, 23)
+        Me.b_demo5_f3.TabIndex = 4
+        Me.b_demo5_f3.Text = "HH:MM:SS:FF"
+        Me.b_demo5_f3.UseVisualStyleBackColor = True
+        '
+        'b_demo5_f2
+        '
+        Me.b_demo5_f2.Location = New System.Drawing.Point(110, 69)
+        Me.b_demo5_f2.Name = "b_demo5_f2"
+        Me.b_demo5_f2.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo5_f2.TabIndex = 5
+        Me.b_demo5_f2.Text = "m:SS"
+        Me.b_demo5_f2.UseVisualStyleBackColor = True
+        '
+        'Label7
+        '
+        Me.Label7.AutoSize = True
+        Me.Label7.Location = New System.Drawing.Point(3, 114)
+        Me.Label7.Name = "Label7"
+        Me.Label7.Size = New System.Drawing.Size(105, 13)
+        Me.Label7.TabIndex = 6
+        Me.Label7.Text = "Timer runtime control"
+        '
+        'b_demo5_start
+        '
+        Me.b_demo5_start.Location = New System.Drawing.Point(6, 135)
+        Me.b_demo5_start.Name = "b_demo5_start"
+        Me.b_demo5_start.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo5_start.TabIndex = 7
+        Me.b_demo5_start.Text = "Start"
+        Me.b_demo5_start.UseVisualStyleBackColor = True
+        '
+        'b_demo5_stop
+        '
+        Me.b_demo5_stop.Location = New System.Drawing.Point(87, 135)
+        Me.b_demo5_stop.Name = "b_demo5_stop"
+        Me.b_demo5_stop.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo5_stop.TabIndex = 8
+        Me.b_demo5_stop.Text = "Stop"
+        Me.b_demo5_stop.UseVisualStyleBackColor = True
+        '
+        'b_demo5_reset
+        '
+        Me.b_demo5_reset.Location = New System.Drawing.Point(250, 135)
+        Me.b_demo5_reset.Name = "b_demo5_reset"
+        Me.b_demo5_reset.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo5_reset.TabIndex = 9
+        Me.b_demo5_reset.Text = "Reset"
+        Me.b_demo5_reset.UseVisualStyleBackColor = True
+        '
+        'b_demo5_cont
+        '
+        Me.b_demo5_cont.Location = New System.Drawing.Point(169, 134)
+        Me.b_demo5_cont.Name = "b_demo5_cont"
+        Me.b_demo5_cont.Size = New System.Drawing.Size(75, 23)
+        Me.b_demo5_cont.TabIndex = 10
+        Me.b_demo5_cont.Text = "Continue"
+        Me.b_demo5_cont.UseVisualStyleBackColor = True
+        '
+        'Label8
+        '
+        Me.Label8.AutoSize = True
+        Me.Label8.Location = New System.Drawing.Point(6, 182)
+        Me.Label8.Name = "Label8"
+        Me.Label8.Size = New System.Drawing.Size(126, 13)
+        Me.Label8.TabIndex = 11
+        Me.Label8.Text = "Timer range (miliseconds)"
+        '
+        'Label9
+        '
+        Me.Label9.AutoSize = True
+        Me.Label9.Location = New System.Drawing.Point(7, 206)
+        Me.Label9.Name = "Label9"
+        Me.Label9.Size = New System.Drawing.Size(62, 13)
+        Me.Label9.TabIndex = 12
+        Me.Label9.Text = "Start Value:"
+        '
+        't_demo5_start_value
+        '
+        Me.t_demo5_start_value.Location = New System.Drawing.Point(93, 203)
+        Me.t_demo5_start_value.Name = "t_demo5_start_value"
+        Me.t_demo5_start_value.Size = New System.Drawing.Size(100, 20)
+        Me.t_demo5_start_value.TabIndex = 13
+        Me.t_demo5_start_value.Text = "10000"
+        '
+        'b_demo5_set_start
+        '
+        Me.b_demo5_set_start.Location = New System.Drawing.Point(199, 201)
+        Me.b_demo5_set_start.Name = "b_demo5_set_start"
+        Me.b_demo5_set_start.Size = New System.Drawing.Size(53, 23)
+        Me.b_demo5_set_start.TabIndex = 14
+        Me.b_demo5_set_start.Text = "SET"
+        Me.b_demo5_set_start.UseVisualStyleBackColor = True
+        '
+        'Label10
+        '
+        Me.Label10.AutoSize = True
+        Me.Label10.Location = New System.Drawing.Point(7, 234)
+        Me.Label10.Name = "Label10"
+        Me.Label10.Size = New System.Drawing.Size(62, 13)
+        Me.Label10.TabIndex = 12
+        Me.Label10.Text = "Stop Value:"
+        '
+        't_demo5_stop_value
+        '
+        Me.t_demo5_stop_value.Location = New System.Drawing.Point(93, 231)
+        Me.t_demo5_stop_value.Name = "t_demo5_stop_value"
+        Me.t_demo5_stop_value.Size = New System.Drawing.Size(100, 20)
+        Me.t_demo5_stop_value.TabIndex = 13
+        Me.t_demo5_stop_value.Text = "20000"
+        '
+        'b_demo5_set_stop
+        '
+        Me.b_demo5_set_stop.Location = New System.Drawing.Point(199, 229)
+        Me.b_demo5_set_stop.Name = "b_demo5_set_stop"
+        Me.b_demo5_set_stop.Size = New System.Drawing.Size(53, 23)
+        Me.b_demo5_set_stop.TabIndex = 14
+        Me.b_demo5_set_stop.Text = "SET"
+        Me.b_demo5_set_stop.UseVisualStyleBackColor = True
+        '
+        'TabPage4
+        '
+        Me.TabPage4.Controls.Add(Me.Label12)
+        Me.TabPage4.Controls.Add(Me.Label11)
+        Me.TabPage4.Controls.Add(Me.b_load_other_2)
+        Me.TabPage4.Controls.Add(Me.b_load_other_1)
+        Me.TabPage4.Location = New System.Drawing.Point(4, 22)
+        Me.TabPage4.Name = "TabPage4"
+        Me.TabPage4.Padding = New System.Windows.Forms.Padding(3)
+        Me.TabPage4.Size = New System.Drawing.Size(585, 352)
+        Me.TabPage4.TabIndex = 3
+        Me.TabPage4.Text = "Other"
+        Me.TabPage4.UseVisualStyleBackColor = True
+        '
+        'b_load_other_1
+        '
+        Me.b_load_other_1.Location = New System.Drawing.Point(6, 6)
+        Me.b_load_other_1.Name = "b_load_other_1"
+        Me.b_load_other_1.Size = New System.Drawing.Size(138, 23)
+        Me.b_load_other_1.TabIndex = 0
+        Me.b_load_other_1.Text = "cube.xml"
+        Me.b_load_other_1.UseVisualStyleBackColor = True
+        '
+        'Label11
+        '
+        Me.Label11.AutoSize = True
+        Me.Label11.Location = New System.Drawing.Point(150, 11)
+        Me.Label11.Name = "Label11"
+        Me.Label11.Size = New System.Drawing.Size(83, 13)
+        Me.Label11.TabIndex = 1
+        Me.Label11.Text = "Trajectory demo"
+        '
+        'b_load_other_2
+        '
+        Me.b_load_other_2.Location = New System.Drawing.Point(6, 35)
+        Me.b_load_other_2.Name = "b_load_other_2"
+        Me.b_load_other_2.Size = New System.Drawing.Size(138, 23)
+        Me.b_load_other_2.TabIndex = 0
+        Me.b_load_other_2.Text = "image_test_ft.xml"
+        Me.b_load_other_2.UseVisualStyleBackColor = True
+        '
+        'Label12
+        '
+        Me.Label12.AutoSize = True
+        Me.Label12.Location = New System.Drawing.Point(150, 40)
+        Me.Label12.Name = "Label12"
+        Me.Label12.Size = New System.Drawing.Size(103, 13)
+        Me.Label12.TabIndex = 1
+        Me.Label12.Text = "Image free transform"
         '
         'MainForm
         '
@@ -213,6 +587,11 @@ Partial Class MainForm
         Me.TabPage1.ResumeLayout(False)
         Me.TabPage1.PerformLayout()
         Me.TabPage2.ResumeLayout(False)
+        Me.TabPage2.PerformLayout()
+        Me.TabPage3.ResumeLayout(False)
+        Me.TabPage3.PerformLayout()
+        Me.TabPage4.ResumeLayout(False)
+        Me.TabPage4.PerformLayout()
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
@@ -233,5 +612,39 @@ Partial Class MainForm
     Friend WithEvents b_demo1_director_continue As System.Windows.Forms.Button
     Friend WithEvents b_demo1_director_start As System.Windows.Forms.Button
     Friend WithEvents b_demo3_load_scene As System.Windows.Forms.Button
+    Friend WithEvents t_demo3_text As System.Windows.Forms.TextBox
+    Friend WithEvents Label4 As System.Windows.Forms.Label
+    Friend WithEvents b_demo3_speed15 As System.Windows.Forms.Button
+    Friend WithEvents b_demo3_speed10 As System.Windows.Forms.Button
+    Friend WithEvents Label5 As System.Windows.Forms.Label
+    Friend WithEvents b_demo3_reset As System.Windows.Forms.Button
+    Friend WithEvents b_demo3_loop_off As System.Windows.Forms.Button
+    Friend WithEvents b_demo3_loop_on As System.Windows.Forms.Button
+    Friend WithEvents b_demo3_append As System.Windows.Forms.Button
+    Friend WithEvents b_demo3_speed30 As System.Windows.Forms.Button
+    Friend WithEvents b_demo3_speed25 As System.Windows.Forms.Button
+    Friend WithEvents b_demo3_speed20 As System.Windows.Forms.Button
+    Friend WithEvents b_demo5_load_scene As System.Windows.Forms.Button
+    Friend WithEvents b_demo5_cont As System.Windows.Forms.Button
+    Friend WithEvents b_demo5_reset As System.Windows.Forms.Button
+    Friend WithEvents b_demo5_stop As System.Windows.Forms.Button
+    Friend WithEvents b_demo5_start As System.Windows.Forms.Button
+    Friend WithEvents Label7 As System.Windows.Forms.Label
+    Friend WithEvents b_demo5_f2 As System.Windows.Forms.Button
+    Friend WithEvents b_demo5_f3 As System.Windows.Forms.Button
+    Friend WithEvents b_demo5_f1 As System.Windows.Forms.Button
+    Friend WithEvents Label6 As System.Windows.Forms.Label
+    Friend WithEvents Label8 As System.Windows.Forms.Label
+    Friend WithEvents b_demo5_set_start As System.Windows.Forms.Button
+    Friend WithEvents t_demo5_start_value As System.Windows.Forms.TextBox
+    Friend WithEvents Label9 As System.Windows.Forms.Label
+    Friend WithEvents b_demo5_set_stop As System.Windows.Forms.Button
+    Friend WithEvents t_demo5_stop_value As System.Windows.Forms.TextBox
+    Friend WithEvents Label10 As System.Windows.Forms.Label
+    Friend WithEvents TabPage4 As System.Windows.Forms.TabPage
+    Friend WithEvents b_load_other_1 As System.Windows.Forms.Button
+    Friend WithEvents Label12 As System.Windows.Forms.Label
+    Friend WithEvents Label11 As System.Windows.Forms.Label
+    Friend WithEvents b_load_other_2 As System.Windows.Forms.Button
 
 End Class
