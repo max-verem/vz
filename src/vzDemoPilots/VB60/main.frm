@@ -135,12 +135,11 @@ Private Sub send_vz_data(argv() As vzCmdSendPart_desc)
 
 End Sub
 Private Sub demo1_director_cont_Click()
-    Dim argv(0 To 2) As vzCmdSendPart_desc
+    Dim argv(0 To 1) As vzCmdSendPart_desc
 
     ' Setup command
     argv(0).cmd = VZ_CMD_CONTINUE_DIRECTOR
     argv(1).cmd = "main"
-    argv(2).cmd = "0"
 
     send_vz_data argv
 End Sub
@@ -177,11 +176,11 @@ Private Sub demo1_load_texts_Click()
 
     ' Setup command
     argv(0).cmd = VZ_CMD_SET
-    argv(1).cmd = "text_2"
+    argv(1).cmd = "text_1"
     argv(2).cmd = "s_text"
     argv(3).cmd = demo1_t_1.Text
     argv(4).cmd = VZ_CMD_SET
-    argv(5).cmd = "text_1"
+    argv(5).cmd = "text_2"
     argv(6).cmd = "s_text"
     argv(7).cmd = demo1_t_2.Text
 
