@@ -34,7 +34,7 @@ ChangeLog:
 
 #define VZ_TITLE "ViZualizator"
 #define VZ_VERSION_NUMBER "1.0"
-#define VZ_VERSION_SUFFIX "fix3"
+#define VZ_VERSION_SUFFIX "fix4"
 #define VZ_VERSION VZ_VERSION_NUMBER "-" VZ_VERSION_SUFFIX
 
 
