@@ -140,6 +140,8 @@ int CMD_screenshot(char* filename, char** error_log)
 
 int CMD_loadscene(char* filename, char** error_log)
 {
+	int r;
+
 	/* notify */
 	logger_printf(0, "CMD_loadscene [%s]", filename);
 
@@ -170,13 +172,15 @@ int CMD_loadscene(char* filename, char** error_log)
 
 		scene = NULL;
 
-		return -2;
-	};
+		r = -2;
+	}
+	else
+		r = 0;
 
 	// unlock scene
 	ReleaseMutex(scene_lock);
 
-	return 0;
+	return r;
 };
 
 /* -------------------------------------------------------- */
