@@ -383,6 +383,10 @@ VZMAIN_API void vzConfigTVSpec(void* config, char* module, void* spec)
 	temp->vga_height = temp->TV_FRAME_HEIGHT >> temp->VGA_SCALE;
 	temp->vga_width = temp->TV_FRAME_WIDTH >> temp->VGA_SCALE;
 
+	/* check for anamorphic flag */
+	if(NULL != (v = vzConfigParam(config, module, "ANAMNORPHIC")))
+		temp->anamorphic = 1;
+
 	/* check for wide */
 	if(NULL != (v = vzConfigParam(config, module, "WIDE_PAL")))
 	{

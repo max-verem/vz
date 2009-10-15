@@ -390,7 +390,8 @@ void vzScene::display(long frame)
 
 		/* honor PAR - set H scale */
 		glPushMatrix();
-		glScalef(((float)_tv->TV_FRAME_PAR_DEN)/_tv->TV_FRAME_PAR_NOM, 1.0f, 1.0f);
+		if(!_tv->anamorphic)
+			glScalef(((float)_tv->TV_FRAME_PAR_DEN)/_tv->TV_FRAME_PAR_NOM, 1.0f, 1.0f);
 
 		/* draw */
 		draw(frame,field,1,1, 0);

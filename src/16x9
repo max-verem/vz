@@ -41,3 +41,14 @@ sample_scene.xml:
         </container>
     </container>
 </tree>
+
+For Anamorphic mode it possible to turn on two flags
+
+[...]
+                <!-- 16:9 -->
+		<param name="WIDE_PAL" value="defined"/>
+
+                <!-- anamorphic -->
+		<param name="ANAMNORPHIC" value="defined"/>
+[...]
+

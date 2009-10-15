@@ -73,6 +73,9 @@ struct _vzTVSpec
 	long VGA_SCALE;
 	long vga_width;
 	long vga_height;
+
+	/* anamorpthic flag */
+	long anamorphic;
 };
 typedef struct _vzTVSpec vzTVSpec;
 
