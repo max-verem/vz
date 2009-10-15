@@ -630,26 +630,26 @@ static void vz_scene_display(void)
 
 		glTexCoord2f(
 			0.0f, 
-			(float)(tv.TV_FRAME_HEIGHT/fbo.bg_tex_height));
+			(float)(tv.vga_height/fbo.bg_tex_height));
 		glVertex3f(
 			X,
-			Y + (float)(tv.TV_FRAME_HEIGHT),
+			Y + (float)(tv.vga_height),
 			0.0f);
 
 		glTexCoord2f(
-			(float)(tv.TV_FRAME_WIDTH/fbo.bg_tex_width), 
-			(float)(tv.TV_FRAME_HEIGHT/fbo.bg_tex_height));
+			(float)(tv.vga_width/fbo.bg_tex_width), 
+			(float)(tv.vga_height/fbo.bg_tex_height));
 
 		glVertex3f(
-			X + (float)(tv.TV_FRAME_WIDTH),
-			Y + (float)(tv.TV_FRAME_HEIGHT),
+			X + (float)(tv.vga_width),
+			Y + (float)(tv.vga_height),
 			0.0f);
 
 		glTexCoord2f(
-			(float)(tv.TV_FRAME_WIDTH/fbo.bg_tex_width), 
+			(float)(tv.vga_width/fbo.bg_tex_width), 
 			0.0f);
 		glVertex3f(
-			X + (float)(tv.TV_FRAME_WIDTH), 
+			X + (float)(tv.vga_width), 
 			Y, 
 			0.0f);
 
