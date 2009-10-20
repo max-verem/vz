@@ -41,8 +41,12 @@ ChangeLog:
 #include "../vz/vzTVSpec.h"
 #include "../vz/vzLogger.h"
 
+/*
+    prepare:
+        midl DecklinkInterface.idl /h DecklinkInterface.h
+*/
 #include "DecklinkInterface.h"
-#pragma comment(lib, "DecklinkInterface.lib")
+#include "DecklinkInterface_i.c"
 
 #include <stdio.h>
 
