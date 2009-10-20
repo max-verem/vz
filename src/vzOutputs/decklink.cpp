@@ -68,6 +68,7 @@ ChangeLog:
 								"OUT_COMPONENT_LEVEL_SMPTE"
 #define O_OUT_SETUP_IS_75		"OUT_SETUP_IS_75"
 #define O_TIMING_OFFSET			"TIMING_OFFSET"
+#define O_KEYER_ALPHA			"KEYER_ALPHA"
 
 /* ------------------------------------------------------------------
 
@@ -134,6 +135,8 @@ static void decklink_configure(void)
 
 	/* setup keyer */
 	{
+        unsigned int l;
+
 		logger_printf
 		(
 			0, MODULE_PREFIX "Setting %s keyer... ", 
@@ -147,8 +150,17 @@ static void decklink_configure(void)
 		else logger_printf(1, MODULE_PREFIX " +- FAILED");
 
 		/* setup alpha level to default */
-		hr = decklink_keyer->set_AlphaLevel(255);
-	};
+        if(CONFIG_O(O_KEYER_ALPHA))
+            l = atol(CONFIG_O(O_KEYER_ALPHA));
+        else
+            l = 255;
+        logger_printf(0, MODULE_PREFIX "Setting keyer alpha to %d... ", l);
+
+        hr = decklink_keyer->set_AlphaLevel(l);
+
+        if(S_OK == hr) logger_printf(0, MODULE_PREFIX " +- OK");
+		else logger_printf(1, MODULE_PREFIX " +- FAILED");
+    };
 
 	/* set video input O_VIDEO_INPUT */
 	if(NULL != CONFIG_O(O_VIDEO_INPUT))
