@@ -201,9 +201,9 @@ static int vzImageLoadJPEG(vzImage** pimg, char* filename)
     int pix_fmt;
     switch(cinfo.output_components)
     {
-        case 3: pix_fmt = VZIMAGE_PIXFMT_BGR; break;
+        case 3: pix_fmt = VZIMAGE_PIXFMT_RGB; break;
         case 1: pix_fmt = VZIMAGE_PIXFMT_GRAY; break;
-        case 4: pix_fmt = VZIMAGE_PIXFMT_BGRA; break;
+        case 4: pix_fmt = VZIMAGE_PIXFMT_RGBA; break;
         default:
         {
             jpeg_destroy_decompress(&cinfo);
