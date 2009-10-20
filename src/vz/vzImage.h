@@ -40,7 +40,6 @@ typedef struct vzImageDesc
 {
     long width;
 	long height;
-	int surface_type;
     void *surface;
 	long base_x;
 	long base_y;

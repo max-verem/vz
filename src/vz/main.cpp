@@ -998,9 +998,10 @@ int main(int argc, char** argv)
 	/* default ttFont path */
 	vzTTFontAddFontPath("fonts");
 
+//#define _DEBUG_IMG
 #ifdef _DEBUG_IMG
     vzImage* img = NULL;
-    int r = vzImageLoad(&img, "C:\\projects\\vz\\projects\\demo1\\star.tga");
+    int r = vzImageLoad(&img, "C:\\projects\\vz\\install\\debug\\projects\\demo8\\jpg24.jpg");
     vzImageRelease(&img);
 #endif /* _DEBUG_IMG */
 

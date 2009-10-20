@@ -313,7 +313,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 				(_DATA->_height - _DATA->_image->height)/2,		// GLint yoffset,
 				_DATA->_image->width,							// GLsizei width,
 				_DATA->_image->height,							// GLsizei height,
-				GL_BGRA_EXT,									// GLenum format,
+				vzImagePixFmt2OGL(_DATA->_image->pix_fmt),		// GLenum format, GL_BGRA_EXT
 				GL_UNSIGNED_BYTE,								// GLenum type,
 				_DATA->_image->surface							// const GLvoid *pixels 
 			);

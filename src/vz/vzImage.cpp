@@ -576,7 +576,6 @@ VZIMAGE_API int vzImageCreate(vzImage** pimg, int width, int height, long pix_fm
     img->height = img->base_height = height;
     img->pix_fmt = pix_fmt;
     img->bpp = vzImagePixFmt2Bpp(pix_fmt);
-    img->surface_type = vzImagePixFmt2OGL(pix_fmt);
 
     /* allocate */
     img->line_size = ((width * img->bpp + (VZIMAGE_ALIGN_LINE >> 1)) /
@@ -751,9 +750,16 @@ VZIMAGE_API int vzImagePixFmtConv(vzImage** pimg, int pix_fmt)
         return -2;
 
     /* lookup for proper pixel convertor */
-    for(i = 0; pix_fmt_convs[i].conv; i++)
-        if(pix_fmt_convs[i].src_pix_fmt == src_img->pix_fmt && pix_fmt_convs[i].dst_pix_fmt == pix_fmt)
+    for(i = 0; pix_fmt_convs[i].src_pix_fmt; i++)
+        if
+        (
+            (pix_fmt_convs[i].src_pix_fmt == src_img->pix_fmt)
+            &&
+            (pix_fmt_convs[i].dst_pix_fmt == pix_fmt)
+        )
+        {
             break;
+        };
 
     /* check if possible to convert */
     if(!pix_fmt_convs[i].conv)
@@ -774,7 +780,7 @@ VZIMAGE_API int vzImagePixFmtConv(vzImage** pimg, int pix_fmt)
         r = vzImageCreate(&dst_img, src_img->width, src_img->height, pix_fmt);
 
         /* check */
-        if(!r)
+        if(r)
             return -3;
     };
 
