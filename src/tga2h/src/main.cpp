@@ -77,7 +77,7 @@ int main(int argc, char** argv)
 
 	/* Image file */
     r = vzImageLoad(&image, filename_tga);
-	if(!r)
+	if(r)
 	{
 		/* notify */
 		fprintf(stderr, "ERROR! Unable to open file [%s], r=%d\n", filename_tga, r);
