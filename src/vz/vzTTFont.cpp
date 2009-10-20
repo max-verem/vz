@@ -1012,12 +1012,8 @@ VZTTFONT_API vzImage* vzTTFont::render(char* text, long font_colour, long stroke
 	ReleaseMutex((HANDLE)_symbols_lock);	
 
 	// create a surface
-	vzImage* temp = vzImageNew			
-	(
-		symbols->width,
-		symbols->height,
-		4*symbols->width*symbols->height
-	);
+	vzImage* temp;
+    vzImageCreate(&temp, symbols->width, symbols->height);
 
 	// RENDER IMAGE
 	render_to(temp, 0, 0, text_id, font_colour, stroke_colour);

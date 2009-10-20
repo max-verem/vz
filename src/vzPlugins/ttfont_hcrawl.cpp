@@ -498,12 +498,8 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 
 	// --------------------------------------------------------------------
 	/* create temp image */
-	vzImage* image = vzImageNew
-	(
-		_DATA->l_box_width, 
-		_DATA->font_params.height*2, 
-		4*_DATA->l_box_width*(_DATA->font_params.height*2)
-	);
+	vzImage* image;
+    vzImageCreate(&image, _DATA->l_box_width, _DATA->font_params.height * 2);
 
 	/* blit texts according to plugin logic */
 	for(i = 0; (i<_DATA->_txt_msg_len) && (_DATA->_txt_msg[i]->status == 2); i++)
@@ -541,7 +537,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 	);
 
 	/* free image */
-	vzImageFree(image);
+	vzImageRelease(&image);
 
 	// --------------------------------------------------------------------
 	// begin drawing

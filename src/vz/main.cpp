@@ -540,7 +540,7 @@ static void vz_scene_display(void)
 		vzImage* screenshot = vzImageNewFromVB(tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT);
 		vzImageSaveTGA(screenshot_file,screenshot,&error_log);
 		*screenshot_file = 0;
-		vzImageFree(screenshot);
+		vzImageRelease(&screenshot);
 	};
 
 	/* unbind offscreen buffer */
@@ -997,6 +997,12 @@ int main(int argc, char** argv)
 
 	/* default ttFont path */
 	vzTTFontAddFontPath("fonts");
+
+#ifdef _DEBUG_IMG
+    vzImage* img = NULL;
+    int r = vzImageLoad(&img, "C:\\projects\\vz\\projects\\demo1\\star.tga");
+    vzImageRelease(&img);
+#endif /* _DEBUG_IMG */
 
 #ifdef _DEBUG
 {

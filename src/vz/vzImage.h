@@ -36,7 +36,7 @@ ChangeLog:
 #pragma comment(lib, "vzImage.lib") 
 #endif
 
-typedef struct 
+typedef struct vzImageDesc
 {
     long width;
 	long height;
@@ -46,26 +46,102 @@ typedef struct
 	long base_y;
 	long base_width;
 	long base_height;
+
+    /** array of lines pointers */
+    void** lines_ptr;
+
+    /** line size in bytes */
+    int line_size;
+
+    /** bytes per pixel */
+    int bpp;
+
+    /** pixel format, see VZIMAGE_PIXFMT_XXX */
+    int pix_fmt;
+
+    /** sys_id */
+    long long sys_id;
 } vzImage;
 
-VZIMAGE_API void vzImageFree(vzImage* image);
-VZIMAGE_API vzImage* vzImageLoadTGA(char* filename, char** error_log = 0);
+#define VZIMAGE_PIXFMT_BGR      1
+#define VZIMAGE_PIXFMT_BGRA     2
+#define VZIMAGE_PIXFMT_RGB      3
+#define VZIMAGE_PIXFMT_GRAY     4
+#define VZIMAGE_PIXFMT_RGBA     5
+
+#define VZIMAGE_ALIGN_LINE      4
+
 VZIMAGE_API vzImage* vzImageNewFromVB(long width = 720, long height = 576);
 VZIMAGE_API int vzImageSaveTGA(char* filename, vzImage* vzimage, char** error_log, int flipped = 1);
 VZIMAGE_API void vzImageBGRA2YUAYVA(void* src, void* dst_yuv, void* dst_alpha, long count);
 VZIMAGE_API void vzImageBGRA2YUAYVA_0(vzImage* image,void* yuv,void* alpha);
-VZIMAGE_API vzImage* vzImageNew(int width,int height, long surface_size = 0);
-VZIMAGE_API void vzImageFlipVertical(vzImage* image);
-VZIMAGE_API vzImage* vzImageExpand2X(vzImage* src);
 
-// local procs
-#ifdef VZIMAGE_EXPORTS
-#endif
+/**
+ * Expand image canvas to PowerOfTwo sizes
+ *
+ * @param[in] img pinter to vzImage struct pointer
+ *
+ * @return 0 on success, otherwise negative number
+ */
+VZIMAGE_API int vzImageExpandPOT(vzImage** img);
 
-/*
-VZAUX_API void blend(vzAUX_RGBImageRec* bottom, vzAUX_RGBImageRec* top,long x, long y);
-VZAUX_API bool auxTGAImageSave(vzAUX_RGBImageRec* image_record,char* filename);
-VZAUX_API vzAUX_RGBImageRec* auxTGAImageLoad(char* filename);
-*/
+/**
+ * Flip Image vertically
+ *
+ * @param[in] img pinter to vzImage struct
+ *
+ * @return 0 on success, otherwise negative number
+ */
+VZIMAGE_API int vzImageFlipVertical(vzImage* image);
+
+/**
+ * Create Image descriptive struct
+ *
+ * @param[in] img pinter to vzImage struct pointer variable where create struct will be saved
+ * @param[in] width image width
+ * @param[in] height image height
+ * @param[in] pix_fmt image pixel format
+ *
+ * @return 0 on success, otherwise negative number
+ */
+VZIMAGE_API int vzImageCreate(vzImage** img, int width, int height, long pix_fmt = VZIMAGE_PIXFMT_BGRA);
+
+/**
+ * Free mem of image struct and surface.
+ *
+ * @param[in] img pinter to vzImage struct pointer variable where create struct will be saved
+ *
+ * @return 0 on success, otherwise negative number
+ */
+VZIMAGE_API int vzImageRelease(vzImage** img);
+
+/**
+ * Load image from file.
+ *
+ * @param[in] img pinter to vzImage struct pointer variable where create struct will be saved
+ * @param[in] pix_fmt image desired pixel format for loaded image
+ *
+ * @return 0 on success, otherwise negative number
+ */
+VZIMAGE_API int vzImageLoad(vzImage** img, char* filename, long pix_fmt = VZIMAGE_PIXFMT_BGRA);
+
+/**
+ * Convert (map) pixel format type to OpenGL texture type
+ *
+ * @param[in] pix_fmt pixel format
+ *
+ * @return GL_XXX constant, otherwise zero
+ */
+VZIMAGE_API int vzImagePixFmt2OGL(int pix_fmt);
+
+/**
+ * Convert image to disired pixel format
+ *
+ * @param[in] img pinter to vzImage struct
+ * @param[in] pix_fmt target pixel format
+ *
+ * @return 0 on success, otherwise negative number
+ */
+VZIMAGE_API int vzImagePixFmtConv(vzImage** img, int pix_fmt);
 
 #endif

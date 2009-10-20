@@ -229,6 +229,14 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath="..\vz\vzImageLoad.h"
+				>
+			</File>
+			<File
+				RelativePath="..\vz\vzImagePixFmtConv.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

@@ -86,7 +86,7 @@ typedef struct
 
 // internal data
 	char* _filename;
-	void* _surface;
+	long long _surface_sys_id;
 	HANDLE _lock_update;
 	float* _ft_vertices;
 	float* _ft_texels;
@@ -127,7 +127,7 @@ vzPluginData default_value =
 
 // internal data
 	NULL,					// char* _filename;
-	NULL,					// void* _surface;
+	0,					    // long long _surface_sys_id;
 	INVALID_HANDLE_VALUE,	// HANDLE _lock_update;
 	NULL,					// float* _ft_vertices;
 	NULL,					// float* _ft_texels;
@@ -205,10 +205,7 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// free image data if it's not released
 	if(_DATA->_image)
-	{
-		vzImageFree(_DATA->_image);
-		_DATA->_image = NULL;
-	};
+		vzImageRelease(&_DATA->_image);
 
 	// unlock
 	ReleaseMutex(_DATA->_lock_update);
@@ -299,12 +296,12 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			free(fake_frame);
 
 			/* for safe condition reset surface trigger */
-			_DATA->_surface = NULL;
+			_DATA->_surface_sys_id = 0;
 		};
 
 
 		/* load image if it new */
-		if(_DATA->_surface != _DATA->_image->surface)
+		if(_DATA->_surface_sys_id != _DATA->_image->sys_id)
 		{
 			/* load */
 			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
@@ -322,11 +319,10 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			);
 
 			/* sync */
-			_DATA->_surface = _DATA->_image->surface;
+			_DATA->_surface_sys_id = _DATA->_image->sys_id;
 
 			/* free image */
-			vzImageFree(_DATA->_image);
-			_DATA->_image = NULL;
+			vzImageRelease(&_DATA->_image);
 		};
 	};
 
@@ -601,7 +597,7 @@ struct imageloader_desc
 
 static unsigned long WINAPI imageloader_proc(void* d)
 {
-	char* error_log;
+	int r;
 	vzImage* image;
 
 	struct imageloader_desc* desc = (struct imageloader_desc*)d;
@@ -611,7 +607,8 @@ static unsigned long WINAPI imageloader_proc(void* d)
 	logger_printf(0, "image: imageloader_proc('%s')", desc->filename);
 
 	// load image
-	if(image = vzImageLoadTGA(desc->filename, &error_log))
+    r = vzImageLoad(&image, desc->filename);
+	if(!r)
 	{
 		/* image  loaded -  assign new image */
 
@@ -620,20 +617,20 @@ static unsigned long WINAPI imageloader_proc(void* d)
 		
 		/* free image if its exists */
 		if(_DATA->_image)
-			vzImageFree(_DATA->_image);
+			vzImageRelease(&_DATA->_image);
 
 		/* assign new */
 		_DATA->_image = image;
 
 		/* reset surface flag */
-		_DATA->_surface = NULL;
+		_DATA->_surface_sys_id = 0;
 
 		/* unlock */
 		ReleaseMutex(_DATA->_lock_update);
 	}
 	else
 		// unable to load file
-		logger_printf(1, "image.cpp: Unable to load TGA file: [%s]", error_log);
+		logger_printf(1, "image.cpp: Failed vzImageLoad(%s), r=%d", desc->filename, r);
 
 	/* free data */
 	free(d);

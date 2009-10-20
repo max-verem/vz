@@ -98,304 +98,44 @@ static void vzImageDeinterleave(vzImage* image, int factor)
 	};
 };
 
-
-VZIMAGE_API void vzImageFree(vzImage* image)
+VZIMAGE_API int vzImageFlipVertical(vzImage* img)
 {
-///printf("\n**vzImageFree: %dx%d @ %.8X\n",image->width,image->height,image->surface);
-	free(image->surface);
-	free(image);
+	int i, j, h;
+    void* buf;
+
+    if(!img) return -1;
+
+    /* allocate buffer for lines swap */
+    buf = malloc(img->line_size);
+    if(!buf) return -2;
+
+    for(i = 0, h = img->height / 2; i < h; i++)
+    {
+        j = img->height - 1 - i;
+
+        memcpy(buf, img->lines_ptr[i], img->line_size);
+        memcpy(img->lines_ptr[i], img->lines_ptr[j], img->line_size);
+        memcpy(img->lines_ptr[j], buf, img->line_size);
+    };
+
+    /* change base */
+	img->base_y = img->height - img->base_y - img->base_height;
+
+    return 0;
 };
-
-VZIMAGE_API vzImage* vzImageNew(int width,int height, long surface_size)
-{
-	vzImage* temp = (vzImage*) malloc(sizeof(vzImage));
-	memset(temp, 0, sizeof(vzImage));
-	temp->width = width;
-	temp->height = height;
-	temp->surface = malloc(surface_size);
-	temp->base_width = width;
-	temp->base_height = height;
-///printf("\n**vzImageNew: %dx%d @ %.8X\n",temp->width,temp->height,temp->surface);
-	memset(temp->surface, 0, surface_size);
-	return temp;
-};
-
-VZIMAGE_API vzImage* vzImageLoadTGA(char* filename, char** error_log)
-{
-	TGA_HEADER header;
-
-//	ERROR_LOG("vzImageLoadTGA","started");
-
-#define ERR(MSG) if(error_log) *error_log = __FILE__ "::vzImageLoadTGA: " MSG;return NULL;
-
-//	ERROR_LOG("vzImageLoadTGA loading",filename);
-
-	// open file
-	FILE* image = fopen(filename,"rb");
-
-	// if unable to -> FAIL
-	if (!image)
-	{
-		ERR("Unable to open file")
-	};
-
-//	ERROR_LOG("vzImageLoadTGA loaded",filename);
-
-#define TGA_HEADER_READER_1(FIELD,NAME) \
-	if (1 != fread(&FIELD,sizeof(FIELD),1,image)) \
-	{ \
-		fclose(image); \
-		ERR("Error reading field '" NAME "'") \
-		return NULL; \
-	}; 
-
-	// reading header
-
-	// ID Length - Field 1 (1 byte):
-	// This field identifies the number of bytes contained in Field 6, the Image ID Field. The maximum number of characters is 255. A value of zero indicates that no Image ID field is included with the image.
-	TGA_HEADER_READER_1(header.idlength,"idlength")
-
-	// Color Map Type - Field 2 (1 byte):
-	// This field indicates the type of color map (if any) included with the image. There are currently 2 defined values for this field:
-	// 0 - indicates that no color-map data is included with this image.
-	// 1 - indicates that a color-map is included with this image.
-	TGA_HEADER_READER_1(header.colourmaptype,"colourmaptype")
-	if(header.colourmaptype)
-	{
-		fclose(image);
-		ERR("Unsupported format: No colourmap allowed");
-	};
-
-	// Image Type - Field 3 (1 byte):
-	// The TGA File Format can be used to store Pseudo-Color, True-Color and Direct-Color images of various pixel depths. Truevision has currently defined seven image types:
-	TGA_HEADER_READER_1(header.datatypecode,"datatypecode")
-	if(header.datatypecode != 2) 
-	{
-		fclose(image);
-		ERR("Unsupported format: Unsupported datatypecode");
-	};
-
-	// Color Map Specification - Field 4 (5 bytes):
-	TGA_HEADER_READER_1(header.colourmaporigin,"colourmaporigin")
-	TGA_HEADER_READER_1(header.colourmaplength,"colourmaplength")
-	TGA_HEADER_READER_1(header.colourmapdepth,"colourmapdepth")
-
-	// Image Specification - Field 5 (10 bytes):
-	// Field 5.1 (2 bytes) - X-origin of Image:
-	// These bytes specify the absolute horizontal coordinate for the lower left corner of the image as it is positioned on a display device having an origin at the lower left of the screen (e.g., the TARGA series). 
-	TGA_HEADER_READER_1(header.x_origin,"x_origin")
-	// Field 5.2 (2 bytes) - Y-origin of Image:
-	// These bytes specify the absolute vertical coordinate for the lower left corner of the image as it is positioned on a display device having an origin at the lower left of the screen (e.g., the TARGA series). 
-	TGA_HEADER_READER_1(header.y_origin,"y_origin")
-
-	// Field 5.3 (2 bytes) - Image Width:
-	// This field specifies the width of the image in pixels.
-	TGA_HEADER_READER_1(header.width,"width")
-
-	// Field 5.4 (2 bytes) - Image Height:
-	// This field specifies the height of the image in pixels.
-	TGA_HEADER_READER_1(header.height,"height")
-
-	// Field 5.5 (1 byte) - Pixel Depth:
-	// This field indicates the number of bits per pixel. This number includes the Attribute or Alpha channel bits. Common values are 8, 16, 24 and 32 but other pixel depths could be used.
-	TGA_HEADER_READER_1(header.bitsperpixel,"bitsperpixel")
-	if(header.bitsperpixel != 32) 
-	{
-		fclose(image);
-		ERR("Unsupported format: Support only 32-bits pixel");
-	};
-
-	// Field 5.6 (1 byte) - Image Descriptor:
-/*
-|        |        |  Bits 3-0 - number of attribute bits associated with each  |
-|        |        |             pixel.                                         |
-|        |        |  Bit 4    - reserved.  Must be set to 0.                   |
-|        |        |  Bit 5    - screen origin bit.                             |
-|        |        |             0 = Origin in lower left-hand corner.          |
-|        |        |             1 = Origin in upper left-hand corner.          |
-|        |        |             Must be 0 for Truevision images.               |
-|        |        |  Bits 7-6 - Data storage interleaving flag.                |
-|        |        |             00 = non-interleaved.                          |
-|        |        |             01 = two-way (even/odd) interleaving.          |
-|        |        |             10 = four way interleaving.                    |
-|        |        |             11 = reserved.                                 |
-*/
-	TGA_HEADER_READER_1(header.imagedescriptor,"imagedescriptor")
-
-	// skip to image body header
-	fseek(image,header.idlength,SEEK_CUR);
-
-	// set flip flag
-//	bool flip = (header.imagedescriptor >> 4) & 1;
-
-//	ERROR_LOG("vzImageLoadTGA header loaded",filename);
-
-	vzImage* temp = vzImageNew(header.width, header.height, (header.bitsperpixel >> 3) * header.width * header.height);
-
-	if
-		(
-			1
-			!= 
-			fread
-			(
-				temp->surface,
-				(header.bitsperpixel >> 3) * header.width * header.height,
-				1,
-				image
-			)
-		)
-	{
-//		ERROR_LOG("vzImageLoadTGA error in reading image data of",filename);
-		vzImageFree(temp);
-		fclose(image);
-		ERR("Unable to read image data");
-	};
-
-	// cour type
-	temp->surface_type = GL_BGRA_EXT;
-
-	// de-interleaving
-	if( header.imagedescriptor & ((1<<7) | (1<<6)) )
-		vzImageDeinterleave(temp, (header.imagedescriptor&((1<<7)|(1<<6)))>>6);
-
-	// flipping 
-	if(!(header.imagedescriptor & (1<<5)))
-		vzImageFlipVertical(temp);
-
-	// fix base offsets
-	temp->base_x = 0;
-	temp->base_y = 0;
-
-	// close file handle
-	fclose(image);
-
-//	ERROR_LOG("vzImageLoadTGA returing",filename);	
-///printf("\n**vzImageLoadTGA: %dx%d @ %.8X (%s)\n",temp->width,temp->height,temp->surface,filename);
-	return temp;
-};
-
-
-VZIMAGE_API void vzImageFlipVertical(vzImage* image)
-{
-	int i;
-
-	// check if pixel width is supported or default '0' value
-	if
-	(
-		(image->surface_type == GL_BGRA_EXT) 
-		|| 
-		(image->surface_type == GL_RGBA) 
-		|| 
-		(image->surface_type == 0)
-	)
-	{
-		// supported 32bit values of pixel
-		unsigned long step = 4*image->width;
-		unsigned char *src_surface = (unsigned char *)image->surface;
-		unsigned char *dst = (unsigned char *)malloc(image->width*image->height*4);
-		unsigned char *dst_surface = dst + step*(image->height - 1);
-		
-		/* move */
-		for(i=0 ; i < image->height ; i++, dst_surface -= step, src_surface += step)
-			memcpy(dst_surface, src_surface, step);
-
-		/* free old surface */
-		free(image->surface);
-
-		/* append new */
-		image->surface = dst;
-
-		/* change base */
-		image->base_y = image->height - image->base_y;
-	};
-};
-
-char* get_glerror()
-{
-	int p;
-	switch(p = glGetError())
-	{
-		case GL_NO_ERROR: return "GL_NO_ERROR";
-		case GL_INVALID_ENUM: return "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument. The offending function is ignored, having no side effect other than to set the error flag.";
-		case GL_INVALID_VALUE: return "GL_INVALID_VALUE: A numeric argument is out of range. The offending function is ignored, having no side effect other than to set the error flag.";
-		case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION: The specified operation is not allowed in the current state. The offending function is ignored, having no side effect other than to set the error flag.";
-		case GL_STACK_OVERFLOW: return "GL_STACK_OVERFLOW: This function would cause a stack overflow. The offending function is ignored, having no side effect other than to set the error flag.";
-		case GL_STACK_UNDERFLOW: return "GL_STACK_UNDERFLOW: This function would cause a stack underflow. The offending function is ignored, having no side effect other than to set the error flag.";
-		case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY: There is not enough memory left to execute the function. The state of OpenGL is undefined, except for the state of the error flags, after this error is recorded.";
-		default:
-			return "UNKNOWN";
-	};
-};
-
-
-// global variable to skip check extensions supported
-static long GL_EXT_bgra_supported = 0;
-static long GL_EXT_bgra_checked = 0;
-static char* GL_EXT_bgra_tag = "GL_EXT_bgra ";
 
 VZIMAGE_API vzImage* vzImageNewFromVB(long width, long height)
 {
-	//looking for GL_EXT_bgra extention supported
-	if (!(GL_EXT_bgra_checked))
-	{
-		// first check
-
-		// request extensions
-		char* extensions = (char*)glGetString(GL_EXTENSIONS);
-		char* error_log = get_glerror();
-
-		// do not continue in fail case
-		if(!(extensions))
-			return NULL;
-
-		if (strstr(extensions, GL_EXT_bgra_tag))
-			GL_EXT_bgra_supported = 1;
-
-		GL_EXT_bgra_checked = 1;
-	};
-
+    int r;
+    vzImage* temp_image;
 
 	// create buffer
+    r = vzImageCreate(&temp_image, width, height, VZIMAGE_PIXFMT_BGRA);
 
-	vzImage* temp_image = vzImageNew(width,height,width*height*4);
+    if(r) return NULL;
 
-	if (GL_EXT_bgra_supported)
-	{
-		//read gl pixels to buffer - ready to use
-		glReadPixels(0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, temp_image->surface);
-	}
-	else 
-	{
-		//read gl pixels to buffer - needs to be converted
-		glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, temp_image->surface);
-
-		//convert pixel format
-		unsigned long * pPixel = (unsigned long *) temp_image->surface;
-		int pixPairCount = height * width / 2;
-		__asm
-		{
-				mov eax, dword ptr[pPixel]; //start from address pPixel
-				mov ecx, 0; //counter
-				mov ebx, dword ptr [pixPairCount];//pixels / 2
-        loop_start:
-				//load two pixels (process two in one cycle)
-				movq MM0, [eax]; 
-				movq MM1, MM0;
-				pslld MM0, 8;
-				psrld MM1, 24;
-				por MM0, MM1;
-				movq [eax], MM0;
-
-				//next two pixels
-				add eax,8;
-
-				//loop counter
-				inc ecx;
-				cmp ecx, ebx
-				jl loop_start;
-				emms;
-		}
-	}
+	//read gl pixels to buffer - ready to use
+	glReadPixels(0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, temp_image->surface);
 
 	return temp_image;
 };
@@ -791,4 +531,318 @@ VZIMAGE_API vzImage* vzImageExpand2X(vzImage* src)
 
 	// return value
 	return src;
+};
+
+static int vzImagePixFmt2Bpp(int pix_fmt)
+{
+    int bpp = 0;
+
+    switch(pix_fmt)
+    {
+        case VZIMAGE_PIXFMT_BGR:
+        case VZIMAGE_PIXFMT_RGB:
+            bpp = 3;
+            break;;
+        case VZIMAGE_PIXFMT_BGRA:
+        case VZIMAGE_PIXFMT_RGBA:
+            bpp = 4;
+            break;
+        case VZIMAGE_PIXFMT_GRAY:
+            bpp = 1;
+            break;
+    };
+
+    return bpp;
+};
+
+static long long img_sys_id_cnt = 1;
+VZIMAGE_API int vzImageCreate(vzImage** pimg, int width, int height, long pix_fmt)
+{
+    vzImage* img;
+
+    if(!pimg) return -2;
+
+    /* reset pointer */
+    *pimg = NULL;
+
+    /* allocate space for image */
+    img = (vzImage*)malloc(sizeof(struct vzImageDesc));
+    if(!img) return -1;
+    memset(img, 0, sizeof(struct vzImageDesc));
+
+    /* setup fields */
+    img->sys_id = ++img_sys_id_cnt;
+    img->width = img->base_width = width;
+    img->height = img->base_height = height;
+    img->pix_fmt = pix_fmt;
+    img->bpp = vzImagePixFmt2Bpp(pix_fmt);
+    img->surface_type = vzImagePixFmt2OGL(pix_fmt);
+
+    /* allocate */
+    img->line_size = ((width * img->bpp + (VZIMAGE_ALIGN_LINE >> 1)) /
+        VZIMAGE_ALIGN_LINE) * VZIMAGE_ALIGN_LINE;
+    img->surface = malloc(img->line_size * img->height);
+    if(!img->surface)
+    {
+        free(img);
+        return -1;
+    };
+    memset(img->surface, 0, img->line_size * img->height);
+
+    /* create a lines_ptr */
+    img->lines_ptr = (void**)malloc(img->height * sizeof(void*));
+    if(!img->lines_ptr)
+    {
+        free(img->surface);
+        free(img);
+        return -1;
+    };
+    for(int i = 0; i < img->height; i++)
+        img->lines_ptr[i] = (unsigned char*)img->surface + i * img->line_size;
+
+    /* setup pointer */
+    *pimg = img;
+
+    return 0;
+};
+
+VZIMAGE_API int vzImageRelease(vzImage** pimg)
+{
+    vzImage* img;
+
+    if(!pimg) return -2;
+
+    img = *pimg;
+    *pimg = NULL;
+
+    if(!img) return -1;
+
+    if(img->surface) free(img->surface);
+    if(img->lines_ptr) free(img->lines_ptr);
+    free(img);
+
+    return 0;
+};
+
+#include "vzImageLoad.h"
+
+VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename, long pix_fmt)
+{
+    int k, l, i, r;
+    static const struct
+    {
+        char ext[8];
+        int (*loader)(vzImage** pimg, char* filename);
+    } exts_map[] = 
+    {
+        {".tga",    vzImageLoadTGA},
+        {".png",    vzImageLoadPNG},
+        {".jpg",    vzImageLoadJPEG},
+        {".jpeg",   vzImageLoadJPEG},
+        {"", NULL}
+    };
+
+    /* try to detect extension */
+    l = strlen(filename);
+    for(i = 0; exts_map[i].loader ; i++)
+    {
+        k = strlen(exts_map[i].ext);
+
+        if((l > k) && (0 == _stricmp(filename + l - k, exts_map[i].ext)))
+        {
+            /* try to load */
+            r = exts_map[i].loader(pimg, filename);
+
+            /* check error code */
+            if(r) return r;
+
+            /* require convertion ? */
+            if(pix_fmt == (*pimg)->pix_fmt)
+                return 0;
+
+            /* convert */
+            r = vzImagePixFmtConv(pimg, pix_fmt);
+
+            /* free image if not success convertation */
+            if(r) vzImageRelease(pimg);
+
+            /* return result */
+            return r;
+        };
+    };
+
+    /* not supported */
+    return -1;
+};
+
+#if defined(WIN32) && !defined(GL_BGR)
+#define GL_BGR 0x80E0
+#endif
+
+VZIMAGE_API int vzImagePixFmt2OGL(int pix_fmt)
+{
+    int type = 0;
+
+    switch(pix_fmt)
+    {
+        case VZIMAGE_PIXFMT_BGR:    type = GL_BGR;          break;
+        case VZIMAGE_PIXFMT_RGB:    type = GL_RGB;          break;
+        case VZIMAGE_PIXFMT_BGRA:   type = GL_BGRA_EXT;     break;
+        case VZIMAGE_PIXFMT_RGBA:   type = GL_RGBA;         break;
+        case VZIMAGE_PIXFMT_GRAY:   type = GL_LUMINANCE;    break;
+    };
+
+    return type;
+};
+
+#include "vzImagePixFmtConv.h"
+
+VZIMAGE_API int vzImagePixFmtConv(vzImage** pimg, int pix_fmt)
+{
+    int i, j, r;
+    int inplace = 0;
+    vzImage *src_img, *dst_img;
+    static const struct
+    {
+        int src_pix_fmt;
+        int dst_pix_fmt;
+        void (*conv)(unsigned char* src, unsigned char* dst, int count);
+    } pix_fmt_convs[] =
+    {
+        /* VZIMAGE_PIXFMT_BGR */
+        {VZIMAGE_PIXFMT_BGR,    VZIMAGE_PIXFMT_BGRA,    line_conv_BGR_to_BGRA},
+        {VZIMAGE_PIXFMT_BGR,    VZIMAGE_PIXFMT_RGB,     line_conv_BGR_to_RGB},
+        {VZIMAGE_PIXFMT_BGR,    VZIMAGE_PIXFMT_GRAY,    0},
+        {VZIMAGE_PIXFMT_BGR,    VZIMAGE_PIXFMT_RGBA,    line_conv_BGR_to_RGBA},
+
+        /* VZIMAGE_PIXFMT_BGRA */
+        {VZIMAGE_PIXFMT_BGRA,   VZIMAGE_PIXFMT_BGR,     line_conv_BGRA_to_BGR},
+        {VZIMAGE_PIXFMT_BGRA,   VZIMAGE_PIXFMT_RGB,     line_conv_BGRA_to_RGB},
+        {VZIMAGE_PIXFMT_BGRA,   VZIMAGE_PIXFMT_GRAY,    0},
+        {VZIMAGE_PIXFMT_BGRA,   VZIMAGE_PIXFMT_RGBA,    line_conv_BGRA_to_RGBA},
+
+        /* VZIMAGE_PIXFMT_RGB */
+        {VZIMAGE_PIXFMT_RGB,    VZIMAGE_PIXFMT_BGR,     line_conv_BGR_to_RGB},
+        {VZIMAGE_PIXFMT_RGB,    VZIMAGE_PIXFMT_BGRA,    line_conv_BGR_to_RGBA},
+        {VZIMAGE_PIXFMT_RGB,    VZIMAGE_PIXFMT_GRAY,    0},
+        {VZIMAGE_PIXFMT_RGB,    VZIMAGE_PIXFMT_RGBA,    line_conv_BGR_to_BGRA},
+
+        /* VZIMAGE_PIXFMT_GRAY */
+        {VZIMAGE_PIXFMT_GRAY,   VZIMAGE_PIXFMT_BGR,     line_conv_GRAY_to_RGB},
+        {VZIMAGE_PIXFMT_GRAY,   VZIMAGE_PIXFMT_BGRA,    line_conv_GRAY_to_RGBA},
+        {VZIMAGE_PIXFMT_GRAY,   VZIMAGE_PIXFMT_RGB,     line_conv_GRAY_to_RGB},
+        {VZIMAGE_PIXFMT_GRAY,   VZIMAGE_PIXFMT_RGBA,    line_conv_GRAY_to_RGBA},
+
+        /* VZIMAGE_PIXFMT_RGBA */
+        {VZIMAGE_PIXFMT_RGBA,   VZIMAGE_PIXFMT_BGR,     line_conv_BGRA_to_RGB},
+        {VZIMAGE_PIXFMT_RGBA,   VZIMAGE_PIXFMT_BGRA,    line_conv_BGRA_to_RGBA},
+        {VZIMAGE_PIXFMT_RGBA,   VZIMAGE_PIXFMT_RGB,     line_conv_BGRA_to_BGR},
+        {VZIMAGE_PIXFMT_RGBA,   VZIMAGE_PIXFMT_GRAY,    0},
+
+        {0, 0, NULL}
+    };
+
+    if(!pimg)
+        return -2;
+
+    src_img = *pimg;
+
+    if(!src_img)
+        return -2;
+
+    /* lookup for proper pixel convertor */
+    for(i = 0; pix_fmt_convs[i].conv; i++)
+        if(pix_fmt_convs[i].src_pix_fmt == src_img->pix_fmt && pix_fmt_convs[i].dst_pix_fmt == pix_fmt)
+            break;
+
+    /* check if possible to convert */
+    if(!pix_fmt_convs[i].conv)
+        return -3;
+
+    if(vzImagePixFmt2Bpp(pix_fmt) == vzImagePixFmt2Bpp(src_img->pix_fmt))
+        inplace = 1;
+
+    /* allocate image if required */
+    if(inplace)
+    {
+        dst_img = src_img;
+        dst_img->pix_fmt = pix_fmt;
+    }
+    else
+    {
+        /* allocate new image */
+        r = vzImageCreate(&dst_img, src_img->width, src_img->height, pix_fmt);
+
+        /* check */
+        if(!r)
+            return -3;
+    };
+
+    /* convert lines */
+    for(j = 0; j < src_img->height; j++)
+        pix_fmt_convs[i].conv
+        (
+            (unsigned char*)src_img->lines_ptr[j],
+            (unsigned char*)dst_img->lines_ptr[j],
+            src_img->width
+        );
+
+    /* free old image in inplace not supported */
+    if(!inplace)
+    {
+        *pimg = dst_img;
+        vzImageRelease(&src_img);
+    };
+
+    return 0;
+};
+
+inline int POT(int v)
+{
+	int i;
+	for(i = 1; (i != 0x80000000) && (i < v); i <<= 1);
+	return i;
+};
+
+VZIMAGE_API int vzImageExpandPOT(vzImage** pimg)
+{
+    int r, i, x, y;
+    vzImage *src_img, *dst_img;
+
+    if(!pimg) return -1;
+
+    src_img = (*pimg);
+
+    if(!src_img) return -1;
+
+    r = vzImageCreate(&dst_img, POT(src_img->width), POT(src_img->height), src_img->pix_fmt);
+
+    if(r) return -2;
+
+    /* find offsets */
+    x = (dst_img->width - src_img->width) / 2;
+    y = (dst_img->height - src_img->height) / 2;
+
+    /* copy block */
+    for(i = 0; i < src_img->height; i++)
+        memcpy
+        (
+            (unsigned char*)dst_img->lines_ptr[i + y] + x * dst_img->bpp,
+            src_img->lines_ptr[i],
+            src_img->line_size
+        );
+
+    /* set base info */
+    dst_img->base_width = src_img->base_width;
+    dst_img->base_height = src_img->base_height;
+    dst_img->base_x = src_img->base_x + x;
+    dst_img->base_y = src_img->base_y + y;
+
+    /* set new image */
+    *pimg = dst_img;
+
+    /* free old image */
+    vzImageRelease(&src_img);
+
+    return 0;
 };

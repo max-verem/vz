@@ -298,14 +298,14 @@ static unsigned long WINAPI _async_renderer(void* data)
 				);
 
 				// make its 2^X
-				vzImageExpand2X(image);
+				vzImageExpandPOT(&image);
 
 				// sync value
 				// lock main struct
 				WaitForSingleObject(_DATA->_lock_update, WAIT_TIMEOUT_VALUE);				
-				if(_DATA->_image)
 				// free image
-					vzImageFree(_DATA->_image);
+				if(_DATA->_image)
+					vzImageRelease(&_DATA->_image);
 				_DATA->_image = image;
 				// release mutex
 				ReleaseMutex(_DATA->_lock_update);
@@ -391,10 +391,7 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// free image data if it's not released
 	if(_DATA->_image)
-	{
-		vzImageFree(_DATA->_image);
-		_DATA->_image = NULL;
-	};
+		vzImageRelease(&_DATA->_image);
 
 	// unlock
 	ReleaseMutex(_DATA->_lock_update);
@@ -456,8 +453,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		_DATA->_offset_y = _DATA->_image->base_y;
 
 		// free image
-		vzImageFree(_DATA->_image);
-		_DATA->_image = NULL;
+		vzImageRelease(&_DATA->_image);
 
 		// check if need to release old texture
 		if(_DATA->_texture_initialized)

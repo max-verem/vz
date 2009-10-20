@@ -53,8 +53,8 @@ static void usage()
 int main(int argc, char** argv)
 {
 	vzImage* image;
-	char* e;
 	FILE* f;
+    int r;
 
 	/* check args */
 	if(argc != 4)
@@ -76,10 +76,11 @@ int main(int argc, char** argv)
 
 
 	/* Image file */
-	if(NULL == (image = vzImageLoadTGA(filename_tga, &e)))
+    r = vzImageLoad(&image, filename_tga);
+	if(!r)
 	{
 		/* notify */
-		fprintf(stderr, "ERROR! Unable to open file (%s)\n", e);
+		fprintf(stderr, "ERROR! Unable to open file [%s], r=%d\n", filename_tga, r);
 		exit(-1);
 	};
 
@@ -87,7 +88,7 @@ int main(int argc, char** argv)
 	if(NULL == (f = fopen(filename_h, "wt")))
 	{
 		fprintf(stderr, "ERROR! Unable to create file '%s'\n", filename_h);
-		vzImageFree(image);
+		vzImageRelease(&image);
 		exit(-1);
 	};
 
@@ -122,7 +123,7 @@ int main(int argc, char** argv)
 
 
 	fclose(f);
-	vzImageFree(image);
+	vzImageRelease(&image);
 
 	return 0;
 };

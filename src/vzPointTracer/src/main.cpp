@@ -131,6 +131,7 @@ static void usage()
 
 int main(int argc, char** argv)
 {
+    int r;
 //long points_count
 
 /*
@@ -161,7 +162,7 @@ int main(int argc, char** argv)
 		start_frame = atol(argv[4]),
 		stop_frame = atol(argv[5]),
 		i;
-	char *path_fmt = argv[6], *e;
+	char *path_fmt = argv[6];
 	char path_buf[1024];
 	vzImage* image;
 
@@ -179,10 +180,11 @@ int main(int argc, char** argv)
 		fprintf(stderr, "%-5d : %s ", i - start_frame, path_buf);
 
 		/* try to open file */
-		if(NULL == (image = vzImageLoadTGA(path_buf, &e)))
+        r = vzImageLoad(&image, path_buf);
+		if(!r)
 		{
 			/* notify */
-			fprintf(stderr, "ERROR (%s)\n", e);
+			fprintf(stderr, "ERROR (r=%d)\n", r);
 		}
 		else
 		{
@@ -307,7 +309,7 @@ int main(int argc, char** argv)
 			free(points);
 
 			/* free image object */
-			vzImageFree(image);
+			vzImageRelease(&image);
 		};
 	};
 
