@@ -322,4 +322,53 @@
 
         send_vz_data(argv)
     End Sub
+
+    Private Sub b_demo7_load_scene_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles b_demo7_load_scene.Click
+        Dim argv(0 To 1) As String
+
+        argv(0) = VZ_CMD_LOAD_SCENE
+        argv(1) = "./projects/demo7.xml"
+
+        send_vz_data(argv)
+    End Sub
+
+    Private Sub b_demo7_BlendFuncSeparateEXT_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles b_demo7_BlendFuncSeparateEXT.Click
+        Dim argv(0 To 15) As String
+
+        If _
+            s_demo7_sfactorRGB.SelectedIndex >= 0 And _
+            s_demo7_dfactorRGB.SelectedIndex >= 0 And _
+            s_demo7_sfactorAlpha.SelectedIndex >= 0 And _
+            s_demo7_dfactorAlpha.SelectedIndex >= 0 _
+        Then
+            ' Setup command
+            argv(0) = VZ_CMD_SET
+            argv(1) = "blend1"
+            argv(2) = "s_sfactorRGB"
+            argv(3) = s_demo7_sfactorRGB.SelectedItem.ToString
+
+            argv(4) = VZ_CMD_SET
+            argv(5) = "blend1"
+            argv(6) = "s_dfactorRGB"
+            argv(7) = s_demo7_dfactorRGB.SelectedItem.ToString
+
+            argv(8) = VZ_CMD_SET
+            argv(9) = "blend1"
+            argv(10) = "s_sfactorAlpha"
+            argv(11) = s_demo7_sfactorAlpha.SelectedItem.ToString
+
+            argv(12) = VZ_CMD_SET
+            argv(13) = "blend1"
+            argv(14) = "s_dfactorAlpha"
+            argv(15) = s_demo7_dfactorAlpha.SelectedItem.ToString
+
+            send_vz_data(argv)
+
+        Else
+            MsgBox("Select ALL items")
+        End If
+
+
+
+    End Sub
 End Class
