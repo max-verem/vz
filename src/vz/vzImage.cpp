@@ -544,7 +544,10 @@ static int vzImagePixFmt2Bpp(int pix_fmt)
             bpp = 3;
             break;;
         case VZIMAGE_PIXFMT_BGRA:
+        case VZIMAGE_PIXFMT_BGRX:
+        case VZIMAGE_PIXFMT_XBGR:
         case VZIMAGE_PIXFMT_RGBA:
+        case VZIMAGE_PIXFMT_RGBX:
             bpp = 4;
             break;
         case VZIMAGE_PIXFMT_GRAY:
@@ -638,6 +641,8 @@ VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename, long pix_fmt)
         {".png",    vzImageLoadPNG},
         {".jpg",    vzImageLoadJPEG},
         {".jpeg",   vzImageLoadJPEG},
+        {".bmp",    vzImageLoadBMP},
+        {".dib",    vzImageLoadBMP},
         {"", NULL}
     };
 
@@ -737,6 +742,11 @@ VZIMAGE_API int vzImagePixFmtConv(vzImage** pimg, int pix_fmt)
         {VZIMAGE_PIXFMT_RGBA,   VZIMAGE_PIXFMT_BGRA,    line_conv_BGRA_to_RGBA},
         {VZIMAGE_PIXFMT_RGBA,   VZIMAGE_PIXFMT_RGB,     line_conv_BGRA_to_BGR},
         {VZIMAGE_PIXFMT_RGBA,   VZIMAGE_PIXFMT_GRAY,    0},
+
+        /* VZIMAGE_PIXFMT_RGBX */
+        {VZIMAGE_PIXFMT_RGBX,   VZIMAGE_PIXFMT_BGRA,    line_conv_RGBX_to_BGRA},
+        {VZIMAGE_PIXFMT_BGRX,   VZIMAGE_PIXFMT_BGRA,    line_conv_BGRX_to_BGRA},
+        {VZIMAGE_PIXFMT_XBGR,   VZIMAGE_PIXFMT_BGRA,    line_conv_XBGR_to_BGRA},
 
         {0, 0, NULL}
     };

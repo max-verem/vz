@@ -107,4 +107,25 @@ PIXFMTCONV_BEGIN(line_conv_GRAY_to_RGBA)
     dst += 4; src += 1;
 PIXFMTCONV_END
 
+PIXFMTCONV_BEGIN(line_conv_RGBX_to_BGRA)
+    t = src[0];
+    src[0] = src[2];
+    src[2] = t;
+    src[3] = 0xFF;
+    src += 4;
+PIXFMTCONV_END
+
+PIXFMTCONV_BEGIN(line_conv_BGRX_to_BGRA)
+    src[3] = 0xFF;
+    src += 4;
+PIXFMTCONV_END
+
+PIXFMTCONV_BEGIN(line_conv_XBGR_to_BGRA)
+    src[0] = src[1];
+    src[1] = src[2];
+    src[2] = src[3];
+    src[3] = 0xFF;
+    src += 4;
+PIXFMTCONV_END
+
 #pragma warning(pop)

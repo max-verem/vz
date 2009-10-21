@@ -67,6 +67,9 @@ typedef struct vzImageDesc
 #define VZIMAGE_PIXFMT_RGB      3
 #define VZIMAGE_PIXFMT_GRAY     4
 #define VZIMAGE_PIXFMT_RGBA     5
+#define VZIMAGE_PIXFMT_RGBX     6
+#define VZIMAGE_PIXFMT_BGRX     7
+#define VZIMAGE_PIXFMT_XBGR     8
 
 #define VZIMAGE_ALIGN_LINE      4
 
