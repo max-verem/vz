@@ -64,6 +64,11 @@ static void* _gl_extensions_list[][3] =
 	*/
 	{"GL_EXT_blend_func_separate","glBlendFuncSeparateEXT",&glBlendFuncSeparateEXT},
 
+    /*
+        http://oss.sgi.com/projects/ogl-sample/registry/EXT/blend_equation_separate.txt
+    */
+    {"GL_EXT_blend_equation_separate", "glBlendEquationSeparateEXT", &glBlendEquationSeparateEXT},
+
 	/* 
 		pixel buffer extensions:
 		http://oss.sgi.com/projects/ogl-sample/registry/EXT/pixel_buffer_object.txt
@@ -103,6 +108,7 @@ static void* _gl_extensions_list[][3] =
 
 // extensions functions types
 VZGLEXT_API void (WINAPI *glBlendFuncSeparateEXT)(GLenum sfactorRGB,GLenum dfactorRGB,GLenum sfactorAlpha,GLenum dfactorAlpha) = NULL;
+VZGLEXT_API void (WINAPI *glBlendEquationSeparateEXT)(GLenum modeRGB, GLenum modeAlpha) = NULL;
 VZGLEXT_API void (WINAPI *glBindBuffer)(GLenum ,GLenum) = NULL;
 VZGLEXT_API void (WINAPI *glGenBuffers)(GLsizei, GLuint *) = NULL;
 VZGLEXT_API void (WINAPI *glDeleteBuffers)(GLsizei, GLuint *) = NULL;

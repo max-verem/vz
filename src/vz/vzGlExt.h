@@ -150,9 +150,34 @@ http://oss.sgi.com/projects/ogl-sample/ABI/glext.h
 
 #endif /* FRAMEBUFFER_EXT */
 
+#ifndef GL_BLEND_EQUATION_RGB_EXT
+#define GL_BLEND_EQUATION_RGB_EXT               0x8009  /* same as BLEND_EQUATION */
+#endif /* GL_BLEND_EQUATION_RGB_EXT */
+
+#ifndef GL_BLEND_EQUATION_ALPHA_EXT
+#define GL_BLEND_EQUATION_ALPHA_EXT             0x883D
+#endif /* GL_BLEND_EQUATION_ALPHA_EXT */
+
+#ifndef BLEND_DST_RGB_EXT
+#define BLEND_DST_RGB_EXT                       0x80C8
+#endif /* BLEND_DST_RGB_EXT */
+
+#ifndef BLEND_SRC_RGB_EXT
+#define BLEND_SRC_RGB_EXT                       0x80C9
+#endif /* BLEND_SRC_RGB_EXT */
+
+#ifndef BLEND_DST_ALPHA_EXT
+#define BLEND_DST_ALPHA_EXT                     0x80CA
+#endif /* BLEND_DST_ALPHA_EXT */
+
+#ifndef BLEND_SRC_ALPHA_EXT
+#define BLEND_SRC_ALPHA_EXT                     0x80CB
+#endif /* BLEND_SRC_ALPHA_EXT */
+
 
 /* extensions functions types */
 extern VZGLEXT_API void (WINAPI *glBlendFuncSeparateEXT)(GLenum sfactorRGB,GLenum dfactorRGB,GLenum sfactorAlpha,GLenum dfactorAlpha);
+extern VZGLEXT_API void (WINAPI *glBlendEquationSeparateEXT)(GLenum modeRGB, GLenum modeAlpha);
 extern VZGLEXT_API void (WINAPI *glBindBuffer)(GLenum ,GLenum);
 extern VZGLEXT_API void (WINAPI *glGenBuffers)(GLsizei, GLuint *);
 extern VZGLEXT_API void (WINAPI *glDeleteBuffers)(GLsizei, GLuint *);
