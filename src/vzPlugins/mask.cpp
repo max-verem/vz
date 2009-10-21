@@ -50,6 +50,7 @@ DEFINE_PLUGIN_INFO("mask");
 typedef struct
 {
 	long l_id;			// level is mask number from 2..8
+    long l_invert;      // level is mask number from 2..8
 	long L_operation;	// parameter defines that is a mask or target
 
 	// save state variables
@@ -64,6 +65,7 @@ typedef struct
 vzPluginData default_value = 
 {
 	2,
+    0,
 	0,
 
 	0,
@@ -75,6 +77,7 @@ vzPluginData default_value =
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
 {
 	{"l_id", "Mask identificator (value should be between 2..8)", PLUGIN_PARAMETER_OFFSET(default_value,l_id)},
+    {"l_invert", "Invert mask", PLUGIN_PARAMETER_OFFSET(default_value,l_invert)},
 	{"L_operation", "Operation definition: '_TRG' - targeting or '_SRC' -  mask source drawing", PLUGIN_PARAMETER_OFFSET(default_value,L_operation)},
 	{NULL,NULL,0}
 };
@@ -110,9 +113,11 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		glGetIntegerv(GL_STENCIL_VALUE_MASK,&_DATA->_GL_STENCIL_VALUE_MASK);
 		glGetIntegerv(GL_STENCIL_FUNC,&_DATA->_GL_STENCIL_FUNC);
 		
-		// 2. modify stencil value to write specific bit to stencil buffer
-		glStencilFunc(GL_EQUAL,_DATA->_GL_STENCIL_REF | (1<<_DATA->l_id), _DATA->_GL_STENCIL_VALUE_MASK | (1<<_DATA->l_id));
-	};
+        // 2. modify stencil value to write specific bit to stencil buffer
+        GLint ref = _DATA->_GL_STENCIL_REF;
+        if(!_DATA->l_invert) ref |= 1<<_DATA->l_id;
+        glStencilFunc(GL_EQUAL, ref, _DATA->_GL_STENCIL_VALUE_MASK | (1<<_DATA->l_id));
+    };
 
 	if (_DATA->L_operation == FOURCC_TO_LONG('_','S','R','C'))
 	{
