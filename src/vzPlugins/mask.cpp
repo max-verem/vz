@@ -50,7 +50,8 @@ DEFINE_PLUGIN_INFO("mask");
 typedef struct
 {
 	long l_id;			// level is mask number from 2..8
-    long l_invert;      // level is mask number from 2..8
+    long l_invert;
+    long l_draw_mask;
 	long L_operation;	// parameter defines that is a mask or target
 
 	// save state variables
@@ -66,6 +67,7 @@ vzPluginData default_value =
 {
 	2,
     0,
+    0,
 	0,
 
 	0,
@@ -77,7 +79,8 @@ vzPluginData default_value =
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
 {
 	{"l_id", "Mask identificator (value should be between 2..8)", PLUGIN_PARAMETER_OFFSET(default_value,l_id)},
-    {"l_invert", "Invert mask", PLUGIN_PARAMETER_OFFSET(default_value,l_invert)},
+    {"l_invert", "Flag to Invert mask", PLUGIN_PARAMETER_OFFSET(default_value, l_invert)},
+    {"l_draw_mask", "Frag to Draw mask", PLUGIN_PARAMETER_OFFSET(default_value, l_draw_mask)},
 	{"L_operation", "Operation definition: '_TRG' - targeting or '_SRC' -  mask source drawing", PLUGIN_PARAMETER_OFFSET(default_value,L_operation)},
 	{NULL,NULL,0}
 };
@@ -141,7 +144,10 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		glGetIntegerv(GL_COLOR_WRITEMASK,_DATA->_GL_COLOR_WRITEMASK);
 
 		// 6. disable writing to colour buffer
-		glColorMask(0,0,0,0);
+        if(!_DATA->l_draw_mask)
+        {
+		    glColorMask(0,0,0,0);
+        };
 
 		// further drawing will only affect i-th rising of stencil buffer!
 	};
