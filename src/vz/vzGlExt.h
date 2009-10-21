@@ -158,22 +158,49 @@ http://oss.sgi.com/projects/ogl-sample/ABI/glext.h
 #define GL_BLEND_EQUATION_ALPHA_EXT             0x883D
 #endif /* GL_BLEND_EQUATION_ALPHA_EXT */
 
-#ifndef BLEND_DST_RGB_EXT
-#define BLEND_DST_RGB_EXT                       0x80C8
-#endif /* BLEND_DST_RGB_EXT */
+#ifndef GL_BLEND_DST_RGB_EXT
+#define GL_BLEND_DST_RGB_EXT                    0x80C8
+#endif /* GL_BLEND_DST_RGB_EXT */
 
-#ifndef BLEND_SRC_RGB_EXT
-#define BLEND_SRC_RGB_EXT                       0x80C9
-#endif /* BLEND_SRC_RGB_EXT */
+#ifndef GL_BLEND_SRC_RGB_EXT
+#define GL_BLEND_SRC_RGB_EXT                    0x80C9
+#endif /* GL_BLEND_SRC_RGB_EXT */
 
-#ifndef BLEND_DST_ALPHA_EXT
-#define BLEND_DST_ALPHA_EXT                     0x80CA
-#endif /* BLEND_DST_ALPHA_EXT */
+#ifndef GL_BLEND_DST_ALPHA_EXT
+#define GL_BLEND_DST_ALPHA_EXT                  0x80CA
+#endif /* GL_BLEND_DST_ALPHA_EXT */
 
-#ifndef BLEND_SRC_ALPHA_EXT
-#define BLEND_SRC_ALPHA_EXT                     0x80CB
-#endif /* BLEND_SRC_ALPHA_EXT */
+#ifndef GL_BLEND_SRC_ALPHA_EXT
+#define GL_BLEND_SRC_ALPHA_EXT                  0x80CB
+#endif /* GL_BLEND_SRC_ALPHA_EXT */
 
+#ifndef GL_FUNC_ADD
+#define GL_FUNC_ADD                             0x8006
+#endif /* GL_FUNC_ADD */
+
+#ifndef GL_FUNC_SUBTRACT
+#define GL_FUNC_SUBTRACT                        0x800A
+#endif /* GL_FUNC_SUBTRACT */
+
+#ifndef GL_FUNC_REVERSE_SUBTRACT
+#define GL_FUNC_REVERSE_SUBTRACT                0x800B
+#endif /* GL_FUNC_REVERSE_SUBTRACT */
+
+#ifndef GL_FUNC_MIN
+#define GL_FUNC_MIN                             0x8007
+#endif /* GL_FUNC_MIN */
+
+#ifndef GL_FUNC_MAX
+#define GL_FUNC_MAX                             0x8008
+#endif /* GL_FUNC_MAX */
+
+#define GL_CONSTANT_COLOR                       0x8001
+#define GL_ONE_MINUS_CONSTANT_COLOR             0x8002
+#define GL_CONSTANT_ALPHA                       0x8003
+#define GL_ONE_MINUS_CONSTANT_ALPHA             0x8004
+#define GL_BLEND_COLOR                          0x8005
+
+#define GL_UNKNOWN_ATTR                         0xFFFF
 
 /* extensions functions types */
 extern VZGLEXT_API void (WINAPI *glBlendFuncSeparateEXT)(GLenum sfactorRGB,GLenum dfactorRGB,GLenum sfactorAlpha,GLenum dfactorAlpha);
@@ -205,6 +232,6 @@ extern VZGLEXT_API int  glExtInitDone;
 
 /* init function */
 VZGLEXT_API void vzGlExtInit();
-
+VZGLEXT_API GLenum vzGlExtEnumLookup(char* name);
 
 #endif /* VZGLEXT_H */

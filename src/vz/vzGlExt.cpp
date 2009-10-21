@@ -169,3 +169,51 @@ VZGLEXT_API void vzGlExtInit()
 
 	glExtInitDone = 1;
 };
+
+VZGLEXT_API GLenum vzGlExtEnumLookup(char* name)
+{
+    static const struct
+    {
+        char* name;
+        GLenum val;
+    }
+    gl_attrs[] =
+    {
+        { "ZERO",                           GL_ZERO },
+        { "ONE",                            GL_ONE },
+        { "DST_COLOR",                      GL_DST_COLOR },
+        { "ONE_MINUS_DST_COLOR",            GL_ONE_MINUS_DST_COLOR },
+        { "SRC_ALPHA",                      GL_SRC_ALPHA },
+        { "ONE_MINUS_SRC_ALPHA",            GL_ONE_MINUS_SRC_ALPHA },
+        { "DST_ALPHA",                      GL_DST_ALPHA },
+        { "ONE_MINUS_DST_ALPHA",            GL_ONE_MINUS_DST_ALPHA },
+        { "CONSTANT_COLOR",                 GL_CONSTANT_COLOR },
+        { "ONE_MINUS_CONSTANT_COLOR",       GL_ONE_MINUS_CONSTANT_COLOR },
+        { "CONSTANT_ALPHA",                 GL_CONSTANT_ALPHA },
+        { "ONE_MINUS_CONSTANT_ALPHA",       GL_ONE_MINUS_CONSTANT_ALPHA },
+        { "SRC_ALPHA_SATURATE",             GL_SRC_ALPHA_SATURATE },
+        { "SRC_COLOR",                      GL_SRC_COLOR },
+        { "ONE_MINUS_SRC_COLOR",            GL_ONE_MINUS_SRC_COLOR },
+
+        { "FUNC_ADD",                       GL_FUNC_ADD },
+        { "FUNC_SUBTRACT",                  GL_FUNC_SUBTRACT },
+        { "FUNC_REVERSE_SUBTRACT",          GL_FUNC_REVERSE_SUBTRACT },
+        { "FUNC_MIN",                       GL_FUNC_MIN },
+        { "FUNC_MAX",                       GL_FUNC_MAX },
+        { "MIN",                            GL_FUNC_MIN },
+        { "MAX",                            GL_FUNC_MAX },
+
+        {NULL,                              GL_UNKNOWN_ATTR }
+    };
+
+    if(NULL == name)
+        return GL_UNKNOWN_ATTR;
+
+    for(int i = 0; (NULL != gl_attrs[i].name); i++)
+    {
+        int r = _stricmp(gl_attrs[i].name, name);
+        if(!r) return gl_attrs[i].val;
+    };
+
+    return GL_UNKNOWN_ATTR;
+};

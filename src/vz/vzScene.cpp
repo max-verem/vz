@@ -263,7 +263,8 @@ void vzScene::display(long frame)
 
 	// alpha function always works
 	glEnable(GL_ALPHA_TEST);
-	glAlphaFunc(GL_NOTEQUAL,0);//glAlphaFunc(GL_LEQUAL,1);
+//	glAlphaFunc(GL_NOTEQUAL,0);//glAlphaFunc(GL_LEQUAL,1);
+    glAlphaFunc(GL_ALWAYS, 1);
 
 
 	/* setup stencil */
