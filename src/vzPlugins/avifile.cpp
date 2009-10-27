@@ -262,16 +262,39 @@ static unsigned long WINAPI aviloader_proc(void* p)
 					};
 
 					/* allocate space for buffers */
-					desc->buf_data = (void**)malloc(sizeof(void*) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
-					desc->buf_frame = (int*)malloc(sizeof(int) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
-					desc->buf_clear = (int*)malloc(sizeof(int) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
-					desc->buf_fill = (int*)malloc(sizeof(int) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
-					desc->buf_filled = (int*)malloc(sizeof(int) * ((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH));
-					for(i = 0; i<((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH); i++)
+                    int cnt = (desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH;
+					desc->buf_data = (void**)malloc(sizeof(void*) * cnt);
+					desc->buf_frame = (int*)malloc(sizeof(int) * cnt);
+					desc->buf_clear = (int*)malloc(sizeof(int) * cnt);
+					desc->buf_fill = (int*)malloc(sizeof(int) * cnt);
+					desc->buf_filled = (int*)malloc(sizeof(int) * cnt);
+                    if(!desc->buf_data || !desc->buf_frame || !desc->buf_clear || !desc->buf_fill || !desc->buf_filled)
+                    {
+                        if(desc->buf_data)      free(desc->buf_data);   desc->buf_data = NULL;
+                        if(desc->buf_frame)     free(desc->buf_frame);  desc->buf_frame = NULL;
+                        if(desc->buf_clear)     free(desc->buf_clear);  desc->buf_clear = NULL;
+                        if(desc->buf_fill)      free(desc->buf_fill);   desc->buf_fill = NULL;
+                        if(desc->buf_filled)    free(desc->buf_filled); desc->buf_filled = NULL;
+                        logger_printf(1, "avifile: NO MEMORY to load ('%s')", desc->filename);
+                        desc->flag_exit = 2;
+                    }
+                    else
+                        memset(desc->buf_data, 0, sizeof(void*) * cnt);
+
+					for(i = 0; (i < cnt) && (desc->buf_data); i++)
 					{
 						/* init buffer */
 						frame_size = frame_info->biWidth * frame_info->biHeight * (frame_info->biBitCount / 8);
 						desc->buf_data[i] = malloc( frame_size );
+                        if(!desc->buf_data[i])
+                        {
+                            for(int k = 0; k < i; k++) free(desc->buf_data[k]);
+                            logger_printf(1, "avifile: NO MEMORY to load ('%s'), failed to allocate %d-th frame", desc->filename, i);
+                            free(desc->buf_data);
+                            desc->buf_data = NULL;
+                            desc->flag_exit = 2;
+                            continue;
+                        };
 						memset(desc->buf_data[i], 0, frame_size);
 		
 						/* setup start plan */
@@ -391,13 +414,16 @@ static unsigned long WINAPI aviloader_proc(void* p)
 					};
 
 					/* free buffers */
-					for(i = 0; i<((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH); i++)
-						free(desc->buf_data[i]);
-					free(desc->buf_data);
-					free(desc->buf_frame);
-					free(desc->buf_clear);
-					free(desc->buf_fill);
-					free(desc->buf_filled);
+                    if(desc->buf_data)
+                    {
+					    for(i = 0; i < cnt; i++)
+						    if(desc->buf_data[i]) free(desc->buf_data[i]);
+                        free(desc->buf_data);
+                    };
+                    if(desc->buf_frame)     free(desc->buf_frame);  desc->buf_frame = NULL;
+                    if(desc->buf_clear)     free(desc->buf_clear);  desc->buf_clear = NULL;
+                    if(desc->buf_fill)      free(desc->buf_fill);   desc->buf_fill = NULL;
+                    if(desc->buf_filled)    free(desc->buf_filled); desc->buf_filled = NULL;
 				}
 				else
 				{
