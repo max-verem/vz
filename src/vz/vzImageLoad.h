@@ -365,9 +365,11 @@ static int vzImageLoadPNG(vzImage** pimg, char* filename)
 #include <png.h>
 
 #ifdef _DEBUG
-#pragma comment(lib, "libpng13d.lib")
+#pragma comment(lib, "Win32_LIB_ASM_Debug-libpngd.lib")
+#pragma comment(lib, "Win32_LIB_ASM_Debug-zlibd.lib")
 #else
-#pragma comment(lib, "libpng13.lib")
+#pragma comment(lib, "Win32_LIB_ASM_Release-libpng.lib")
+#pragma comment(lib, "Win32_LIB_ASM_Release-zlib.lib")
 #endif
 
 static int vzImageLoadPNG(vzImage** pimg, char* filename)
