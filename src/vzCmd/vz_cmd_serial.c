@@ -67,7 +67,7 @@ static int vz_serial_cmd_create_single(void* _buf, int* _len, int _id, va_list *
 	    = 
 	    (-1 == desc->args_length[i])
 	    ?
-	    (strlen((char*)arg) + 1)
+	    ((int)strlen((char*)arg) + 1)
 	    :
 	    desc->args_length[i];
 	

@@ -247,13 +247,13 @@ static unsigned long WINAPI tcpserver_client(void* _socket)
 
 	/* send greeting */
 	sprintf(hello_message, shell_greeting_template, VZ_TITLE, VZ_VERSION);
-	send(socket,hello_message,strlen(hello_message),0);
+	send(socket, hello_message, (int)strlen(hello_message), 0);
 
 	/* dialog loop */
 	for(int r_s_in, r_rec_len = 0; r_rec_len >= 0; )
 	{
 		/* send prompt */
-		r_s_in = send(socket,shell_in,strlen(shell_in),0);
+		r_s_in = send(socket, shell_in, (int)strlen(shell_in), 0);
 
 		/* read data from socket buffer */
 		for(r_rec_len = 0, r_rec_len = 0; r_rec_len >=0 ; )
@@ -316,7 +316,7 @@ static unsigned long WINAPI tcpserver_client(void* _socket)
 			r_rec_len = 0;
 
 			/* shell out */
-			send(socket,shell_out,strlen(shell_out),0);
+			send(socket, shell_out, (int)strlen(shell_out), 0);
 
 			/* execute command */
 			if(0 != tcpserver_client_exec(in_buffer_cmd, &error_log))
@@ -327,7 +327,7 @@ static unsigned long WINAPI tcpserver_client(void* _socket)
 			in_buffer_cmd = NULL;
 
 			/* shell reply */
-			send(socket,error_log,strlen(error_log),0);
+			send(socket, error_log, (int)strlen(error_log), 0);
 		};
 	};
 

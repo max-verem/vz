@@ -710,7 +710,7 @@ static void vz_window_reshape(int w, int h)
 	glLoadIdentity();
 };
 
-static int vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+static LRESULT vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	switch (message)
 	{

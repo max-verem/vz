@@ -68,10 +68,15 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
 {
 	char* tmp;
 	char host[128];
-	int port, s, r, l;
+	int port, r, l;
 	struct sockaddr_in addr;
 	struct hostent *host_ip;
-
+#ifndef __linux__
+	SOCKET
+#else
+	int
+#endif
+		 s;
 
 	/* check for hostname:port */
 	tmp = strchr(dst->name, ':');

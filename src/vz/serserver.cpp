@@ -191,7 +191,7 @@ unsigned long WINAPI serserver(void* _config)
 	for(;0 == f_exit;)
 	{
 		HRESULT h;
-		unsigned long r_bytes;
+		DWORD r_bytes;
 
 		/* write error/ack status */
 		if(nak)
@@ -213,7 +213,7 @@ unsigned long WINAPI serserver(void* _config)
 		(
 			serial_port_handle, 
 			buf_ptr, 
-			buf_size_max - (buf_ptr - (unsigned char*)buf), 
+			(DWORD)(buf_size_max - (buf_ptr - (unsigned char*)buf)), 
 			&r_bytes, 
 			NULL
 		);
@@ -222,7 +222,7 @@ unsigned long WINAPI serserver(void* _config)
 		if(0 == r_bytes) continue;
 
 		/* try to parse buffer */
-		int p_bytes = (int)r_bytes + (buf_ptr - (unsigned char*)buf);
+		int p_bytes = (int)r_bytes + (int)(buf_ptr - (unsigned char*)buf);
 		int r = serserver_cmd(buf, &p_bytes);
 
 		/* detect incorrect or partial command */

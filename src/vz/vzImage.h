@@ -75,8 +75,6 @@ typedef struct vzImageDesc
 
 VZIMAGE_API vzImage* vzImageNewFromVB(long width = 720, long height = 576);
 VZIMAGE_API int vzImageSaveTGA(char* filename, vzImage* vzimage, char** error_log, int flipped = 1);
-VZIMAGE_API void vzImageBGRA2YUAYVA(void* src, void* dst_yuv, void* dst_alpha, long count);
-VZIMAGE_API void vzImageBGRA2YUAYVA_0(vzImage* image,void* yuv,void* alpha);
 
 /**
  * Expand image canvas to PowerOfTwo sizes

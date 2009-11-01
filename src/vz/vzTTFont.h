@@ -36,17 +36,9 @@ ChangeLog:
 #ifdef VZTTFONT_EXPORTS
 #define VZTTFONT_API __declspec(dllexport)
 #ifdef _DEBUG
-	#ifdef _M_X64
-		#pragma comment(lib, "freetype2311_D_x64.lib") 
-	#else /* _M_X64 */
-		#pragma comment(lib, "freetype2311_D.lib") 
-	#endif /* _M_X64 */
+	#pragma comment(lib, "freetype2311_D.lib") 
 #else
-	#ifdef _M_X64
-		#pragma comment(lib, "freetype2311_x64.lib") 
-	#else /* _M_X64 */
-		#pragma comment(lib, "freetype2311.lib") 
-	#endif /* _M_X64 */
+	#pragma comment(lib, "freetype2311.lib") 
 #endif
 #else
 #define VZTTFONT_API __declspec(dllimport)
