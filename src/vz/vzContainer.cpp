@@ -50,8 +50,8 @@ ChangeLog:
 #include <stdio.h>
 
 
-static const unsigned short tag_container[] = {'c','o','n','t','a','i','n','e','r',0};
-static const unsigned short tag_function[] = {'f','u','n','c','t','i','o','n',0};
+static const XMLCh tag_container[] = {'c','o','n','t','a','i','n','e','r',0};
+static const XMLCh tag_function[] = {'f','u','n','c','t','i','o','n',0};
 
 vzContainer::vzContainer(DOMNodeX* parent_node,vzFunctions* functions_list,vzScene* scene)
 {

@@ -35,8 +35,8 @@ ChangeLog:
 #include "vzLogger.h"
 #include <stdio.h>
 
-static const unsigned short tag_param[] = {'p', 'a', 'r', 'a', 'm',0};
-static const unsigned short tag_control[] = {'c', 'o', 'n', 't', 'r', 'o', 'l',0};
+static const XMLCh tag_param[] = {'p', 'a', 'r', 'a', 'm',0};
+static const XMLCh tag_control[] = {'c', 'o', 'n', 't', 'r', 'o', 'l',0};
 
 vzMotionDirector::vzMotionDirector(DOMNodeX* node,vzScene* scene)
 {

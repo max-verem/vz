@@ -264,7 +264,8 @@ static int vzImageLoadJPEG(vzImage** pimg, char* filename)
     4. nmake /f makefile.vc
 */
 
-#pragma comment(lib, "libjpeg.lib")
+#pragma comment(lib, "jpeg.lib")
+//#pragma comment(lib, "libjpeg.lib")
 //#pragma comment(lib, "jpeg-bcc.lib")
 
 static int vzImageLoadJPEG(vzImage** pimg, char* filename)

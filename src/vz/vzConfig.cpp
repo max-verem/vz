@@ -33,7 +33,7 @@ ChangeLog:
 
 #include "vzXMLAttributes.h"
 
-static const unsigned short tag_module[] = {'m', 'o', 'd', 'u', 'l', 'e',0};
+static const XMLCh tag_module[] = {'m', 'o', 'd', 'u', 'l', 'e',0};
 
 vzConfig::vzConfig(char* config_file)
 {

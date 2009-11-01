@@ -47,13 +47,13 @@ ChangeLog:
 	#pragma comment(lib, "xerces-c_2.lib") 
 #endif
 
-#define DOMDocumentX xercesc_2_6::DOMDocument
-#define DOMNodeX xercesc_2_6::DOMNode
-#define XercesDOMParserX xercesc_2_6::XercesDOMParser
-#define DOMElementX xercesc_2_6::DOMElement
-#define DOMNodeListX xercesc_2_6::DOMNodeList
-#define XMLStringX xercesc_2_6::XMLString
-#define XMLPlatformUtilsX xercesc_2_6::XMLPlatformUtils
-#define DOMNamedNodeMapX xercesc_2_6::DOMNamedNodeMap
+#define DOMDocumentX xercesc_2_8::DOMDocument
+#define DOMNodeX xercesc_2_8::DOMNode
+#define XercesDOMParserX xercesc_2_8::XercesDOMParser
+#define DOMElementX xercesc_2_8::DOMElement
+#define DOMNodeListX xercesc_2_8::DOMNodeList
+#define XMLStringX xercesc_2_8::XMLString
+#define XMLPlatformUtilsX xercesc_2_8::XMLPlatformUtils
+#define DOMNamedNodeMapX xercesc_2_8::DOMNamedNodeMap
 
 #endif

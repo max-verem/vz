@@ -33,7 +33,7 @@ ChangeLog:
 #include "vzLogger.h"
 #include <stdio.h>
 
-static const unsigned short tag_director[] = {'d', 'i', 'r', 'e', 'c', 't', 'o', 'r',0};
+static const XMLCh tag_director[] = {'d', 'i', 'r', 'e', 'c', 't', 'o', 'r',0};
 
 vzMotion::vzMotion(DOMNodeX* node,vzScene* scene) : vzHash<vzMotionDirector*>()
 {

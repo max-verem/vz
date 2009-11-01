@@ -114,8 +114,8 @@ ChangeLog:
 #include "../vzCmd/vz_cmd.h"
 #include "vzLogger.h"
 
-static const unsigned short tag_tree[] = {'t', 'r', 'e', 'e',0};
-static const unsigned short tag_motion[] = {'m', 'o', 't', 'i', 'o', 'n',0};
+static const XMLCh tag_tree[] = {'t', 'r', 'e', 'e',0};
+static const XMLCh tag_motion[] = {'m', 'o', 't', 'i', 'o', 'n',0};
 
 static unsigned int _stencil_tex;
 

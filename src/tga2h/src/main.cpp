@@ -30,7 +30,7 @@ Changelog:
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "vzImage.h"
+#include "../../vz/vzImage.h"
 
 #define COLUMNS 5
 

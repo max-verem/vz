@@ -34,7 +34,7 @@ ChangeLog:
 #include <stdio.h>
 
 
-static const unsigned short tag_key[] = {'k', 'e', 'y',0};
+static const XMLCh tag_key[] = {'k', 'e', 'y',0};
 
 vzMotionControl::vzMotionControl(DOMNodeX* node,vzScene* scene) : vzHash<vzMotionControlKey*>()
 {

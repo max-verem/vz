@@ -32,9 +32,9 @@ ChangeLog:
 #include "vzXMLParams.h"
 #include "unicode.h"
 
-static const unsigned short tag_param[] = {'p','a','r','a','m',0};
-static const unsigned short tag_value[] = {'v','a','l','u','e',0};
-static const unsigned short tag_name[] = {'n','a','m','e',0};
+static const XMLCh tag_param[] = {'p','a','r','a','m',0};
+static const XMLCh tag_value[] = {'v','a','l','u','e',0};
+static const XMLCh tag_name[] = {'n','a','m','e',0};
 
 vzXMLParams::vzXMLParams(DOMNodeX* parent_node) : vzHash<char*>() 
 {

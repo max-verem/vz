@@ -35,7 +35,7 @@ ChangeLog:
 #include <stdio.h>
 
 
-static const unsigned short tag_timeline[] = {'t', 'i', 'm', 'e', 'l', 'i', 'n', 'e',0};
+static const XMLCh tag_timeline[] = {'t', 'i', 'm', 'e', 'l', 'i', 'n', 'e',0};
 
 
 vzMotionParameter::vzMotionParameter(DOMNodeX* node,vzScene* scene) : vzHash<vzMotionTimeline*>()
