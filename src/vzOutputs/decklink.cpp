@@ -31,6 +31,11 @@ ChangeLog:
 */
 #define _WIN32_DCOM
 
+#pragma comment(lib, "Ole32.Lib")
+#pragma comment(lib, "OleAut32.Lib")
+#pragma comment(lib, "User32.Lib")
+#pragma comment(lib, "AdvAPI32.Lib")
+
 #include <windows.h>
 
 #include "../vz/vzOutput.h"
@@ -43,7 +48,10 @@ ChangeLog:
 
 /*
     prepare:
-        midl DecklinkInterface.idl /h DecklinkInterface.h
+
+    midl DecklinkInterface.idl /env win32 /h DecklinkInterface.h -I "C:\Program Files\Microsoft SDKs\Windows\v6.0A\Include"
+    midl DecklinkInterface.idl /env x64 /h DecklinkInterface.h -I "C:\Program Files\Microsoft SDKs\Windows\v6.0A\Include"
+
 */
 #include "DecklinkInterface.h"
 #include "DecklinkInterface_i.c"

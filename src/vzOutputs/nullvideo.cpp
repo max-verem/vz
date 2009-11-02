@@ -42,12 +42,14 @@ ChangeLog:
 		*Fake output module developed ....
 */
 
-#define DUPL_LINES_ARCH
-
-
 #include <windows.h>
 #include "hr_timer.h"
+
+#ifdef _M_X64
+#else
 #include "arch_copy.h"
+#define DUPL_LINES_ARCH
+#endif /* _M_X64 */
 
 #include "../vz/vzOutput.h"
 #include "../vz/vzOutput-devel.h"
@@ -110,6 +112,174 @@ VZOUTPUTS_EXPORT long vzOutput_InitBoard(void* tv)
 	return 1;
 };
 
+#ifndef _M_X64
+static void vzImageBGRA2YUAYVA(void* src, void* dst_yuv, void* dst_alpha, long count)
+{
+/*	short _Y[] = {29,150,76,0};
+	short _U[] = {127,-85,-43,128};
+	short _V[] = {-21,-106,127,128};
+*/
+// test !!!!
+//	*((unsigned long*)src) = 0x01020304;
+//	*(((unsigned long*)src) + 1) = 0x05060708;
+
+	__asm
+	{
+//		EMMS
+		jmp		begin
+ALIGN 16
+mask1:
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0xFF
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0xFF
+_Y:
+// = 
+	__asm _emit 0x1D
+	__asm _emit 0x00
+	__asm _emit 0x96
+	__asm _emit 0x00
+	__asm _emit 0x4C
+	__asm _emit 0x00
+	__asm _emit 0x00
+	__asm _emit 0x00
+_V:
+// = 
+	__asm _emit 0xEB 
+	__asm _emit 0xFF 
+	__asm _emit 0x96 
+	__asm _emit 0xFF 
+	__asm _emit 0x7F 
+	__asm _emit 0x00 
+	__asm _emit 0x80 
+	__asm _emit 0x00
+_U:
+// = 
+	__asm _emit 0x7F 
+	__asm _emit 0x00 
+	__asm _emit 0xAB 
+	__asm _emit 0xFF 
+	__asm _emit 0xD5 
+	__asm _emit 0xFF 
+	__asm _emit 0x80 
+	__asm _emit 0x00
+
+begin:
+		// loading source surface pointer
+		mov		esi, dword ptr[src];
+
+		// loading dst surface pointer
+		mov		edi, dword ptr[dst_yuv];
+
+		// loading dst alpha surface pointer
+		mov		ebx, dword ptr[dst_alpha];
+
+		// counter
+		mov		ecx, dword ptr[count];
+		sar		ecx,1	// devide on 2
+
+
+pixel:
+		// prefetch to cache
+//		PREFETCHNTA [esi];
+//		PREFETCHNTA [edi];
+
+		// load 2 pixels
+		movq		MM0, qword ptr[esi]
+
+		// extract alpha
+		movq		MM3, MM0
+		psrad		MM3, 24
+		packsswb	MM3, MM0
+		packsswb	MM3, MM0
+		movd		eax,MM3
+		mov			word ptr [ebx], ax
+		add			ebx,2
+
+		// unpacking
+		por			MM0, qword ptr [mask1]	// hide alphas
+		movq		MM1,MM0		//	move to register for PIXEL 1
+		movq		MM2,MM0		//  move to register for PIXEL 2
+		pxor		MM0,MM0		//	clear register
+		punpcklbw	MM1,MM0		//  unpacking
+		punpckhbw	MM2,MM0		//  unpacking
+
+		// loading vectors
+		movq		MM3,qword ptr [_Y]
+		movq		MM5,qword ptr [_U]
+		movq		MM4,MM3
+		movq		MM6,qword ptr [_V]
+
+		// multiply
+		pmullw		MM3,MM1
+		pmullw		MM4,MM2
+		pmullw		MM5,MM1
+		pmullw		MM6,MM2
+
+// PIXEL #1 (MM0 <- MM3, MM7 <- MM5) -> eax
+		movq		MM0,MM3 // duplicate (1)
+		movq		MM7,MM5
+		psllq		MM0,32	// shift duplicated (1)
+		psllq		MM7,32
+		paddw		MM3,MM0 // adding (1)
+		paddw		MM5,MM7
+		movq		MM0,MM3 // duplicate (2)
+		movq		MM7,MM5
+		psrlq		MM0,16	// shift duplicated (2)
+		psrlq		MM7,16
+		paddw		MM3,MM0 // adding (2)
+		paddw		MM5,MM7
+// pack
+		psrlw		MM3,8	// shift duplicated (2)
+		psrlw		MM5,8	
+		PUNPCKHWD	MM5,MM3
+		PACKUSWB	MM5,MM5
+// save to AX (Y1U1 -> AX)
+		movd		eax,MM5
+		and			eax,0xFFFF
+
+// PIXEL #2 (MM0 <- MM4, MM7 <- MM6) -> edx
+		movq		MM0,MM4 // duplicate (1)
+		movq		MM7,MM6
+		psllq		MM0,32	// shift duplicated (1)
+		psllq		MM7,32
+		paddw		MM4,MM0 // adding (1)
+		paddw		MM6,MM7
+		movq		MM0,MM4 // duplicate (2)
+		movq		MM7,MM6
+		psrlq		MM0,16	// shift duplicated (2)
+		psrlq		MM7,16
+		paddw		MM4,MM0 // adding (2)
+		paddw		MM6,MM7
+// pack
+		psrlw		MM4,8	// shift duplicated (2)
+		psrlw		MM6,8	
+		PUNPCKHWD	MM6,MM4
+		PACKUSWB	MM6,MM6
+// save to AX (Y1U1 -> DX)
+		movd		edx,MM6
+
+// save to memmory
+		sal			edx,16
+		or			edx,eax
+		mov			dword ptr [edi],edx
+
+// increment
+		add			esi,8
+		add			edi,4
+		dec			ecx
+
+		jnz			pixel
+		emms
+	}
+
+	return;
+};
+#endif /*  !_M_X64 */
 
 unsigned long WINAPI output_loop(void* obj)
 {
@@ -155,6 +325,7 @@ unsigned long WINAPI output_loop(void* obj)
 			_fc();
 
 		// 4. transcode buffer
+#ifndef _M_X64
 		if(vzConfigParam(_config,"nullvideo","YUV_CONVERT"))
 			if (output_buffer)
 				vzImageBGRA2YUAYVA
@@ -164,6 +335,7 @@ unsigned long WINAPI output_loop(void* obj)
 					alpha_buffer,
 					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT
 				);
+#endif /* !_M_X64 */
 		/* transfer buffer */
 		if(vzConfigParam(_config,"nullvideo","OUTPUT_BUF_TRANSFER"))
 			if (output_buffer)

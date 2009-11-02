@@ -77,10 +77,11 @@ ChangeLog:
 
 #include <BlueVelvet4.h>
 
+#ifdef _M_X64
+#else
 #include "arch_copy.h"
-
 #define DUPL_LINES_ARCH
-#define DIRECT_FRAME_COPY
+#endif /* _M_X64 */
 
 #define OVERRUN_RECOVERY 7			/* 7 miliseconds is upper limit */
 
@@ -1513,12 +1514,19 @@ VZOUTPUTS_EXPORT void vzOutput_AssignBuffers(struct vzOutputBuffers* b)
 
 #pragma comment(lib, "winmm")
 
-#ifdef _DEBUG
-#pragma comment(lib, "BlueVelvet3_d.lib") 
-#else /* !_DEBUG */
-#pragma comment(lib, "BlueVelvet3.lib") 
-#endif /* _DEBUG */
-
+#ifdef _M_X64
+    #ifdef _DEBUG
+        #pragma comment(lib, "BlueVelvet64_d.lib") 
+    #else /* !_DEBUG */
+        #pragma comment(lib, "BlueVelvet64.lib") 
+    #endif /* _DEBUG */
+#else
+    #ifdef _DEBUG
+        #pragma comment(lib, "BlueVelvet3_d.lib") 
+    #else /* !_DEBUG */
+        #pragma comment(lib, "BlueVelvet3.lib") 
+    #endif /* _DEBUG */
+#endif /* _M_X64 */
 
 BOOL APIENTRY DllMain
 (

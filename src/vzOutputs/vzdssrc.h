@@ -42,7 +42,7 @@ ChangeLog:
 #define _WIN32_DCOM
 #include <stdio.h>
 #include <conio.h>
-
+#include <strsafe.h>
 /* 
 	BaseClasses - compile and comment:
 	[...]
