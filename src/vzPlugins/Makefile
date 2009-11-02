@@ -1,49 +1,85 @@
 !IF "$(CFG)" == ""
-CFG=Debug
+CFG=Debug32
 !MESSAGE Default configuration is Debug.
 !ENDIF 
 
-!IF "$(CFG)" != "Release" && "$(CFG)" != "Debug"
+!IF "$(CFG)" != "Release32" && "$(CFG)" != "Debug32" && "$(CFG)" != "Release64" && "$(CFG)" != "Debug64"
 !MESSAGE Invalid configuration "$(CFG)" specified.
 !MESSAGE You can specify a configuration when running NMAKE
 !MESSAGE by defining the macro CFG on the command line. For example:
 !MESSAGE 
-!MESSAGE NMAKE CFG="Debug" or NMAKE CFG="Release"
+!MESSAGE NMAKE CFG="Debug32" or NMAKE CFG="Release32"
+!MESSAGE or
+!MESSAGE NMAKE CFG="Debug64" or NMAKE CFG="Release64"
 !MESSAGE 
 !MESSAGE Possible choices for configuration are:
 !MESSAGE 
-!MESSAGE "Release" 
-!MESSAGE "Debug"
+!MESSAGE "Release32" 
+!MESSAGE "Debug32"
+!MESSAGE "Release64" 
+!MESSAGE "Debug64"
 !MESSAGE 
 !ERROR An invalid configuration is specified.
 !ENDIF 
 
+VCINSTALLDIR	=	C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\
 
-!IF  "$(CFG)" == "Debug"
+VSINSTALLDIR	=	C:\Program Files (x86)\Microsoft Visual Studio 9.0\
+
+WindowsSdkDir	=	C:\Program Files\Microsoft SDKs\Windows\v6.0A\
+
+INCLUDES	=	-I"$(VCINSTALLDIR)\include" \
+			-I"$(WindowsSdkDir)\Include"
+
+!IF "$(CFG)" == "Debug64"
+CPP		= "$(VCINSTALLDIR)\bin\x86_amd64\cl.exe"
 DEBUGFLAGS	= -D_DEBUG /RTC1 /EHsc /Zi /FD
-INSTALL_DIR	= ../../install/Debug/plugins/
-OBJS_DIR	= ../../tmp/Debug/plugins/
-LIB_PATH	= /LIBPATH:"../../tmp/Debug/"
+INSTALL_DIR	= ../../install/Debug-x64/plugins/
+OBJS_DIR	= ../../temp/x64/Debug/plugins/
+LIB_PATH	= /LIBPATH:"../../temp/x64/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64"
+LINKER_OPT	= /LDd /nologo 
+LINKER_FLAGS	= $(LIB_PATH) /DEBUG
+CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
+!ENDIF
+
+!IF "$(CFG)" == "Release64"
+# Release version
+CPP		= "$(VCINSTALLDIR)\bin\x86_amd64\cl.exe"
+DEBUGFLAGS	= 
+INSTALL_DIR	= ../../install/Release-x64/plugins/
+OBJS_DIR	= ../../temp/x64/Release/plugins/
+LIB_PATH	= /LIBPATH:"../../temp/x64/Release/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64"
+LINKER_OPT	= /LD /nologo 
+LINKER_FLAGS	= $(LIB_PATH)
+CPPFLAGS	= $(CPPFLAGS) /MD /Zp16
+!ENDIF
+
+!IF "$(CFG)" == "Debug32"
+DEBUGFLAGS	= -D_DEBUG /RTC1 /EHsc /Zi /FD
+INSTALL_DIR	= ../../install/Debug-win32/plugins/
+OBJS_DIR	= ../../temp/win32/Debug/plugins/
+LIB_PATH	= /LIBPATH:"../../temp/win32/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib" /LIBPATH:"$(VCINSTALLDIR)\lib"
 LINKER_OPT	= /LDd /nologo 
 LINKER_FLAGS	= $(LIB_PATH) /DEBUG
 CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
 !ENDIF
 
 
-!IF "$(CFG)" == "Release"
+!IF "$(CFG)" == "Release32"
 # Release version
 DEBUGFLAGS	= 
-INSTALL_DIR	= ../../install/Release/plugins/
-OBJS_DIR	= ../../tmp/Release/plugins/
-LIB_PATH	= /LIBPATH:"../../tmp/Release/"
+INSTALL_DIR	= ../../install/Release-win32/plugins/
+OBJS_DIR	= ../../temp/win32/Release/plugins/
+LIB_PATH	= /LIBPATH:"../../temp/win32/Release/" /LIBPATH:"$(WindowsSdkDir)\lib" /LIBPATH:"$(VCINSTALLDIR)\lib"
 LINKER_OPT	= /LD /nologo 
 LINKER_FLAGS	= $(LIB_PATH)
 CPPFLAGS	= $(CPPFLAGS) /MD /Zp16
 !ENDIF
 
+
 # compiler setting
 CPPFLAGS	= $(CPPFLAGS) -TP
-INCLUDE_DIR	= -I. -I../vz
+INCLUDE_DIR	= -I. -I../vz $(INCLUDES)
 LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
@@ -77,6 +113,8 @@ all: $(TARGET)
 	if not exist "$(INSTALL_DIR)" mkdir ".\$(INSTALL_DIR)"	
 
 .cpp.dll:
+	@echo $(INCLUDE)
+	@SET INCLUDE=$(INCLUDE)
 	@echo Compiling:$< ... $(<:.cpp=.obj)
 	$(CPP) \
 		-c -nologo $(DEBUGFLAGS) $(CPPFLAGS) $(INCLUDE_DIR) \
