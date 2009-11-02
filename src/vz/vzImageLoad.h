@@ -262,6 +262,22 @@ static int vzImageLoadJPEG(vzImage** pimg, char* filename)
     2. download jpegsr7.zip
     3. Rename jconfig.vc to jconfig.h
     4. nmake /f makefile.vc
+
+or
+
+    https://subversion.multipole.org/subversion/jpeg/trunk/install.txt
+    http://www.dpvreony.co.uk/blog/post/63
+
+    copy jconfig.vc /B  jconfig.h /B 
+    copy makejsln.vc9 /B jpeg.sln /B 
+    copy makeasln.vc9 /B apps.sln /B 
+    copy makejvcp.vc9 /B jpeg.vcproj /B 
+    copy makecvcp.vc9 /B cjpeg.vcproj /B 
+    copy makedvcp.vc9 /B djpeg.vcproj /B 
+    copy maketvcp.vc9 /B jpegtran.vcproj /B 
+    copy makervcp.vc9 /B rdjpgcom.vcproj /B 
+    copy makewvcp.vc9 /B wrjpgcom.vcproj /B 
+
 */
 
 #pragma comment(lib, "jpeg.lib")
