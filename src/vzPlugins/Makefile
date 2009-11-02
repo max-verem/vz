@@ -26,7 +26,7 @@ VCINSTALLDIR	=	C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\
 
 VSINSTALLDIR	=	C:\Program Files (x86)\Microsoft Visual Studio 9.0\
 
-WindowsSdkDir	=	C:\Program Files\Microsoft SDKs\Windows\v6.0A\
+WindowsSdkDir	=	C:\Program Files\Microsoft SDKs\Windows\v7.0\
 
 INCLUDES	=	-I"$(VCINSTALLDIR)\include" \
 			-I"$(WindowsSdkDir)\Include"
