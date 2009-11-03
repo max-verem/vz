@@ -36,6 +36,8 @@ ChangeLog:
 #ifndef VZSCENE_H
 #define VZSCENE_H
 
+#include "memleakcheck.h"
+
 class vzContainer;
 class vzContainerFunction;
 class vzMotion;

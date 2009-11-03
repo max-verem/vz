@@ -121,6 +121,9 @@ VZIMAGE_API int vzImageFlipVertical(vzImage* img)
     /* change base */
 	img->base_y = img->height - img->base_y - img->base_height;
 
+    /* release line buffer */
+    free(buf);
+
     return 0;
 };
 

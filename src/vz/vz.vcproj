@@ -508,6 +508,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\memleakcheck.h"
+				>
+			</File>
+			<File
 				RelativePath="serserver.h"
 				>
 			</File>

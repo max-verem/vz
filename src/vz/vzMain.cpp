@@ -66,23 +66,12 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-			// Init xml processor
-		    try
-			{
-				XMLPlatformUtilsX::Initialize();
-			}
-			catch (...)
-			{
-				XMLPlatformUtilsX::Terminate();
-				return FALSE;
-		    }
 			break;
 		case DLL_THREAD_ATTACH:
 			break;
 		case DLL_THREAD_DETACH:
 			break;
 		case DLL_PROCESS_DETACH:
-				XMLPlatformUtilsX::Terminate();
 			break;
     }
     return TRUE;
@@ -413,3 +402,23 @@ VZMAIN_API void vzContainerDraw(void* container, void* session)
 		((vzContainer*)container)->draw((vzRenderSession*)session);
 };
 
+VZMAIN_API int vzMainXMLInit()
+{
+    // Init xml processor
+    try
+    {
+        XMLPlatformUtilsX::Initialize();
+    }
+    catch (...)
+    {
+        XMLPlatformUtilsX::Terminate();
+        return -1;
+    };
+
+    return 0;
+};
+
+VZMAIN_API void vzMainXMLRelease()
+{
+    XMLPlatformUtilsX::Terminate();
+};

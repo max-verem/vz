@@ -35,6 +35,8 @@ ChangeLog:
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
+#include "memleakcheck.h"
+
 #define PLUGIN_PATH ".\\plugins\\"
 #define PLUGIN_EXT ".dll"
 

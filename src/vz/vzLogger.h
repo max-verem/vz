@@ -29,6 +29,7 @@ ChangeLog:
 #ifndef VZLOGGER_H
 #define VZLOGGER_H
 
+#include "memleakcheck.h"
 
 #ifdef VZLOGGER_EXPORTS
 #define VZLOGGER_API __declspec(dllexport)

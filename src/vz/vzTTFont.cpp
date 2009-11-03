@@ -69,14 +69,6 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-
-			/* init library */
-			ft_library_lock = CreateMutex(NULL,FALSE,NULL);
-			FT_Init_FreeType( &ft_library );
-
-			/* fonts path storage init */
-			memset(font_paths, 0, MAX_FONT_PATHS*sizeof(char*));
-
 			break;
 		case DLL_THREAD_ATTACH:
 			break;
@@ -87,6 +79,22 @@ BOOL APIENTRY DllMain( HANDLE hModule,
     }
     return TRUE;
 }
+
+void vzTTFont::init_freetype()
+{
+    /* init library */
+    ft_library_lock = CreateMutex(NULL,FALSE,NULL);
+    FT_Init_FreeType( &ft_library );
+
+    /* fonts path storage init */
+    memset(font_paths, 0, MAX_FONT_PATHS*sizeof(char*));
+};
+
+void vzTTFont::release_freetype()
+{
+    FT_Done_FreeType(ft_library);
+    CloseHandle(ft_library_lock);
+};
 
 #define _MAX(A,B) ((A>B)?A:B)
 #define _MIN(A,B) ((A<B)?A:B)

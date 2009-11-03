@@ -252,6 +252,11 @@ PLUGIN_EXPORT void destructor(void* data)
 	{
 		if(INVALID_HANDLE_VALUE != _DATA->_txt_msg[i]->async)
 			CloseHandle(_DATA->_txt_msg[i]->async);
+
+        /* destroy symbols */
+        if(_DATA->_font)
+            _DATA->_font->delete_symbols(_DATA->_txt_msg[i]->id);
+
 		free(_DATA->_txt_msg[i]);
 	};
 	free(_DATA->_txt_msg);

@@ -29,6 +29,8 @@ ChangeLog:
 #ifndef VZIMAGE_H
 #define VZIMAGE_H
 
+#include "memleakcheck.h"
+
 #ifdef VZIMAGE_EXPORTS
 #define VZIMAGE_API __declspec(dllexport)
 #else

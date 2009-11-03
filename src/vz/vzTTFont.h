@@ -33,6 +33,8 @@ ChangeLog:
 #ifndef VZTTFONT_H
 #define VZTTFONT_H
 
+#include "memleakcheck.h"
+
 #ifdef VZTTFONT_EXPORTS
 #define VZTTFONT_API __declspec(dllexport)
 #ifdef _DEBUG
@@ -139,6 +141,9 @@ public:
 	long get_symbol_height(long id);
 
 	~vzTTFont();
+
+    static void init_freetype();
+    static void release_freetype();
 };
 
 #endif

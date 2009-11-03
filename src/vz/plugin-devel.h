@@ -34,6 +34,8 @@ ChangeLog:
 #ifndef PLUGIN_DEVEL_H
 #define PLUGIN_DEVEL_H
 
+#include "memleakcheck.h"
+
 // main includes
 #include <windows.h>
 #include <GL/gl.h>

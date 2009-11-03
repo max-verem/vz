@@ -68,6 +68,8 @@ ChangeLog:
 */
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "memleakcheck.h"
+
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -992,10 +994,18 @@ static void vz_window_event_loop()
 
 int main(int argc, char** argv)
 {
+#ifdef _DEBUG
+    _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+#endif /* _DEBUG */
+
 	/* init timer period */
 	timeBeginPeriod(1);
 
+    /* init xml engine */
+    vzMainXMLInit();
+
 	/* default ttFont path */
+    vzTTFont::init_freetype();
 	vzTTFontAddFontPath("fonts");
 
 //#define _DEBUG_IMG
@@ -1258,5 +1268,20 @@ int main(int argc, char** argv)
 
 	logger_printf(1, "main: Bye!");
 	logger_release();
+
+    /* delete config */
+    vzConfigClose(config);
+
+    /* release freetype lib */
+    vzTTFont::release_freetype();
+
+    /* release xml engine */
+    vzMainXMLRelease();
+
+#ifdef _DEBUG
+    _CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_DEBUG );
+    _CrtDumpMemoryLeaks();
+#endif /* _DEBUG */
+
 	return 0;
 };

@@ -77,4 +77,8 @@ VZMAIN_API void vzConfigTVSpec(void* config, char* module, void* spec);
 VZMAIN_API void vzContainerVisible(void* container, int visible);
 VZMAIN_API void vzContainerDraw(void* container, void* session);
 
+/* Xerces init */
+VZMAIN_API int vzMainXMLInit();
+VZMAIN_API void vzMainXMLRelease();
+
 #endif

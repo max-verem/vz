@@ -105,6 +105,7 @@ ChangeLog:
 		*Code cleanup
 
 */
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "vzScene.h"
 #include "xerces.h"

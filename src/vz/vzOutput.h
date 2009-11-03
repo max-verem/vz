@@ -45,6 +45,7 @@ ChangeLog:
 #ifndef VZOUTPUT_H
 #define VZOUTPUT_H
 
+#include "memleakcheck.h"
 
 #ifdef VZOUTPUT_EXPORTS
 #define VZOUTPUT_API __declspec(dllexport)
