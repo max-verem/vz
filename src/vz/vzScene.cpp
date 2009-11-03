@@ -113,6 +113,7 @@ ChangeLog:
 #include "vzGlExt.h"
 #include "../vzCmd/vz_cmd.h"
 #include "vzLogger.h"
+#include <stdint.h>
 
 static const XMLCh tag_tree[] = {'t', 'r', 'e', 'e',0};
 static const XMLCh tag_motion[] = {'m', 'o', 't', 'i', 'o', 'n',0};
@@ -929,9 +930,9 @@ int vzScene::command(int cmd, int index, void* buf)
 				(
 					buf,
 					index,
-					&function_id,
-					&field_name,
-					&field_value
+					(void*)&function_id,
+					(void*)&field_name,
+					(void*)&field_value
 				)
 			)
 			{
@@ -951,7 +952,7 @@ int vzScene::command(int cmd, int index, void* buf)
 		case VZ_CMD_CONTAINER_VISIBLE:
 		{
 			char* container_id;
-			int* v;
+			int32_t* v;
 
 			/* map params */
 			if
@@ -962,12 +963,12 @@ int vzScene::command(int cmd, int index, void* buf)
 				(
 					buf,
 					index,
-					&container_id,
-					&v
+					(void*)&container_id,
+					(void*)&v
 				)
 			)
 			{
-				logger_printf(0, "vzScene: VZ_CMD_CONTAINER_VISIBLE('%s', '%d')", container_id, *v);
+				logger_printf(0, "vzScene: VZ_CMD_CONTAINER_VISIBLE('%s', '%d')", container_id, (int)*v);
 				vzContainer* container = _id_containers.find(container_id);
 				if(container)
 					container->visible(*v);
@@ -986,7 +987,7 @@ int vzScene::command(int cmd, int index, void* buf)
 		case VZ_CMD_STOP_DIRECTOR:
 		{
 			char* director_id;
-			int* frame = NULL;
+			uint32_t* frame = NULL;
 
 			if
 			(
@@ -996,12 +997,12 @@ int vzScene::command(int cmd, int index, void* buf)
 				(
 					buf,
 					index,
-					&director_id,
-					&frame
+					(void*)&director_id,
+					(void*)&frame
 				)
 			)
 			{
-				logger_printf(0, "vzScene: VZ_CMD_???_DIRECTOR('%s', '%d')\n", director_id, (frame)?*frame:-1);
+				logger_printf(0, "vzScene: VZ_CMD_???_DIRECTOR('%s', '%d')\n", director_id, (frame)?((int)*frame):-1);
 				vzMotionDirector* director = _id_directors.find(director_id);
 				if(director)
 				{

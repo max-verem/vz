@@ -87,7 +87,7 @@ int serserver_cmd(void* buf, int *p_bytes)
 			case VZ_CMD_LOAD_SCENE:
 
 				/* map variable */
-				vz_serial_cmd_parseNmap(buf, i, &filename);
+				vz_serial_cmd_parseNmap(buf, i, (void*)&filename);
 
 				/* do it */
 				CMD_loadscene(filename, NULL);
@@ -96,7 +96,7 @@ int serserver_cmd(void* buf, int *p_bytes)
 			case VZ_CMD_SCREENSHOT:
 
 				/* map variable */
-				vz_serial_cmd_parseNmap(buf, i, &filename);
+				vz_serial_cmd_parseNmap(buf, i, (void*)&filename);
 
 				/* do it */
 				CMD_screenshot(filename, NULL);

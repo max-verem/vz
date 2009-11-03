@@ -192,14 +192,14 @@ int vz_cmd_send_release()
 	return 0;
 };
 
-static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsigned int **cmds_args, char* error)
+static int cmdlist_from_strlist(char** argv, int argc, void ***cmds, unsigned int **cmds_args, char* error)
 {
 	int e = 0, i;
 	int cmd_id, idx_cmd = 0, idx_arg = 0, cmd_cnt = 0;
 	char cmd_name[MAX_CMD_NAME];
 
 	/* allocate lists */
-	*cmds = (unsigned int*)malloc((1 + argc) * sizeof(unsigned int));
+	*cmds = (void**)malloc((1 + argc) * sizeof(void*));
 	*cmds_args = (unsigned int*)malloc((1 + argc) * sizeof(unsigned int));
 
 	while((0 == e) && (0 != argc))
@@ -214,7 +214,7 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 		if(cmd_id)
 		{
 			cmd_cnt++;
-			(*cmds)[idx_cmd++] = (unsigned int)cmd_id;
+			(*cmds)[idx_cmd++] = (void*)cmd_id;
 			argc--; argv++;
 
 			/* process command arguments */
@@ -227,7 +227,7 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 
 					/* name parameter */
 					if(argc)
-						(*cmds)[idx_cmd++] = (unsigned int)*argv;
+						(*cmds)[idx_cmd++] = (void*)*argv;
 					else
 						e = -2;
 					argc--; argv++;
@@ -239,7 +239,7 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 
 					/* name paramer */
 					if(argc)
-						(*cmds)[idx_cmd++] = (unsigned int)*argv;
+						(*cmds)[idx_cmd++] = (void*)*argv;
 					else
 						e = -2;
 					argc--; argv++;
@@ -248,7 +248,7 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 					if(argc)
 					{
 						(*cmds_args)[idx_arg] = (unsigned int)atol(*argv);
-						(*cmds)[idx_cmd++] = (unsigned int)&((*cmds_args)[idx_arg++]);
+						(*cmds)[idx_cmd++] = (void*)&((*cmds_args)[idx_arg++]);
 					}
 					else
 						e = -2;
@@ -260,7 +260,7 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 					{
 						/* name paramer */
 						if(argc)
-							(*cmds)[idx_cmd++] = (unsigned int)*argv;
+							(*cmds)[idx_cmd++] = (void*)*argv;
 						else
 							e = -2;
 						argc--; argv++;
@@ -282,7 +282,7 @@ static int cmdlist_from_strlist(char** argv, int argc, unsigned int **cmds, unsi
 	};
 
 	/* setup terminator */
-	(*cmds)[idx_cmd++] = 0;
+	(*cmds)[idx_cmd++] = NULL;
 
 	return (0 == e)?cmd_cnt:e;
 };
@@ -291,7 +291,8 @@ int vz_cmd_send_strlist_udp(char* host, char** argv, int argc, char* error)
 {
 	int r;
 	struct vz_cmd_send_target dst;
-	unsigned int *cmds = NULL, *cmds_args = NULL;
+	void **cmds = NULL;
+    unsigned int *cmds_args = NULL;
 
 	/* init target struct */
 	dst.transport = VZ_CMD_SEND_UDP;
