@@ -2,7 +2,7 @@
 
 #include <windows.h>
 #include <oleauto.h>
-
+#include "stdint.h"
 #include "vz_cmd_send.h"
 
 #include <stdio.h>
@@ -14,7 +14,7 @@ struct vzCmdSendPart_desc
 
 static int init_done = 0;
 
-VZCMDSEND_API long __stdcall vzCmdSendVB(char* host, long count, struct vzCmdSendPart_desc *data)
+VZCMDSEND_API long __stdcall vzCmdSendVB(char* host, int32_t count, struct vzCmdSendPart_desc *data)
 {
 	int i, l, r = 0;
 	char** argv;
@@ -89,7 +89,7 @@ VZCMDSEND_API long __stdcall vzCmdSendVB(char* host, long count, struct vzCmdSen
 	return r;
 };
 
-VZCMDSEND_API long __stdcall vzCmdSendVB2008(char* host, long count, LPSAFEARRAY FAR *ArrayData)
+VZCMDSEND_API int32_t __stdcall vzCmdSendVB2008(char* host, int32_t count, LPSAFEARRAY FAR *ArrayData)
 {
 	int i, l, r = 0;
 	char** argv;
