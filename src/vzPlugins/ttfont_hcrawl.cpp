@@ -51,8 +51,6 @@ static char* _plugin_notes =
 #include <process.h>
 #include <stdio.h>
 
-#include "get_font.h"
-
 #ifdef _DEBUG
 #endif
 
@@ -72,24 +70,15 @@ BOOL APIENTRY DllMain
     LPVOID lpReserved
 )
 {
-	int i;
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-			// create mutex to lock list
-			_fonts_list_lock = CreateMutex(NULL,FALSE,NULL);
-
 			break;
 		case DLL_THREAD_ATTACH:
 			break;
 		case DLL_THREAD_DETACH:
 			break;
 		case DLL_PROCESS_DETACH:
-			// close mutex
-			CloseHandle(_fonts_list_lock);
-			// delete font instances
-			for(i=0;i<vzTTFontList.count();i++)
-				delete vzTTFontList.value(i);
 			break;
     }
     return TRUE;
@@ -251,7 +240,10 @@ PLUGIN_EXPORT void destructor(void* data)
 	for(i = 0; i<_DATA->_txt_msg_len; i++)
 	{
 		if(INVALID_HANDLE_VALUE != _DATA->_txt_msg[i]->async)
+        {
 			CloseHandle(_DATA->_txt_msg[i]->async);
+            _DATA->_txt_msg[i]->async = INVALID_HANDLE_VALUE;
+        };
 
         /* destroy symbols */
         if(_DATA->_font)
@@ -701,7 +693,10 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		{
 			/* wait for async renderer */
 			if(_DATA->_txt_msg[i]->async != INVALID_HANDLE_VALUE)
+            {
 				CloseHandle(_DATA->_txt_msg[i]->async);
+                _DATA->_txt_msg[i]->async = INVALID_HANDLE_VALUE;
+            };
 
 			if(_DATA->_font)
 				/* free symbols */
@@ -744,14 +739,13 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		txt_msg->parent = _DATA;
 
 		/* start async thread */
-		unsigned long thread;
-		txt_msg->async = CreateThread(0, 0, _msg_layouter, txt_msg, 0, &thread);
-                SetThreadPriority(txt_msg->async , VZPLUGINS_AUX_THREAD_PRIO);
+		txt_msg->async = CreateThread(0, 0, _msg_layouter, txt_msg, 0, NULL);
+        SetThreadPriority(txt_msg->async , VZPLUGINS_AUX_THREAD_PRIO);
 
-		_DATA->s_trig_append[0] = 0;
-
-//		/* clear bit */
-//		_DATA->_s_trig_append = _DATA->s_trig_append;
+        /* free string to append */
+        free(_DATA->s_trig_append);
+		/* clear bit */
+        _DATA->s_trig_append = NULL;
 	};
 
 	/* check if reset rised */

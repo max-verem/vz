@@ -46,6 +46,7 @@ ChangeLog:
 #include "vzTTFont.h"
 #include "unicode.h"
 #include "vzLogger.h"
+#include "../templates/hash.hpp"
 
 #include <windows.h>
 #include <math.h>
@@ -1050,3 +1051,87 @@ struct vzTTFontLayoutConf vzTTFontLayoutConfDefault(void)
 	return d;
 };
 
+static HANDLE _fonts_list_lock;
+static vzHash<vzTTFont*>* vzTTFontList;
+
+VZTTFONT_API int get_font_init()
+{
+    // create mutex to lock list
+    _fonts_list_lock = CreateMutex(NULL,FALSE,NULL);
+
+    vzTTFontList = new vzHash<vzTTFont*>();
+
+    return 0;
+};
+
+VZTTFONT_API int get_font_release()
+{
+    unsigned int i;
+
+    // close mutex
+    CloseHandle(_fonts_list_lock);
+
+    /* release cached fonts */
+    for(i = 0; i < vzTTFontList->count(); i++)
+        delete vzTTFontList->value(i);
+
+    // delete font instances
+    delete vzTTFontList;
+
+    return 0;
+};
+
+VZTTFONT_API vzTTFont* get_font(char* name, struct vzTTFontParams* params)
+{
+	// lock list
+	WaitForSingleObject(_fonts_list_lock,INFINITE);
+
+	/* build a hash name */
+	long hash = 0;
+	for(int i = 0; i < sizeof(struct vzTTFontParams); i++)
+	{
+		int b = (hash & 0x80000000)?1:0;
+		hash <<= 1;
+		hash |= b;
+		hash ^= (unsigned long)(((unsigned char*)params)[i]);
+	};
+
+	// build key name is 
+	char key[1024];
+	sprintf(key,"%s/%.8X", name, hash);
+
+	// try to find object
+	vzTTFont* temp;
+	if(temp = vzTTFontList->find(key))
+	{
+		ReleaseMutex(_fonts_list_lock);
+		return temp;
+	};
+	
+	// object not found - create and load
+	temp = new vzTTFont(name, params);
+
+	// check if object is ready - success font load
+	if(!temp->ready())
+	{
+#ifdef _DEBUG
+		logger_printf(0, "get_font.h: FAILED(not loaded)");
+#endif
+
+		delete temp;
+		ReleaseMutex(_fonts_list_lock);
+		return NULL;
+	};
+
+	// save object in hash
+	vzTTFontList->push(key,temp);
+
+	ReleaseMutex(_fonts_list_lock);
+
+#ifdef _DEBUG
+		logger_printf(0, "get_font.h: OK(added)");
+#endif
+
+	
+	return temp;
+};

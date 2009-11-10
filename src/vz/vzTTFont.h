@@ -146,4 +146,8 @@ public:
     static void release_freetype();
 };
 
+VZTTFONT_API int get_font_init();
+VZTTFONT_API int get_font_release();
+VZTTFONT_API vzTTFont* get_font(char* name, struct vzTTFontParams* params);
+
 #endif

@@ -58,8 +58,6 @@ static char* _plugin_notes =
 #include <process.h>
 #include <stdio.h>
 
-#include "get_font.h"
-
 // set flag to dump images
 #ifdef _DEBUG
 //#define  _DUMP_IMAGES
@@ -77,27 +75,18 @@ BOOL APIENTRY DllMain( HANDLE hModule,
                        LPVOID lpReserved
 					 )
 {
-	int i;
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-			// create mutex to lock list
-			_fonts_list_lock = CreateMutex(NULL,FALSE,NULL);
 #ifdef _DUMP_IMAGES
 			_dump_counter_lock = CreateMutex(NULL,FALSE,NULL);
 #endif
-
 			break;
 		case DLL_THREAD_ATTACH:
 			break;
 		case DLL_THREAD_DETACH:
 			break;
 		case DLL_PROCESS_DETACH:
-			// close mutex
-			CloseHandle(_fonts_list_lock);
-			// delete font instances
-			for(i=0;i<vzTTFontList.count();i++)
-				delete vzTTFontList.value(i);
 			break;
     }
     return TRUE;

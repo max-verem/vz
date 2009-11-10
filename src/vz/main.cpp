@@ -1007,6 +1007,7 @@ int main(int argc, char** argv)
 	/* default ttFont path */
     vzTTFont::init_freetype();
 	vzTTFontAddFontPath("fonts");
+    get_font_init();
 
 //#define _DEBUG_IMG
 #ifdef _DEBUG_IMG
@@ -1273,6 +1274,7 @@ int main(int argc, char** argv)
     vzConfigClose(config);
 
     /* release freetype lib */
+    get_font_release();
     vzTTFont::release_freetype();
 
     /* release xml engine */
