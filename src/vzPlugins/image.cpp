@@ -650,8 +650,8 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 	/* check if parameter "s_filename" changed */
 	if
 	(
-		(NULL != param_name)
-		&&
+		(NULL == param_name)
+		||
 		(0 == strcmp(param_name, "s_filename"))
 	)
 	{
