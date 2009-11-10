@@ -30,6 +30,9 @@ ChangeLog:
         *memory leak fixed on '_attributes' object
 
 */
+#define _CRT_SECURE_NO_WARNINGS
+
+#include "memleakcheck.h"
 
 #include "vzMotionParameter.h"
 #include <stdio.h>

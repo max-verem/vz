@@ -28,6 +28,7 @@ ChangeLog:
 
 */
 
+#include "memleakcheck.h"
 
 #include "vzMotion.h"
 #include "vzLogger.h"

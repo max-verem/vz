@@ -27,7 +27,9 @@ ChangeLog:
    2005-06-08: Code cleanup
 
 */
+#define _CRT_SECURE_NO_WARNINGS
 
+#include "memleakcheck.h"
 
 #include "vzMotionTimeline.h"
 

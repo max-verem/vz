@@ -31,6 +31,8 @@ ChangeLog:
 
 */
 
+#include "memleakcheck.h"
+
 #include "vzMotionDirector.h"
 #include "vzLogger.h"
 #include <stdio.h>

@@ -107,6 +107,8 @@ ChangeLog:
 */
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "memleakcheck.h"
+
 #include "vzScene.h"
 #include "xerces.h"
 #include <stdio.h>

@@ -42,6 +42,8 @@ ChangeLog:
 
 //vzContainer
 
+#include "memleakcheck.h"
+
 #include "vzContainer.h"
 #include "unicode.h"
 #include "vzLogger.h"

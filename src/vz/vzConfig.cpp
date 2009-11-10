@@ -28,6 +28,8 @@ ChangeLog:
 
 */
 
+#include "memleakcheck.h"
+
 #include "vzConfig.h"
 #include "xerces.h"
 

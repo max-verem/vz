@@ -28,6 +28,7 @@ ChangeLog:
 
 */
 
+#include "memleakcheck.h"
 
 #include "vzXMLParams.h"
 #include "unicode.h"

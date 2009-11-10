@@ -28,8 +28,6 @@ ChangeLog:
 #ifndef UNICODE_H
 #define UNICODE_H
 
-#include "memleakcheck.h"
-
 char* uni2utf8(short uni[]);
 unsigned short int* utf8uni(unsigned char* utf);
 void free_unicode_data(void* data);

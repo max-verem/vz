@@ -29,6 +29,8 @@ ChangeLog:
 */
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "memleakcheck.h"
+
 #include "vzContainerFunction.h"
 #include "vzLogger.h"
 

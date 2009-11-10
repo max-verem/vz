@@ -25,6 +25,8 @@ ChangeLog:
 
 */
 
+#include "memleakcheck.h"
+
 #include "vzFunction.h"
 
 #include "vzContainerFunction.h"

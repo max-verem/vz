@@ -30,6 +30,8 @@ ChangeLog:
 
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "memleakcheck.h"
+
 #include "vzMotionControlKey.h"
 #include "vzScene.h"
 
