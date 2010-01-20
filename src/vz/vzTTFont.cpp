@@ -829,6 +829,14 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 		minX = 0;
 	};
 
+	if(minY <= 0)
+	{
+		for(i_text=0;i_text<length;i_text++)
+			symbols->data[i_text].y -= minY - 1;
+		maxY -= minY - 1;
+		minY = 0;
+	};
+
 	symbols->width = maxX + 1;
 	symbols->height = maxY + 1;
 
