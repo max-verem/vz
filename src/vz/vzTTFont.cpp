@@ -609,8 +609,8 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 					)
 				)
 				{
-					symbols->data[i_text].x -= kerning_delta.x >> 6;
-					posX -= kerning_delta.x >> 6;
+					symbols->data[i_text].x += kerning_delta.x >> 6;
+					posX += kerning_delta.x >> 6;
 				};
 			};
 		};
