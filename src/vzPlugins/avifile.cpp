@@ -64,6 +64,8 @@ static char* _plugin_notes =
 #define RING_BUFFER_LENGTH 10
 #define MAX_AVI_LOADERS 5
 
+#define MAX_CONCUR_LOAD 1
+
 #define AVI_OP_LOCK
 //#define VERBOSE
 
@@ -84,6 +86,12 @@ WINOLEAPI  CoInitializeEx(LPVOID pvReserved, DWORD dwCoInit);
 static HANDLE _avi_op_lock;
 #endif /* AVI_OP_LOCK */
 
+#ifdef MAX_CONCUR_LOAD
+static HANDLE _avi_concur_lock;
+static int _avi_concur_pending = 0;
+static int _avi_concur_working = 0;
+#endif /* MAX_CONCUR_LOAD */
+
 BOOL APIENTRY DllMain
 (
 	HANDLE hModule, 
@@ -97,6 +105,9 @@ BOOL APIENTRY DllMain
 #ifdef AVI_OP_LOCK
 		_avi_op_lock = CreateMutex(NULL,FALSE,NULL);
 #endif /* AVI_OP_LOCK */
+#ifdef MAX_CONCUR_LOAD
+        _avi_concur_lock = CreateMutex(NULL,FALSE,NULL);
+#endif /* MAX_CONCUR_LOAD */
 			break;
 		case DLL_THREAD_ATTACH:
 			// init avi lib !
@@ -108,6 +119,9 @@ BOOL APIENTRY DllMain
 #ifdef AVI_OP_LOCK
 		CloseHandle(_avi_op_lock);
 #endif /* AVI_OP_LOCK */
+#ifdef MAX_CONCUR_LOAD
+        CloseHandle(_avi_concur_lock);
+#endif /* MAX_CONCUR_LOAD */
 			break;
     }
     return TRUE;
@@ -281,7 +295,35 @@ static unsigned long WINAPI aviloader_proc(void* p)
                     else
                         memset(desc->buf_data, 0, sizeof(void*) * cnt);
 
-					for(i = 0; (i < cnt) && (desc->buf_data); i++)
+#ifdef MAX_CONCUR_LOAD
+                    if(desc->flag_mem_preload)
+                    {
+                        WaitForSingleObject(_avi_concur_lock, INFINITE);
+                        _avi_concur_pending++;
+                        logger_printf(0, "avifile: CONCUR_LOAD@PENDING pending %d, working %d: %s",
+                            _avi_concur_pending, _avi_concur_working, desc->filename);
+                        ReleaseMutex(_avi_concur_lock);
+
+                        for(int c = 1; c && !desc->flag_exit; )
+                        {
+                            WaitForSingleObject(_avi_concur_lock, INFINITE);
+
+                            if(_avi_concur_working < MAX_CONCUR_LOAD)
+                            {
+                                _avi_concur_working++;
+                                c = 0;
+                                logger_printf(0, "avifile: CONCUR_LOAD@START pending %d, working %d: %s",
+                                    _avi_concur_pending, _avi_concur_working, desc->filename);
+                            };
+
+                            ReleaseMutex(_avi_concur_lock);
+
+                            if(c) Sleep(40);
+                        };
+                    };
+#endif /* MAX_CONCUR_LOAD */
+
+					for(i = 0; (i < cnt) && (desc->buf_data) && !desc->flag_exit; i++)
 					{
 						/* init buffer */
 						frame_size = frame_info->biWidth * frame_info->biHeight * (frame_info->biBitCount / 8);
@@ -367,7 +409,17 @@ static unsigned long WINAPI aviloader_proc(void* p)
 									logger_printf(1, "avifile: WARNING! desc->buf_frame[%d] >= %d", desc->buf_frame[i], i, desc->frames_count);
 								};
 							};
-
+#ifdef MAX_CONCUR_LOAD
+                        if(!desc->flag_ready && desc->flag_mem_preload)
+                        {
+                            WaitForSingleObject(_avi_concur_lock, INFINITE);
+                            _avi_concur_pending--;
+                            _avi_concur_working--;
+                            logger_printf(0, "avifile: CONCUR_LOAD@FINISHED pending %d, working %d: %s",
+                                _avi_concur_pending, _avi_concur_working, desc->filename);
+                            ReleaseMutex(_avi_concur_lock);
+                        };
+#endif /* MAX_CONCUR_LOAD */
 						/* rise flag about ready */
 						desc->flag_ready = 1;
 
