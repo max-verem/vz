@@ -44,6 +44,7 @@ ChangeLog:
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "vzTTFont.h"
+#include "vzTTFontFilter.h"
 #include "unicode.h"
 #include "vzLogger.h"
 #include "../templates/hash.hpp"
@@ -469,6 +470,8 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 
 	// convert to unicode string
 	unsigned short int* string_uni = utf8uni((unsigned char*)string_utf8);
+
+    vzTTFontFilter(string_uni, &layout_conf);
 
 	// determinate string length
 	int length = 0; for(;string_uni[length];length++);

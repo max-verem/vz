@@ -470,6 +470,10 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath="..\vz\vzTTFontFilter.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -481,6 +485,10 @@
 			</File>
 			<File
 				RelativePath="..\vz\vzTTFont.h"
+				>
+			</File>
+			<File
+				RelativePath="..\vz\vzTTFontFilter.h"
 				>
 			</File>
 		</Filter>
