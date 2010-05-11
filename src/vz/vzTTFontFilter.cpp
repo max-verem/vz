@@ -161,8 +161,11 @@ static int vzTTFontFilterArabic(uint16_t* string_uni, struct vzTTFontLayoutConf*
             case 2: r = APFB[j].end;        break;
             case 1: r = APFB[j].beginning;  break;
         };
-logger_printf(1, "vzTTFontFilterArabic: S [%2d] 0x%.4X => 0x%.4X F=%d",
-    i, string_uni[i], r, f);
+
+#ifdef _DEBUG
+        logger_printf(1, "vzTTFontFilterArabic: S [%2d] 0x%.4X => 0x%.4X F=%d",
+            i, string_uni[i], r, f);
+#endif /* _DEBUG */
 
         if(r) string_uni[i] = r;
     };
@@ -170,8 +173,10 @@ logger_printf(1, "vzTTFontFilterArabic: S [%2d] 0x%.4X => 0x%.4X F=%d",
     /* revert string */
     revert_string(string_uni, 0, i - 1);
 
-//for(i = 0; string_uni[i]; i++)
-//logger_printf(1, "vzTTFontFilterArabic: R [%2d]=0x%.4X", i, string_uni[i]);
+#ifdef _DEBUG
+    for(i = 0; string_uni[i]; i++)
+        logger_printf(1, "vzTTFontFilterArabic: R [%2d]=0x%.4X", i, string_uni[i]);
+#endif /* _DEBUG */
 
     return 0;
 };
