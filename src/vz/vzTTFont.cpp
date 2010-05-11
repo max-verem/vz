@@ -814,7 +814,6 @@ VZTTFONT_API long vzTTFont::compose(char* string_utf8, struct vzTTFontLayoutConf
 		(
 			maxX,
 			symbols->data[i_text].x + 
-			symbols->data[i_text].layers[l].bmp->left + 
 			symbols->data[i_text].layers[l].bmp->bitmap.width +
 			symbols->data[i_text].layers[l].offset_x
 		);
