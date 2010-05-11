@@ -348,7 +348,10 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			if (_DATA->_txt_msg[0]->status == 1)
 			{
 				/* first item is just rendered - start coordinates running*/
-				_DATA->_txt_msg[0]->pos = (float)_DATA->l_box_width;
+                if(_DATA->f_speed >= 0.0f)
+                    _DATA->_txt_msg[0]->pos = (float)_DATA->l_box_width;
+                else
+                    _DATA->_txt_msg[0]->pos = -(float)_DATA->_txt_msg[0]->width;
 
 				/* rise status */
 				_DATA->_txt_msg[0]->status = 2;
@@ -362,26 +365,44 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 
 			/* setup coordinates for further messages */
 			for(i = 1; (i<_DATA->_txt_msg_len) && (_DATA->_txt_msg[i]->status > 0); i++)
-				/* calc new coordinate for new items */
-				if (_DATA->_txt_msg[i]->status == 1)
-				{
-					/* check if previous item off screen */	
-					if ((_DATA->_txt_msg[i - 1]->pos + _DATA->_txt_msg[i - 1]->width + _DATA->l_interval) >= _DATA->l_box_width)
-					{
-						/* prev item' tail deep out of surface */
-						_DATA->_txt_msg[i]->pos = 
-							_DATA->_txt_msg[i - 1]->pos
-							+
-							(float)_DATA->_txt_msg[i - 1]->width
-							+
-							(float)_DATA->l_interval;
-					}
-					else
-						_DATA->_txt_msg[i]->pos = (float)_DATA->l_box_width;
+            {
+                /* calc new coordinate for new items */
+                if (_DATA->_txt_msg[i]->status != 1) continue;
 
-					/* change status */
-					_DATA->_txt_msg[i]->status = 2;
-				};
+                /* check if previous item off screen */	
+                float
+                    t = _DATA->_txt_msg[i - 1]->pos +
+                        _DATA->_txt_msg[i - 1]->width + _DATA->l_interval,
+                    h = _DATA->_txt_msg[i - 1]->pos;
+
+                if
+                (
+                    (t >= _DATA->l_box_width && _DATA->f_speed > 0.0f)
+                    ||
+                    (h < 0 && _DATA->f_speed < 0.0f)
+                )
+                {
+                    _DATA->_txt_msg[i]->pos = _DATA->_txt_msg[i - 1]->pos;
+                    if(_DATA->f_speed >= 0.0f)
+                        /* prev item' tail deep out of surface */
+                        _DATA->_txt_msg[i]->pos +=
+                            (float)_DATA->_txt_msg[i - 1]->width + (float)_DATA->l_interval;
+                    else
+                        /* prev item' head deep out of surface */
+                        _DATA->_txt_msg[i]->pos -=
+                            (float)_DATA->_txt_msg[i]->width + (float)_DATA->l_interval;
+                }
+                else
+                {
+                    if(_DATA->f_speed >= 0.0f)
+                        _DATA->_txt_msg[i]->pos = (float)_DATA->l_box_width;
+                    else
+                        _DATA->_txt_msg[i]->pos = -(float)_DATA->_txt_msg[i]->width;
+                };
+
+                /* change status */
+                _DATA->_txt_msg[i]->status = 2;
+            };
 
 		};
 
@@ -406,8 +427,21 @@ PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 	/* perform loop condition */
 	if (_DATA->_txt_msg_len > 0)
 		if (_DATA->_txt_msg[0]->status == 2)
-			if (( (long)_DATA->_txt_msg[0]->pos + _DATA->_txt_msg[0]->width) <= 0)
-			{
+            if
+            (
+                (
+                    ( (long)_DATA->_txt_msg[0]->pos + _DATA->_txt_msg[0]->width <= 0)
+                    &&
+                    _DATA->f_speed >= 0.0f
+                )
+                ||
+                (
+                    ( (long)_DATA->_txt_msg[0]->pos > _DATA->l_box_width)
+                    &&
+                    _DATA->f_speed < 0.0f
+                )
+            )
+            {
 #ifdef _DEBUG
 				logger_printf(0, DEBUG_LINE_ARG  "object out of loop", DEBUG_LINE_PARAM);
 #endif /* _DEBUG */
