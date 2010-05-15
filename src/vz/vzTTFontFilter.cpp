@@ -121,6 +121,12 @@ static void revert_string(uint16_t* string_uni, int p1, int p2)
     };
 };
 
+inline int is_digit(uint16_t c)
+{
+    if(c >= '0' && c <= '9') return 1;
+    return 0;
+};
+
 static int vzTTFontFilterArabic(uint16_t* string_uni, struct vzTTFontLayoutConf* layout_conf)
 {
     int i;
@@ -177,6 +183,23 @@ static int vzTTFontFilterArabic(uint16_t* string_uni, struct vzTTFontLayoutConf*
     for(i = 0; string_uni[i]; i++)
         logger_printf(1, "vzTTFontFilterArabic: R [%2d]=0x%.4X", i, string_uni[i]);
 #endif /* _DEBUG */
+
+    /* flip digits sequence */
+    for(i = 0; string_uni[i]; i++)
+    {
+        int j;
+
+        if(!is_digit(string_uni[i])) continue;
+
+        /* goto last digit */
+        for(j = i; string_uni[j + 1] && is_digit(string_uni[j + 1]); j++);
+
+        /* check if some characters here */
+        if(i != j)
+            revert_string(string_uni, i, j);
+
+        i = j;
+    };
 
     return 0;
 };
