@@ -162,6 +162,7 @@ struct aviloader_desc
 	int* buf_clear;
 	int* buf_fill;
 	int* buf_filled;
+    int buf_cnt;                        /* buffers count allocated */
 	long cursor;
 };
 
@@ -180,351 +181,352 @@ static char* avi_err(long err)
 	};
 };
 
-static unsigned long WINAPI aviloader_proc(void* p)
+static void aviloader_full(struct aviloader_desc* desc, PGETFRAME pgf,
+    LPBITMAPINFOHEADER frame_info, int frame_size)
 {
-	HRESULT hr;
-	AVISTREAMINFO *strhdr;		/* AVI stream definition structs */
-	PGETFRAME pgf;
-	PAVISTREAM avi_stream;
-	void* frame_head;
-	void* frame_data;
-	int frame_size = 0;
-	LPBITMAPINFOHEADER frame_info;
-	int i,l;
+    int i, j;
+    LPBITMAPINFOHEADER frame;
 
-	/* cast struct */
-	struct aviloader_desc* desc = (struct aviloader_desc*)p;
+    for(i = 0, j = 0; i < desc->buf_cnt && !desc->flag_exit && !j; i++)
+    {
+        /* load frame */
+        frame = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pgf, j);
 
-	logger_printf(0, "avifile: aviloader_proc started('%s')", desc->filename);
+        /* check if frame loaded */
+        if(frame)
+        {
+            /* copy data */
+            memcpy
+            (
+                desc->buf_data[i],
+                ((unsigned char*)frame) + frame_info->biSize,
+                frame_size
+            );
 
-	/* init AVI for this thread */
+            /* setup flags */
+            desc->buf_fill[i] = 0;
+            desc->buf_clear[i] = 0;
+            desc->buf_filled[i] = i;
+        }
+        else
+        {
+            /* inc error counter */
+            j++;
+
+            logger_printf(1, "avifile: aviloader_full AVIStreamGetFrame('%s', %d) FAILED",
+                desc->filename, i);
+        };
+    };
+
+    /* rise ready flag if all frames loaded */
+    if(!j)
+    {
+        desc->flag_ready = 1;
+        logger_printf(0, "avifile: aviloader_full loaded %d frames from %s",
+            i, desc->filename);
+    };
+};
+
+static void aviloader_live(struct aviloader_desc* desc, PGETFRAME pgf,
+    LPBITMAPINFOHEADER frame_info, int frame_size)
+{
+    int i;
+    LPBITMAPINFOHEADER frame;
+
+    /* setup start plan */
+    for(i = 0; i < desc->buf_cnt && i < desc->frames_count && !desc->flag_exit; i++)
+    {
+        desc->buf_frame[i] = i;
+        desc->buf_fill[i] = 1;
+        desc->buf_clear[i] = 1;
+    };
+
+    /* "endless" loop */
+    while(!desc->flag_exit)
+    {
+        /* check if frames should be loaded */
+        for(i = 0; i < desc->buf_cnt && i < desc->frames_count && !desc->flag_exit; i++)
+        {
+            if
+            (!(
+                (1 == desc->buf_clear[i])       /* frame is clear */
+                &&                              /* and */
+                (1 == desc->buf_fill[i])        /* should be loaded */
+            ))
+                continue;
+
+            int f = desc->buf_frame[i];
+            if(f < desc->frames_count) /* frame in range */
+            {
+                frame = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pgf, f);
+                if(frame)
+                {
+                    /* copy frame data */
+                    memcpy
+                    (
+                        desc->buf_data[i],
+                        ((unsigned char*)frame) + frame_info->biSize,
+                        frame_size
+                    );
+                    /* setup flags */
+                    desc->buf_fill[i] = 0;
+                    desc->buf_clear[i] = 0;
+                    desc->buf_filled[i] = f + 1;
+#ifdef VERBOSE
+                    logger_printf(0, "avifile: loaded frame %d into slot %d", f, i);
+#endif /* VERBOSE */
+                } else {
+                    /* setup flags */
+                    desc->buf_fill[i] = 0;
+                    logger_printf(1, "avifile: WARNING! AVIStreamGetFrame('%d') == NULL", desc->buf_frame[i]);
+                };
+
+                Sleep(0);   /* allow context switch */
+            } else {
+                /* setup flags */
+                desc->buf_fill[i] = 0;
+                logger_printf(1, "avifile: WARNING! desc->buf_frame[%d] >= %d", desc->buf_frame[i], i, desc->frames_count);
+            };
+        };
+
+        /* rise flag about ready */
+        desc->flag_ready = 1;
+
+        /* wait for signal if no jobs done */
+        WaitForSingleObject(desc->wakeup, 10);
+        ResetEvent(desc->wakeup);
+    };
+};
+
+static unsigned long WINAPI aviloader_proc2(void* p)
+{
+    HRESULT hr;
+    struct aviloader_desc* desc;
+    PAVISTREAM avi_stream = NULL;
+    AVISTREAMINFO *strhdr = NULL;   /* AVI stream definition structs */
+    LPBITMAPINFOHEADER frame_info;
+    PGETFRAME pgf;
+    int i, j;
+
+    /* cast struct */
+    desc = (struct aviloader_desc*)p;
+
+    logger_printf(0, "avifile: aviloader_proc2 started('%s')", desc->filename);
+
+    /* init AVI for this thread */
 #ifdef AVI_OP_LOCK
-	WaitForSingleObject(_avi_op_lock,INFINITE);
+    WaitForSingleObject(_avi_op_lock,INFINITE);
 #endif /* AVI_OP_LOCK */
-	CoInitializeEx( NULL, COINIT_MULTITHREADED );
-	AVIFileInit();
+    CoInitializeEx( NULL, COINIT_MULTITHREADED );
+    AVIFileInit();
 #ifdef AVI_OP_LOCK
-	ReleaseMutex(_avi_op_lock);
+    ReleaseMutex(_avi_op_lock);
 #endif /* AVI_OP_LOCK */
 
-	/* open avi file stream */
-	if
-	(
-		0
-		==
-		(hr = AVIStreamOpenFromFile
-			(
-				&avi_stream,			//	PAVISTREAM * ppavi,    
-				desc->filename,			//	LPCTSTR szFile,        
-				streamtypeVIDEO,		//	DWORD fccType,         
-				0,						//	LONG lParam,           
-				OF_READ,				//	UINT mode,             
-				NULL					//	CLSID * pclsidHandler  
-			)
-		)
-	)
-	{
-		/* prepare struct for stream header */
-		strhdr = (AVISTREAMINFO*)malloc(sizeof(AVISTREAMINFO));
-		memset(strhdr, 0, sizeof(AVISTREAMINFO));
+    /* open avi file stream */
+    hr = AVIStreamOpenFromFile
+    (
+        &avi_stream,            /* PAVISTREAM * ppavi,    */
+        desc->filename,         /* LPCTSTR szFile,        */
+        streamtypeVIDEO,        /* DWORD fccType,         */
+        0,                      /* LONG lParam,           */
+        OF_READ,                /* UINT mode,             */
+        NULL                    /* CLSID * pclsidHandler  */
+    );
+    if(hr)
+    {
+        logger_printf(1, "avifile: aviloader_proc2 AVIStreamOpenFromFile('%s') FAILED",
+            desc->filename);
+        goto ex1;
+    };
 
-		/* request frames count */
-		if((desc->frames_count = AVIStreamLength(avi_stream)) < 0)
-			desc->frames_count = 0;
-		
-		/* request stream info */
-		if
-		(
-			0
-			==
-			(hr = AVIStreamInfo
-				(
-					avi_stream,				// PAVISTREAM pavi,
-					strhdr,					// AVISTREAMINFO * psi,
-					sizeof(AVISTREAMINFO)	// LONG lSize
-				)
-			)
-		)
-		{
-			if
-			(
-				NULL
-				!=
-				(pgf = AVIStreamGetFrameOpen
-					(
-						avi_stream,			// PAVISTREAM pavi,
-						NULL				// LPBITMAPINFOHEADER lpbiWanted  
-					)
-				)
-			)
-			{
-				/* test load  */
-				frame_head = AVIStreamGetFrame(pgf, 0);
-				frame_info = (LPBITMAPINFOHEADER)frame_head;
-				frame_data = ((unsigned char*)frame_head) + frame_info->biSize;
+    /* request frames count */
+    desc->frames_count = AVIStreamLength(avi_stream);
+    if(desc->frames_count < 0)
+    {
+        logger_printf(1, "avifile: aviloader_proc2 AVIStreamLength('%s') FAILED",
+            desc->filename);
+        goto ex1;
+    };
 
-				/* check */
-				if(NULL != frame_head)
-				{
-					/* setup width, height, buffer type */
-					desc->width = frame_info->biWidth;
-					desc->height = frame_info->biHeight;
-					switch(frame_info->biBitCount)
-					{
-						case 32: desc->bpp = GL_BGRA_EXT; break;
-						case 24: desc->bpp = GL_BGR; break;
-					};
+    /* prepare struct for stream header */
+    strhdr = (AVISTREAMINFO*)malloc(sizeof(AVISTREAMINFO));
+    memset(strhdr, 0, sizeof(AVISTREAMINFO));
 
-					/* allocate space for buffers */
-                    int cnt = (desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH;
-					desc->buf_data = (void**)malloc(sizeof(void*) * cnt);
-					desc->buf_frame = (int*)malloc(sizeof(int) * cnt);
-					desc->buf_clear = (int*)malloc(sizeof(int) * cnt);
-					desc->buf_fill = (int*)malloc(sizeof(int) * cnt);
-					desc->buf_filled = (int*)malloc(sizeof(int) * cnt);
-                    if(!desc->buf_data || !desc->buf_frame || !desc->buf_clear || !desc->buf_fill || !desc->buf_filled)
-                    {
-                        if(desc->buf_data)      free(desc->buf_data);   desc->buf_data = NULL;
-                        if(desc->buf_frame)     free(desc->buf_frame);  desc->buf_frame = NULL;
-                        if(desc->buf_clear)     free(desc->buf_clear);  desc->buf_clear = NULL;
-                        if(desc->buf_fill)      free(desc->buf_fill);   desc->buf_fill = NULL;
-                        if(desc->buf_filled)    free(desc->buf_filled); desc->buf_filled = NULL;
-                        logger_printf(1, "avifile: NO MEMORY to load ('%s')", desc->filename);
-                        desc->flag_exit = 2;
-                    }
-                    else
-                        memset(desc->buf_data, 0, sizeof(void*) * cnt);
+    /* request stream info */
+    hr = AVIStreamInfo
+    (
+        avi_stream,             /* PAVISTREAM pavi      */
+        strhdr,                 /* AVISTREAMINFO * psi, */
+        sizeof(AVISTREAMINFO)   /* LONG lSize           */
+    );
+    if(hr)
+    {
+        logger_printf(1, "avifile: aviloader_proc2 AVIStreamInfo('%s') FAILED",
+            desc->filename);
+        goto ex1;
+    };
 
+    /* prepares to decompress video frames */
+    pgf = AVIStreamGetFrameOpen
+    (
+        avi_stream,         /* PAVISTREAM pavi,                 */
+        NULL                /* LPBITMAPINFOHEADER lpbiWanted    */
+    );
+    if(!pgf)
+    {
+        logger_printf(1, "avifile: aviloader_proc2 AVIStreamGetFrameOpen('%s') FAILED",
+            desc->filename);
+        goto ex1;
+    };
+
+    /* test load  */
+    frame_info = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pgf, 0);
+    if(!frame_info)
+    {
+        logger_printf(1, "avifile: aviloader_proc2 AVIStreamGetFrame('%s', 0) FAILED",
+            desc->filename);
+        goto ex1;
+    };
+
+    /* setup width, height, buffer type */
+    desc->width = frame_info->biWidth;
+    desc->height = frame_info->biHeight;
+    if(32 == frame_info->biBitCount)
+        desc->bpp = GL_BGRA_EXT;
+    else if (24 == frame_info->biBitCount)
+        desc->bpp = GL_BGR;
+    else
+    {
+        logger_printf(1, "avifile: aviloader_proc2 biBitCount=%d NOT SUPPORTED",
+            frame_info->biBitCount);
+        goto ex1;
+    };
+
+    /* init flags buffers */
+    desc->buf_cnt = (desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH;
+    desc->buf_frame     = (int*)malloc(sizeof(int) * desc->buf_cnt);
+    desc->buf_clear     = (int*)malloc(sizeof(int) * desc->buf_cnt);
+    desc->buf_fill      = (int*)malloc(sizeof(int) * desc->buf_cnt);
+    desc->buf_filled    = (int*)malloc(sizeof(int) * desc->buf_cnt);
+    if(!desc->buf_frame || !desc->buf_clear || !desc->buf_fill || !desc->buf_filled)
+    {
+        logger_printf(1, "avifile: aviloader_proc2 ENOMEM1");
+        goto ex1;
+    };
+
+    /* init data buffer */
+    desc->buf_data = (void**)malloc(sizeof(void*) * desc->buf_cnt);
+    if(!desc->buf_data)
+    {
+        logger_printf(1, "avifile: aviloader_proc2 ENOMEM2");
+        goto ex1;
+    };
+    memset(desc->buf_data, 0, sizeof(void*) * desc->buf_cnt);
+    int frame_size = frame_info->biWidth * frame_info->biHeight *
+        (frame_info->biBitCount / 8);
+    for(i = 0, j = 0; i < desc->buf_cnt && !j; i++)
+    {
+        desc->buf_data[i] = malloc(frame_size);
+        if(!desc->buf_data[i]) j++;
+        else memset(desc->buf_data[i], 0, frame_size);
+    };
+    if(j)
+    {
+        logger_printf(1, "avifile: aviloader_proc2 ENOMEM3");
+        goto ex1;
+    };
+
+    /* check method */
+    if(desc->flag_mem_preload)
+    {
 #ifdef MAX_CONCUR_LOAD
-                    if(desc->flag_mem_preload)
-                    {
-                        WaitForSingleObject(_avi_concur_lock, INFINITE);
-                        _avi_concur_pending++;
-                        logger_printf(0, "avifile: CONCUR_LOAD@PENDING pending %d, working %d: %s",
-                            _avi_concur_pending, _avi_concur_working, desc->filename);
-                        ReleaseMutex(_avi_concur_lock);
+        /* increment waiters counter */
+        WaitForSingleObject(_avi_concur_lock, INFINITE);
+        _avi_concur_pending++;
+        logger_printf(0, "avifile: CONCUR_LOAD@PENDING pending %d, working %d: %s",
+            _avi_concur_pending, _avi_concur_working, desc->filename);
+        ReleaseMutex(_avi_concur_lock);
 
-                        for(int c = 1; c && !desc->flag_exit; )
-                        {
-                            WaitForSingleObject(_avi_concur_lock, INFINITE);
-
-                            if(_avi_concur_working < MAX_CONCUR_LOAD)
-                            {
-                                _avi_concur_working++;
-                                c = 0;
-                                logger_printf(0, "avifile: CONCUR_LOAD@START pending %d, working %d: %s",
-                                    _avi_concur_pending, _avi_concur_working, desc->filename);
-                            };
-
-                            ReleaseMutex(_avi_concur_lock);
-
-                            if(c) Sleep(40);
-                        };
-                    };
+        /* wait */
+        for(int c = 1; c ; Sleep(40))
+        {
+            WaitForSingleObject(_avi_concur_lock, INFINITE);
+            if(_avi_concur_working < MAX_CONCUR_LOAD)
+            {
+                _avi_concur_working++;
+                c = 0;
+                logger_printf(0, "avifile: CONCUR_LOAD@START pending %d, working %d: %s",
+                    _avi_concur_pending, _avi_concur_working, desc->filename);
+            };
+            ReleaseMutex(_avi_concur_lock);
+        };
 #endif /* MAX_CONCUR_LOAD */
 
-					for(i = 0; (i < cnt) && (desc->buf_data) && !desc->flag_exit; i++)
-					{
-						/* init buffer */
-						frame_size = frame_info->biWidth * frame_info->biHeight * (frame_info->biBitCount / 8);
-						desc->buf_data[i] = malloc( frame_size );
-                        if(!desc->buf_data[i])
-                        {
-                            for(int k = 0; k < i; k++) free(desc->buf_data[k]);
-                            logger_printf(1, "avifile: NO MEMORY to load ('%s'), failed to allocate %d-th frame", desc->filename, i);
-                            free(desc->buf_data);
-                            desc->buf_data = NULL;
-                            desc->flag_exit = 2;
-                            continue;
-                        };
-						memset(desc->buf_data[i], 0, frame_size);
-		
-						/* setup start plan */
-						if(i < desc->frames_count)
-						{
-							desc->buf_frame[i] = i;
-							desc->buf_fill[i] = 1;
-							desc->buf_clear[i] = 1;
-						};
-					};
+        /* call mem preloader */
+        if(!desc->flag_exit)
+            aviloader_full(desc, pgf, frame_info, frame_size);
 
-					/* "endless" loop */
-					while(!(desc->flag_exit))
-					{
-						/* reset jobs counter */
-						l = 0;
-
-						/* check if frames should be loaded */
-						for
-						(
-							i = 0; 
-							(i<((desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH))
-							&& 
-							(!(desc->flag_exit)); 
-							i++
-						)
-							if
-							(
-								(1 == desc->buf_clear[i])		/* frame is clear */
-								&&								/* and */
-								(1 == desc->buf_fill[i])		/* should be loaded */
-							)
-							{
-								int f = desc->buf_frame[i];
-								if(f < desc->frames_count) /* frame in range */
-								{
-									if(NULL != (frame_head = AVIStreamGetFrame(pgf, f)))
-									{
-										l++;						/* increment jobs counter */
-										Sleep(0);					/* allow context switch */
-										frame_info = (LPBITMAPINFOHEADER)frame_head;
-////fprintf(stderr, "avifile: '%s' [ %d-%.8X] frame_head=%.8X, frame_info->biSize=%d, frame_size=%d\n", desc->filename, i, desc->buf_data[i], frame_head, frame_info->biSize, frame_size);
-////fflush(stderr);
-										memcpy
-										(
-											desc->buf_data[i], 
-											((unsigned char*)frame_head) + frame_info->biSize, 
-											frame_size
-										);							/* copy frame */
-										/* setup flags */
-										desc->buf_fill[i] = 0;
-										desc->buf_clear[i] = 0;
-										desc->buf_filled[i] = f + 1;
-#ifdef VERBOSE
-										logger_printf(0, "avifile: loaded frame %d into slot %d", f, i);
-#endif /* VERBOSE */
-									}
-									else
-									{
-										/* setup flags */
-										desc->buf_fill[i] = 0;
-										logger_printf(1, "avifile: WARNING! AVIStreamGetFrame('%d') == NULL", desc->buf_frame[i]);
-									}
-									Sleep(0);					/* allow context switch */
-								}
-								else
-								{
-									/* setup flags */
-									desc->buf_fill[i] = 0;
-									logger_printf(1, "avifile: WARNING! desc->buf_frame[%d] >= %d", desc->buf_frame[i], i, desc->frames_count);
-								};
-							};
 #ifdef MAX_CONCUR_LOAD
-                        if(!desc->flag_ready && desc->flag_mem_preload)
-                        {
-                            WaitForSingleObject(_avi_concur_lock, INFINITE);
-                            _avi_concur_pending--;
-                            _avi_concur_working--;
-                            logger_printf(0, "avifile: CONCUR_LOAD@FINISHED pending %d, working %d: %s",
-                                _avi_concur_pending, _avi_concur_working, desc->filename);
-                            ReleaseMutex(_avi_concur_lock);
-                        };
+        WaitForSingleObject(_avi_concur_lock, INFINITE);
+        _avi_concur_pending--;
+        _avi_concur_working--;
+        logger_printf(0, "avifile: CONCUR_LOAD@FINISHED pending %d, working %d: %s",
+            _avi_concur_pending, _avi_concur_working, desc->filename);
+        ReleaseMutex(_avi_concur_lock);
 #endif /* MAX_CONCUR_LOAD */
-						/* rise flag about ready */
-						desc->flag_ready = 1;
 
-						/* no more in mem proload mode */
-						if((desc->flag_mem_preload)&&(0 == desc->flag_exit))
-						{
-							desc->flag_exit = 2;
-						};
+        /* wait for exit flag */
+        while(desc->flag_ready && !desc->flag_exit)
+            Sleep(10);
+    }
+    else
+    {
+        /* call live preloader */
+        if(!desc->flag_exit)
+            aviloader_live(desc, pgf, frame_info, frame_size);
+    };
 
-						/* wait for signal if no jobs done */
-						if( 0 == l) WaitForSingleObject(desc->wakeup, 40);
-						ResetEvent(desc->wakeup);
-					};
+ex1:
+    /* free buffers */
+    if(desc->buf_data)
+    {
+        for(i = 0; i < desc->buf_cnt; i++) if(desc->buf_data[i]) free(desc->buf_data[i]);
+        free(desc->buf_data);
+        desc->buf_data = NULL;
+    };
+    if(desc->buf_frame)     free(desc->buf_frame);  desc->buf_frame = NULL;
+    if(desc->buf_clear)     free(desc->buf_clear);  desc->buf_clear = NULL;
+    if(desc->buf_fill)      free(desc->buf_fill);   desc->buf_fill = NULL;
+    if(desc->buf_filled)    free(desc->buf_filled); desc->buf_filled = NULL;
 
-					/* wait here until read exit flag came */
-					if
-					(
-						(desc->flag_mem_preload)
-						&&
-						(2 == desc->flag_exit)
-					)
-					{
-						/* notify to console */
-						logger_printf(0, "avifile: aviloader_proc loaded '%s'", desc->filename);
-#ifdef VERBOSE
-						logger_printf(0, "avifile: aviloader_proc waiting for real f_exit");
-#endif /* VERBOSE */
+    /* setup flag of exiting */
+    desc->flag_gone = 1;
 
-						desc->flag_exit = 0;
+    /* free stream header */
+    if(strhdr) free(strhdr);
 
-						/* deinit avi */
-						AVIStreamGetFrameClose(pgf);
-						pgf = NULL;
-						AVIStreamClose(avi_stream);
-						avi_stream = NULL;
-						free(strhdr);
-						strhdr = NULL;
+    /* close frame pointer */
+    if(pgf)
+        AVIStreamGetFrameClose(pgf);
 
-						while(!(desc->flag_exit))
-						{
-							WaitForSingleObject(desc->wakeup, 40);
-							ResetEvent(desc->wakeup);
-						};
-					};
+    /* release avi file */
+    if(avi_stream)
+        AVIStreamClose(avi_stream);
 
-					/* free buffers */
-                    if(desc->buf_data)
-                    {
-					    for(i = 0; i < cnt; i++)
-						    if(desc->buf_data[i]) free(desc->buf_data[i]);
-                        free(desc->buf_data);
-                    };
-                    if(desc->buf_frame)     free(desc->buf_frame);  desc->buf_frame = NULL;
-                    if(desc->buf_clear)     free(desc->buf_clear);  desc->buf_clear = NULL;
-                    if(desc->buf_fill)      free(desc->buf_fill);   desc->buf_fill = NULL;
-                    if(desc->buf_filled)    free(desc->buf_filled); desc->buf_filled = NULL;
-				}
-				else
-				{
-					logger_printf(1, "avifile: ERROR! probe AVIStreamGetFrame(0) == NULL");
-				};
-
-				/* close frame pointer */
-				if(pgf)
-					AVIStreamGetFrameClose(pgf);
-			}
-			else
-			{
-				logger_printf(1, "avifile: ERROR! AVIStreamGetFrameOpen() == NULL");
-			};
-		}
-		else
-		{
-			logger_printf(1, "avifile: ERROR! AVIStreamInfo() == 0x%.8X [%s]", hr, avi_err(hr));
-		};
-
-		/* close avi stream */
-		if(avi_stream)
-			AVIStreamClose(avi_stream);
-
-		/* free stream header info struct */
-		if(strhdr)
-			free(strhdr);
-	}
-	else
-	{
-		logger_printf(1, "avifile: ERROR! AVIStreamOpenFromFile('%s') == 0x%.8X [%s]", desc->filename, hr, avi_err(hr));
-	};
-
-	/* setup flag of exiting */
-	desc->flag_gone = 1;
-
-	/* init AVI for this thread */
+    /* init AVI for this thread */
 #ifdef AVI_OP_LOCK
-	WaitForSingleObject(_avi_op_lock,INFINITE);
+    WaitForSingleObject(_avi_op_lock,INFINITE);
 #endif /* AVI_OP_LOCK */
-	AVIFileExit();
+    AVIFileExit();
 #ifdef AVI_OP_LOCK
-	ReleaseMutex(_avi_op_lock);
+    ReleaseMutex(_avi_op_lock);
 #endif /* AVI_OP_LOCK */
 
-	logger_printf(0, "avifile: aviloader_proc exiting('%s')", desc->filename);
+    logger_printf(0, "avifile: aviloader_full_proc exiting('%s')", desc->filename);
 
-	/* exit thread */
-	return 0;
+    /* exit thread */
+    return 0;
 };
 
 static struct aviloader_desc* aviloader_init(char* filename, int mem_preload)
@@ -547,7 +549,7 @@ static struct aviloader_desc* aviloader_init(char* filename, int mem_preload)
 	desc->lock = CreateMutex(NULL,FALSE,NULL);
 
 	/* run thread */
-	desc->task = CreateThread(0, 0, aviloader_proc, desc, 0, &thread_id);
+	desc->task = CreateThread(0, 0, aviloader_proc2, desc, 0, &thread_id);
         SetThreadPriority(desc->task , VZPLUGINS_AUX_THREAD_PRIO);
 
 	return desc;
