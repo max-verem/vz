@@ -273,19 +273,21 @@ static void aviloader_live(struct aviloader_desc* desc, PGETFRAME pgf,
                     desc->buf_clear[i] = 0;
                     desc->buf_filled[i] = f + 1;
 #ifdef VERBOSE
-                    logger_printf(0, "avifile: loaded frame %d into slot %d", f, i);
+                    logger_printf(0, "avifile: aviloader_live loaded frame %d into slot %d", f, i);
 #endif /* VERBOSE */
                 } else {
                     /* setup flags */
                     desc->buf_fill[i] = 0;
-                    logger_printf(1, "avifile: WARNING! AVIStreamGetFrame('%d') == NULL", desc->buf_frame[i]);
+                    logger_printf(1, "avifile: aviloader_live AVIStreamGetFrame('%d') == NULL",
+                        desc->buf_frame[i]);
                 };
 
                 Sleep(0);   /* allow context switch */
             } else {
                 /* setup flags */
                 desc->buf_fill[i] = 0;
-                logger_printf(1, "avifile: WARNING! desc->buf_frame[%d] >= %d", desc->buf_frame[i], i, desc->frames_count);
+                logger_printf(1, "avifile: aviloader_live desc->buf_frame[%d] >= %d",
+                    desc->buf_frame[i], i, desc->frames_count);
             };
         };
 
@@ -719,7 +721,7 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{"l_flip_h",		"flag to horozontal flip",
 						PLUGIN_PARAMETER_OFFSET(default_value,l_flip_h)},
 
-	{"l_mem_preload",	"flag to vertical flip",
+	{"l_mem_preload",	"preload whole clip in memmory",
 						PLUGIN_PARAMETER_OFFSET(default_value,l_mem_preload)},
 
 	{"f_x1",			"X of left bottom corner (free transorm mode)", 
