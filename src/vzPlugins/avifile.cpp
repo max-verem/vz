@@ -298,7 +298,7 @@ static void aviloader_live(struct aviloader_desc* desc, PGETFRAME pgf,
     };
 };
 
-static unsigned long WINAPI aviloader_proc2(void* p)
+static unsigned long WINAPI aviloader_proc(void* p)
 {
     HRESULT hr;
     struct aviloader_desc* desc;
@@ -311,7 +311,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     /* cast struct */
     desc = (struct aviloader_desc*)p;
 
-    logger_printf(0, "avifile: aviloader_proc2 started('%s')", desc->filename);
+    logger_printf(0, "avifile: aviloader_proc started('%s')", desc->filename);
 
     /* init AVI for this thread */
 #ifdef AVI_OP_LOCK
@@ -335,7 +335,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     );
     if(hr)
     {
-        logger_printf(1, "avifile: aviloader_proc2 AVIStreamOpenFromFile('%s') FAILED",
+        logger_printf(1, "avifile: aviloader_proc AVIStreamOpenFromFile('%s') FAILED",
             desc->filename);
         goto ex1;
     };
@@ -344,7 +344,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     desc->frames_count = AVIStreamLength(avi_stream);
     if(desc->frames_count < 0)
     {
-        logger_printf(1, "avifile: aviloader_proc2 AVIStreamLength('%s') FAILED",
+        logger_printf(1, "avifile: aviloader_proc AVIStreamLength('%s') FAILED",
             desc->filename);
         goto ex1;
     };
@@ -362,7 +362,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     );
     if(hr)
     {
-        logger_printf(1, "avifile: aviloader_proc2 AVIStreamInfo('%s') FAILED",
+        logger_printf(1, "avifile: aviloader_proc AVIStreamInfo('%s') FAILED",
             desc->filename);
         goto ex1;
     };
@@ -375,7 +375,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     );
     if(!pgf)
     {
-        logger_printf(1, "avifile: aviloader_proc2 AVIStreamGetFrameOpen('%s') FAILED",
+        logger_printf(1, "avifile: aviloader_proc AVIStreamGetFrameOpen('%s') FAILED",
             desc->filename);
         goto ex1;
     };
@@ -384,7 +384,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     frame_info = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pgf, 0);
     if(!frame_info)
     {
-        logger_printf(1, "avifile: aviloader_proc2 AVIStreamGetFrame('%s', 0) FAILED",
+        logger_printf(1, "avifile: aviloader_proc AVIStreamGetFrame('%s', 0) FAILED",
             desc->filename);
         goto ex1;
     };
@@ -398,7 +398,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
         desc->bpp = GL_BGR;
     else
     {
-        logger_printf(1, "avifile: aviloader_proc2 biBitCount=%d NOT SUPPORTED",
+        logger_printf(1, "avifile: aviloader_proc biBitCount=%d NOT SUPPORTED",
             frame_info->biBitCount);
         goto ex1;
     };
@@ -411,7 +411,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     desc->buf_filled    = (int*)malloc(sizeof(int) * desc->buf_cnt);
     if(!desc->buf_frame || !desc->buf_clear || !desc->buf_fill || !desc->buf_filled)
     {
-        logger_printf(1, "avifile: aviloader_proc2 ENOMEM1");
+        logger_printf(1, "avifile: aviloader_proc ENOMEM1");
         goto ex1;
     };
 
@@ -419,7 +419,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     desc->buf_data = (void**)malloc(sizeof(void*) * desc->buf_cnt);
     if(!desc->buf_data)
     {
-        logger_printf(1, "avifile: aviloader_proc2 ENOMEM2");
+        logger_printf(1, "avifile: aviloader_proc ENOMEM2");
         goto ex1;
     };
     memset(desc->buf_data, 0, sizeof(void*) * desc->buf_cnt);
@@ -433,7 +433,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
     };
     if(j)
     {
-        logger_printf(1, "avifile: aviloader_proc2 ENOMEM3");
+        logger_printf(1, "avifile: aviloader_proc ENOMEM3");
         goto ex1;
     };
 
@@ -444,7 +444,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
         /* increment waiters counter */
         WaitForSingleObject(_avi_concur_lock, INFINITE);
         _avi_concur_pending++;
-        logger_printf(0, "avifile: CONCUR_LOAD@PENDING pending %d, working %d: %s",
+        logger_printf(0, "avifile: aviloader_proc pending %d, working %d: PENDING[%s]",
             _avi_concur_pending, _avi_concur_working, desc->filename);
         ReleaseMutex(_avi_concur_lock);
 
@@ -456,7 +456,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
             {
                 _avi_concur_working++;
                 c = 0;
-                logger_printf(0, "avifile: CONCUR_LOAD@START pending %d, working %d: %s",
+                logger_printf(0, "avifile: aviloader_proc pending %d, working %d: START[%s]",
                     _avi_concur_pending, _avi_concur_working, desc->filename);
             };
             ReleaseMutex(_avi_concur_lock);
@@ -471,7 +471,7 @@ static unsigned long WINAPI aviloader_proc2(void* p)
         WaitForSingleObject(_avi_concur_lock, INFINITE);
         _avi_concur_pending--;
         _avi_concur_working--;
-        logger_printf(0, "avifile: CONCUR_LOAD@FINISHED pending %d, working %d: %s",
+        logger_printf(0, "avifile: aviloader_proc pending %d, working %d: FINISHED[%s]",
             _avi_concur_pending, _avi_concur_working, desc->filename);
         ReleaseMutex(_avi_concur_lock);
 #endif /* MAX_CONCUR_LOAD */
@@ -523,7 +523,7 @@ ex1:
     ReleaseMutex(_avi_op_lock);
 #endif /* AVI_OP_LOCK */
 
-    logger_printf(0, "avifile: aviloader_full_proc exiting('%s')", desc->filename);
+    logger_printf(0, "avifile: aviloader_proc exiting('%s')", desc->filename);
 
     /* exit thread */
     return 0;
@@ -549,7 +549,7 @@ static struct aviloader_desc* aviloader_init(char* filename, int mem_preload)
 	desc->lock = CreateMutex(NULL,FALSE,NULL);
 
 	/* run thread */
-	desc->task = CreateThread(0, 0, aviloader_proc2, desc, 0, &thread_id);
+	desc->task = CreateThread(0, 0, aviloader_proc, desc, 0, &thread_id);
         SetThreadPriority(desc->task , VZPLUGINS_AUX_THREAD_PRIO);
 
 	return desc;
