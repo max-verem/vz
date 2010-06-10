@@ -190,7 +190,7 @@ static void aviloader_full(struct aviloader_desc* desc, PGETFRAME pgf,
     for(i = 0, j = 0; i < desc->buf_cnt && !desc->flag_exit && !j; i++)
     {
         /* load frame */
-        frame = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pgf, j);
+        frame = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pgf, i);
 
         /* check if frame loaded */
         if(frame)
