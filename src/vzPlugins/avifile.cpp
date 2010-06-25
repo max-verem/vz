@@ -307,7 +307,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
     PAVISTREAM avi_stream = NULL;
     AVISTREAMINFO *strhdr = NULL;   /* AVI stream definition structs */
     LPBITMAPINFOHEADER frame_info;
-    PGETFRAME pgf;
+    PGETFRAME pgf = NULL;
     int i, j;
 
     /* cast struct */
