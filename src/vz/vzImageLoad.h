@@ -256,6 +256,7 @@ static int vzImageLoadJPEG(vzImage** pimg, char* filename)
 
 #include <jpeglib.h>
 #include <jerror.h>
+#include <setjmp.h>
 
 /*
     1. Read http://windows-tech.info/17/d4a6cd925bafac04.php
@@ -284,10 +285,29 @@ or
 //#pragma comment(lib, "libjpeg.lib")
 //#pragma comment(lib, "jpeg-bcc.lib")
 
+struct jpeg_error_mgr_vz
+{
+    struct jpeg_error_mgr pub;      /* "public" fields */
+    jmp_buf setjmp_buffer;          /* for return to caller */
+};
+
+METHODDEF(void) vz_error_exit (j_common_ptr cinfo)
+{
+    /* cinfo->err really points to a my_error_mgr struct, so coerce pointer */
+    struct jpeg_error_mgr_vz* err = (struct jpeg_error_mgr_vz*) cinfo->err;
+
+    /* Always display the message. */
+    /* We could postpone this until after returning, if we chose. */
+    (*cinfo->err->output_message) (cinfo);
+
+    /* Return control to the setjmp point */
+    longjmp(err->setjmp_buffer, 1);
+}
+
 static int vzImageLoadJPEG(vzImage** pimg, char* filename)
 {
     struct jpeg_decompress_struct cinfo;
-    struct jpeg_error_mgr jerr;
+    struct jpeg_error_mgr_vz jerr;
     FILE * infile;
     int i;
 
@@ -300,7 +320,18 @@ static int vzImageLoadJPEG(vzImage** pimg, char* filename)
     /* Step 1: allocate and initialize JPEG decompression object */
 
     /* We set up the normal JPEG error routines, then override error_exit. */
-    cinfo.err = jpeg_std_error(&jerr);
+    cinfo.err = jpeg_std_error(&jerr.pub);
+    jerr.pub.error_exit = vz_error_exit;
+    /* Establish the setjmp return context for my_error_exit to use. */
+    if (setjmp(jerr.setjmp_buffer))
+    {
+        /* If we get here, the JPEG code has signaled an error.
+        * We need to clean up the JPEG object, close the input file, and return.
+        */
+        jpeg_destroy_decompress(&cinfo);
+        fclose(infile);
+        return -1;
+    }
 
     /* Now we can initialize the JPEG decompression object. */
     jpeg_create_decompress(&cinfo);
