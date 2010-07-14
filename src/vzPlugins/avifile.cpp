@@ -54,9 +54,11 @@ static char* _plugin_notes =
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 #include "../vz/plugin-procs.h"
+#include "../vz/vzImage.h"
 
 #include <stdio.h>
 #include <windows.h>
+#include <io.h>
 #include <vfw.h>
 
 #include "free_transform.h"
@@ -179,6 +181,78 @@ static char* avi_err(long err)
 		case CO_E_NOTINITIALIZED:	return "CO_E_NOTINITIALIZED";
 		default:					return "not known error";
 	};
+};
+
+static void imgseqloader_full(struct aviloader_desc* desc,
+    char** list_data, int list_len,
+    vzImage* ref, int frame_size)
+{
+    int i, j, r;
+    vzImage* image;
+
+    for(i = 0, j = 0; i < desc->buf_cnt && !desc->flag_exit && !j; i++)
+    {
+        /* load image */
+        r = vzImageLoad(&image, list_data[i]);
+
+        /* check if image loaded */
+        if(!r)
+        {
+            /* check if it equal to reference */
+            if(ref->width == image->width && ref->height == image->height &&
+                ref->bpp == image->bpp && ref->pix_fmt == image->pix_fmt)
+            {
+                /* copy data */
+                memcpy
+                (
+                    desc->buf_data[i],
+                    image->surface,
+                    frame_size
+                );
+
+                /* setup flags */
+                desc->buf_fill[i] = 0;
+                desc->buf_clear[i] = 0;
+                desc->buf_filled[i] = i;
+            }
+            else
+                r = 1;
+
+            /* free image */
+            vzImageRelease(&image);
+        }
+        else
+            r = 2;
+
+        /* check if errors occured */
+        if(r)
+        {
+            /* inc error counter */
+            j++;
+
+            switch(r)
+            {
+                case 1:
+                    logger_printf(1, "avifile: imgseqloader_full image ('%s') differs from reference",
+                        list_data[i]);
+                    break;
+
+                case 2:
+                    logger_printf(1, "avifile: imgseqloader_full image ('%s') failed to load",
+                        list_data[i]);
+                    break;
+            };
+        };
+    };
+
+    /* rise ready flag if all frames loaded */
+    if(!j)
+    {
+        desc->flag_ready = 1;
+        logger_printf(0, "avifile: imgseqloader_full loaded %d frames from %s",
+            i, desc->filename);
+    };
+
 };
 
 static void aviloader_full(struct aviloader_desc* desc, PGETFRAME pgf,
@@ -531,6 +605,251 @@ ex1:
     return 0;
 };
 
+#ifndef MAX
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#endif
+
+static int tmplcmp(char* a, char* b)
+{
+    for(;*a && *b; a++, b++)
+    {
+        if('#' == *a || '#' == *b) continue;
+        if(*a == *b) continue;
+        if(*a > *b) return -1;
+        else return 1;
+    };
+
+    if(*a) return -1;
+    if(*b) return 1;
+
+    return 0;
+};
+
+static unsigned long WINAPI imgseqloader_proc(void* p)
+{
+    struct aviloader_desc* desc = (struct aviloader_desc*)p;
+    int i, j;
+
+    long hfile;
+    struct _finddata_t fd;
+
+    char filename[MAX_PATH];
+    char path[MAX_PATH];
+    char *t, *tmpl;
+
+    char** list_data = NULL;
+    int list_len = 0;
+
+    int r;
+    vzImage* image = NULL;
+
+    logger_printf(0, "avifile: imgseqloader_proc('%s') started", desc->filename);
+
+    /* split directory name from file */
+    tmpl = desc->filename;
+    t = MAX(strrchr(tmpl, '\\'), strrchr(tmpl, '/'));
+
+    /* found anything */
+    if(!t)
+    {
+        logger_printf(1, "avifile: imgseqloader_proc('%s') FAILED: cant parse filename",
+            desc->filename);
+        goto ex1;
+    };
+
+    /* copy filename and path */
+    strncpy(filename, t + 1, MAX_PATH);
+    memcpy(path, tmpl, t - tmpl + 1); path[t - tmpl + 1] = 0;
+
+    /* append search template */
+    strcat(path, "*");
+
+    /* start lookup */
+    hfile = _findfirst(path, &fd);
+    if(-1 == hfile)
+    {
+        logger_printf(1, "avifile: imgseqloader_proc('%s') FAILED: path ('%s') not found", path);
+        goto ex1;
+    };
+
+    /* init list */
+    list_len  = 0;
+    list_data = (char**)malloc((list_len + 1) * sizeof(char*));
+    list_data[list_len] = NULL;
+
+    /* find a files */
+    do
+    {
+        /* check if directory */
+        if(fd.attrib & _A_SUBDIR) continue;
+
+        /* check name */
+        if(tmplcmp(fd.name, filename)) continue;
+
+        /* add filename to list */
+        list_data[list_len] = (char*)malloc(strlen(fd.name) + 2 + strlen(path));
+        memcpy(list_data[list_len], tmpl, t - tmpl + 1);
+        strcpy(list_data[list_len] + (t - tmpl) + 1, fd.name);
+
+        list_len++;
+        list_data = (char**)realloc(list_data, (list_len + 1) * sizeof(char*));
+        list_data[list_len] = NULL;
+    }
+    while (!_findnext(hfile, &fd));
+
+    /* release search */
+    _findclose(hfile);
+
+    /* sort list */
+    if(list_len)
+    {
+        for(int i = 0; i < list_len; i++)
+        {
+            int k, j;
+
+            /* find larges */
+            for(k = i, j = i + 1; j < list_len; j++)
+                if(_stricmp(list_data[j], list_data[k]) < 0)
+                    k = j;
+            /* swap */
+            if(k != i)
+            {
+                char* tmp = list_data[k];
+                list_data[k] = list_data[i];
+                list_data[i] = tmp;
+            };
+        };
+    };
+
+    /* request frames count */
+    desc->frames_count = list_len;
+    if(!desc->frames_count)
+    {
+        logger_printf(1, "avifile: imgseqloader_proc('%s') FAILED: no files found",
+            desc->filename);
+        goto ex1;
+    };
+
+    /* probe first file for format definition */
+    r = vzImageLoad(&image, list_data[0]);
+    if(r)
+    {
+        logger_printf(1, "avifile: imgseqloader_proc('%s') FAILED: first image ('%s') not recognized",
+            desc->filename, list_data[0]);
+        goto ex1;
+    };
+
+    /* setup width, height, buffer type */
+    desc->width     = image->width;
+    desc->height    = image->height;
+    desc->bpp       = vzImagePixFmt2OGL(image->pix_fmt);
+
+    /* init flags buffers */
+    desc->buf_cnt = desc->frames_count;
+    desc->buf_frame     = (int*)malloc(sizeof(int) * desc->buf_cnt);
+    desc->buf_clear     = (int*)malloc(sizeof(int) * desc->buf_cnt);
+    desc->buf_fill      = (int*)malloc(sizeof(int) * desc->buf_cnt);
+    desc->buf_filled    = (int*)malloc(sizeof(int) * desc->buf_cnt);
+    if(!desc->buf_frame || !desc->buf_clear || !desc->buf_fill || !desc->buf_filled)
+    {
+        logger_printf(1, "avifile: imgseqloader_proc('%s') ENOMEM1", desc->filename);
+        goto ex1;
+    };
+
+    /* init data buffer */
+    desc->buf_data = (void**)malloc(sizeof(void*) * desc->buf_cnt);
+    if(!desc->buf_data)
+    {
+        logger_printf(1, "avifile: imgseqloader_proc('%s') ENOMEM1", desc->filename);
+        goto ex1;
+    };
+    memset(desc->buf_data, 0, sizeof(void*) * desc->buf_cnt);
+    int frame_size = image->line_size * image->height;
+    for(i = 0, j = 0; i < desc->buf_cnt && !j; i++)
+    {
+        desc->buf_data[i] = malloc(frame_size);
+        if(!desc->buf_data[i]) j++;
+        else memset(desc->buf_data[i], 0, frame_size);
+    };
+    if(j)
+    {
+        logger_printf(1, "avifile: imgseqloader_proc('%s') ENOMEM1", desc->filename);
+        goto ex1;
+    };
+
+#ifdef MAX_CONCUR_LOAD
+    /* increment waiters counter */
+    WaitForSingleObject(_avi_concur_lock, INFINITE);
+    _avi_concur_pending++;
+    logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: PENDING[%s]",
+        _avi_concur_pending, _avi_concur_working, desc->filename);
+    ReleaseMutex(_avi_concur_lock);
+
+    /* wait */
+    for(int c = 1; c ; Sleep(40))
+    {
+        WaitForSingleObject(_avi_concur_lock, INFINITE);
+        if(_avi_concur_working < MAX_CONCUR_LOAD)
+        {
+            _avi_concur_working++;
+            c = 0;
+            logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: START[%s]",
+                _avi_concur_pending, _avi_concur_working, desc->filename);
+        };
+        ReleaseMutex(_avi_concur_lock);
+    };
+#endif /* MAX_CONCUR_LOAD */
+
+    /* call mem preloader */
+    if(!desc->flag_exit)
+        imgseqloader_full(desc, list_data, list_len, image, frame_size);
+
+#ifdef MAX_CONCUR_LOAD
+    WaitForSingleObject(_avi_concur_lock, INFINITE);
+    _avi_concur_pending--;
+    _avi_concur_working--;
+    logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: FINISHED[%s]",
+        _avi_concur_pending, _avi_concur_working, desc->filename);
+    ReleaseMutex(_avi_concur_lock);
+#endif /* MAX_CONCUR_LOAD */
+
+    /* wait for exit flag */
+    while(desc->flag_ready && !desc->flag_exit)
+        Sleep(10);
+
+ex1:
+    /* free buffers */
+    if(desc->buf_data)
+    {
+        for(i = 0; i < desc->buf_cnt; i++) if(desc->buf_data[i]) free(desc->buf_data[i]);
+        free(desc->buf_data);
+        desc->buf_data = NULL;
+    };
+    if(desc->buf_frame)     free(desc->buf_frame);  desc->buf_frame = NULL;
+    if(desc->buf_clear)     free(desc->buf_clear);  desc->buf_clear = NULL;
+    if(desc->buf_fill)      free(desc->buf_fill);   desc->buf_fill = NULL;
+    if(desc->buf_filled)    free(desc->buf_filled); desc->buf_filled = NULL;
+
+    /* setup flag of exiting */
+    desc->flag_gone = 1;
+
+    /* free stream header */
+    if(image) vzImageRelease(&image);
+
+    /* free list */
+    if(list_len || list_data)
+    {
+        for(int i = 0; list_data[i]; i++)
+            free(list_data[i]);
+        free(list_data);
+    };
+
+    logger_printf(0, "avifile: imgseqloader_proc exiting('%s')", desc->filename);
+
+    /* exit thread */
+    return 0;
+};
+
 static struct aviloader_desc* aviloader_init(char* filename, int mem_preload)
 {
 	unsigned long thread_id;
@@ -551,8 +870,11 @@ static struct aviloader_desc* aviloader_init(char* filename, int mem_preload)
 	desc->lock = CreateMutex(NULL,FALSE,NULL);
 
 	/* run thread */
-	desc->task = CreateThread(0, 0, aviloader_proc, desc, 0, &thread_id);
-        SetThreadPriority(desc->task , VZPLUGINS_AUX_THREAD_PRIO);
+    if(strchr(desc->filename, '#'))
+        desc->task = CreateThread(0, 0, imgseqloader_proc, desc, 0, &thread_id);
+    else
+        desc->task = CreateThread(0, 0, aviloader_proc, desc, 0, &thread_id);
+    SetThreadPriority(desc->task , VZPLUGINS_AUX_THREAD_PRIO);
 
 	return desc;
 };
