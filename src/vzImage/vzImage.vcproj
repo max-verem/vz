@@ -438,6 +438,22 @@
 				>
 			</File>
 			<File
+				RelativePath="..\vz\vzImageLoadBMP.h"
+				>
+			</File>
+			<File
+				RelativePath="..\vz\vzImageLoadJPEG.h"
+				>
+			</File>
+			<File
+				RelativePath="..\vz\vzImageLoadPNG.h"
+				>
+			</File>
+			<File
+				RelativePath="..\vz\vzImageLoadTGA.h"
+				>
+			</File>
+			<File
 				RelativePath="..\vz\vzImagePixFmtConv.h"
 				>
 			</File>
