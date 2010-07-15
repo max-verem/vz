@@ -26,6 +26,9 @@ ChangeLog:
 */
 #define _CRT_SECURE_NO_WARNINGS
 
+#define LIBPNG
+#define LIBJPEG
+
 #include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -355,7 +358,21 @@ VZIMAGE_API int vzImageRelease(vzImage** pimg)
     return 0;
 };
 
-#include "vzImageLoad.h"
+#include "vzImageLoadBMP.h"
+
+#include "vzImageLoadTGA.h"
+
+#ifndef LIBJPEG
+static int vzImageLoadJPEG(vzImage** pimg, char* filename){ return -1; };
+#else /* LIBJPEG */
+#include "vzImageLoadJPEG.h"
+#endif /* LIBJPEG */
+
+#ifndef LIBPNG
+static int vzImageLoadPNG(vzImage** pimg, char* filename){ return -1; };
+#else /* LIBPNG */
+#include "vzImageLoadPNG.h"
+#endif /* LIBPNG */
 
 VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename, long pix_fmt)
 {
