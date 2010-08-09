@@ -525,7 +525,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
         ReleaseMutex(_avi_concur_lock);
 
         /* wait */
-        for(int c = 1; c ; Sleep(40))
+        for(int c = 1; c ; Sleep(80))
         {
             WaitForSingleObject(_avi_concur_lock, INFINITE);
             if(_avi_concur_working < MAX_CONCUR_LOAD)
@@ -790,7 +790,7 @@ static unsigned long WINAPI imgseqloader_proc(void* p)
     ReleaseMutex(_avi_concur_lock);
 
     /* wait */
-    for(int c = 1; c ; Sleep(40))
+    for(int c = 1; c ; Sleep(80))
     {
         WaitForSingleObject(_avi_concur_lock, INFINITE);
         if(_avi_concur_working < MAX_CONCUR_LOAD)
@@ -819,7 +819,11 @@ static unsigned long WINAPI imgseqloader_proc(void* p)
 
     /* wait for exit flag */
     while(desc->flag_ready && !desc->flag_exit)
-        Sleep(10);
+    {
+        /* wait for signal if no jobs done */
+        WaitForSingleObject(desc->wakeup, 10);
+        ResetEvent(desc->wakeup);
+    };
 
 ex1:
     /* free buffers */
