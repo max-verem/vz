@@ -554,7 +554,11 @@ static unsigned long WINAPI aviloader_proc(void* p)
 
         /* wait for exit flag */
         while(desc->flag_ready && !desc->flag_exit)
-            Sleep(10);
+        {
+            /* wait for signal if no jobs done */
+            WaitForSingleObject(desc->wakeup, 10);
+            ResetEvent(desc->wakeup);
+        };
     }
     else
     {
