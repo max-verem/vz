@@ -74,6 +74,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies="User32.lib Gdi32.lib"
 				OutputFile="$(OutDir)/vz.exe"
 				LinkIncremental="2"
@@ -166,6 +167,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies="User32.lib Gdi32.lib"
 				OutputFile="$(OutDir)/vz.exe"
 				LinkIncremental="2"

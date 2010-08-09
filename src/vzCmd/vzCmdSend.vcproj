@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="vzCmdSend"
 	ProjectGUID="{262E0C10-1318-44B0-A68E-8F18E19B55C1}"
+	RootNamespace="vzCmdSend"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -262,6 +263,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)\vzCmdSend.dll"
 				LinkIncremental="2"
@@ -356,6 +358,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)\vzCmdSend.dll"
 				LinkIncremental="2"

@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="vzMain"
 	ProjectGUID="{FE2D16E0-F446-4E0E-A312-6ED03540D1FE}"
+	RootNamespace="vzMain"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -259,6 +260,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzMain.dll"
 				LinkIncremental="2"
@@ -354,6 +356,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzMain.dll"
 				LinkIncremental="2"

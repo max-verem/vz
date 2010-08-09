@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="vzGlExt"
 	ProjectGUID="{7275E261-E52A-464F-9396-85E2BFD6ECA7}"
+	RootNamespace="vzGlExt"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -77,6 +78,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzGlExt.dll"
 				LinkIncremental="2"
@@ -172,6 +174,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzGlExt.dll"
 				LinkIncremental="2"

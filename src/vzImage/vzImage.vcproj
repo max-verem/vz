@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="vzImage"
 	ProjectGUID="{C6799319-8322-4B82-877B-9519DD386B89}"
+	RootNamespace="vzImage"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -77,6 +78,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzImage.dll"
 				LinkIncremental="2"
@@ -172,6 +174,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzImage.dll"
 				LinkIncremental="2"

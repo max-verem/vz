@@ -38,7 +38,7 @@ INSTALL_DIR	= ../../install/Debug-x64/plugins/
 OBJS_DIR	= ../../temp/x64/Debug/plugins/
 LIB_PATH	= /LIBPATH:"../../temp/x64/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64"
 LINKER_OPT	= /LDd /nologo 
-LINKER_FLAGS	= $(LIB_PATH) /DEBUG
+LINKER_FLAGS	= $(LIB_PATH) /DEBUG /Profile
 CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
 !ENDIF
 
@@ -60,7 +60,7 @@ INSTALL_DIR	= ../../install/Debug-win32/plugins/
 OBJS_DIR	= ../../temp/win32/Debug/plugins/
 LIB_PATH	= /LIBPATH:"../../temp/win32/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib" /LIBPATH:"$(VCINSTALLDIR)\lib"
 LINKER_OPT	= /LDd /nologo 
-LINKER_FLAGS	= $(LIB_PATH) /DEBUG
+LINKER_FLAGS	= $(LIB_PATH) /DEBUG /Profile
 CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
 !ENDIF
 

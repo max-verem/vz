@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="vzLogger"
 	ProjectGUID="{5552C955-0FB1-4E3D-83A2-41BDF8A80B00}"
+	RootNamespace="vzLogger"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -259,6 +260,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)\vzLogger.dll"
 				LinkIncremental="2"
@@ -354,6 +356,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)\vzLogger.dll"
 				LinkIncremental="2"

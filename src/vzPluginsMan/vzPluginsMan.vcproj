@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="vzPluginsMan"
 	ProjectGUID="{39B5C4B2-4AF4-40BF-A50D-08471AEF90B8}"
+	RootNamespace="vzPluginsMan"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -73,6 +74,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzPluginsMan.exe"
 				LinkIncremental="2"
@@ -165,6 +167,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzPluginsMan.exe"
 				LinkIncremental="2"

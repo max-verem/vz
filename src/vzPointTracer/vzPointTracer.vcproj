@@ -4,6 +4,7 @@
 	Version="9,00"
 	Name="vzPointTracer"
 	ProjectGUID="{EE6836BB-F9B7-42FA-9141-59CBAFE0E62B}"
+	RootNamespace="vzPointTracer"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -73,6 +74,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzPointTracer.exe"
 				LinkIncremental="2"
@@ -165,6 +167,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/Profile"
 				AdditionalDependencies=""
 				OutputFile="$(OutDir)/vzPointTracer.exe"
 				LinkIncremental="2"
