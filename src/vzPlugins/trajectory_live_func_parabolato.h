@@ -93,4 +93,13 @@ static int tlf_parabolato_calc(void* context, float* value)
     return 0;
 };
 
+static int tlf_parabolato_dur(void* context)
+{
+    struct tlf_parabolato_context* ctx = (struct tlf_parabolato_context*)context;
+
+    if(!ctx) return -1;
+
+    return ctx->dur;
+};
+
 #endif /* TRAJECTORY_LIVE_FUNC_PARABOLATO_H */

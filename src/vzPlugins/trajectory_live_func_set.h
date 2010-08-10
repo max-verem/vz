@@ -17,4 +17,9 @@ static int tlf_set_calc(void* context, float* value)
     return 0;
 };
 
+static int tlf_set_dur(void* context)
+{
+    return 0;
+};
+
 #endif /* TRAJECTORY_LIVE_FUNC_SET_H */

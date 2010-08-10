@@ -78,4 +78,13 @@ static int tlf_lineto_calc(void* context, float* value)
     return 0;
 };
 
+static int tlf_lineto_dur(void* context)
+{
+    struct tlf_lineto_context* ctx = (struct tlf_lineto_context*)context;
+
+    if(!ctx) return -1;
+
+    return ctx->dur;
+};
+
 #endif /* TRAJECTORY_LIVE_FUNC_LINETO_H */
