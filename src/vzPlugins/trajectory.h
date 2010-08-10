@@ -1,5 +1,7 @@
-#ifndef TRAJECTORY_TABLE
-#define TRAJECTORY_TABLE
+#ifndef TRAJECTORY_H
+#define TRAJECTORY_H
+
+#include <stdio.h>
 
 static char* find_ch(char* tokens, long ch)
 {
@@ -228,5 +230,4 @@ static char* lookup_table_value(char* param_name, int index, char** map, char***
 	return table[index][k + 1];
 };
 
-
-#endif /* TRAJECTORY_TABLE */
+#endif /* TRAJECTORY_H */

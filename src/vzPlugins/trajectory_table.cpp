@@ -43,10 +43,9 @@ static char* _plugin_notes =
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 
-#include <stdio.h>
 #pragma comment(lib, "winmm.lib")
 
-#include "trajectory_table.h"
+#include "trajectory.h"
 
 // declare name and version of plugin
 DEFINE_PLUGIN_INFO("trajectory_table");
