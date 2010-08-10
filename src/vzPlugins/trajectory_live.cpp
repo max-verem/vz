@@ -242,30 +242,20 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
                 func_list[i][l - 1] = 0; l--;
 
                 /* lookup for function context */
-                for(int j = 0, s = 1; trajectory_live_funcs[j].name && s; j++)
+                int l2;
+                struct trajectory_live_func* _params_func =
+                    trajectory_live_func_lookup(func_list[i], &l2);
+
+                if(_params_func)
                 {
-                    /* func name length */
-                    int l2 = strlen(trajectory_live_funcs[j].name);
-
-                    /* minimal body FUNCNAME()*/
-                    if(l < l2 + 1) continue;
-
-                    /* check for FUNCNAME */
-                    if(memcmp(trajectory_live_funcs[j].name, func_list[i], l2)) continue;
-
-                    /* inc usefull length */
-                    if('(' != func_list[i][l2]) continue;
-
                     /* check if current context is available */
                     if(ctx->_params_funcs[i] && ctx->_params_ctx[i])
                         ctx->_params_funcs[i]->destroy(&ctx->_params_ctx[i]);
 
                     /* setup new function */
-                    ctx->_params_funcs[i] = &trajectory_live_funcs[j];
-                    ctx->_params_funcs[i]->init(&ctx->_params_ctx[i], func_list[i] + l2 + 1, &ctx->_params_values[i]);
-
-                    /* stop search */
-                    s = 0;
+                    ctx->_params_funcs[i] = _params_func;
+                    ctx->_params_funcs[i]->init(&ctx->_params_ctx[i],
+                        func_list[i] + l2 + 1, &ctx->_params_values[i]);
                 };
             };
         };

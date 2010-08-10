@@ -10,6 +10,8 @@ struct trajectory_live_func
     int (*dur)(void* context);
 };
 
+static struct trajectory_live_func* trajectory_live_func_lookup(char* name);
+
 #include "trajectory_live_func_set.h"
 #include "trajectory_live_func_lineto.h"
 #include "trajectory_live_func_parabolato.h"
@@ -47,6 +49,25 @@ static struct trajectory_live_func trajectory_live_funcs[] =
         NULL,                   /* calc */
         NULL,                   /* dur */
     },
+};
+
+static struct trajectory_live_func* trajectory_live_func_lookup(char* name, int* l)
+{
+    for(int j = 0, s = 1; trajectory_live_funcs[j].name && s; j++)
+    {
+        /* func name length */
+        *l = strlen(trajectory_live_funcs[j].name);
+
+        /* check for FUNCNAME */
+        if(memcmp(trajectory_live_funcs[j].name, name, *l)) continue;
+
+        /* inc usefull length */
+        if('(' != name[*l]) continue;
+
+        return &trajectory_live_funcs[j];
+    };
+
+    return NULL;
 };
 
 #endif /* TRAJECTORY_LIVE_FUNC_H */
