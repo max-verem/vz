@@ -10,11 +10,13 @@ struct trajectory_live_func
     int (*dur)(void* context);
 };
 
-static struct trajectory_live_func* trajectory_live_func_lookup(char* name);
+static struct trajectory_live_func* trajectory_live_func_lookup(char* name, int* l);
 
 #include "trajectory_live_func_set.h"
 #include "trajectory_live_func_lineto.h"
 #include "trajectory_live_func_parabolato.h"
+#include "trajectory_live_func_seq.h"
+#include "trajectory_live_func_nop.h"
 
 static struct trajectory_live_func trajectory_live_funcs[] =
 {
@@ -40,6 +42,22 @@ static struct trajectory_live_func trajectory_live_funcs[] =
         tlf_parabolato_destroy, /* destroy */
         tlf_parabolato_calc,    /* calc */
         tlf_parabolato_dur,
+    },
+
+    {
+        "SEQ",
+        tlf_seq_init,           /* init */
+        tlf_seq_destroy,        /* destroy */
+        tlf_seq_calc,           /* calc */
+        tlf_seq_dur,
+    },
+
+    {
+        "NOP",
+        tlf_nop_init,           /* init */
+        tlf_nop_destroy,        /* destroy */
+        tlf_nop_calc,           /* calc */
+        tlf_nop_dur,
     },
 
     {

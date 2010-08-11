@@ -61,6 +61,25 @@ static char* _plugin_notes =
 "        vzCmdSender.exe localhost SET rect_offset_table s_cmd \"PARABOLATO(-200,150,3);PARABOLATO(0,150,3)\"\n"
 "        # horizontal slowdown, vertial speedup\n"
 "        vzCmdSender.exe localhost SET rect_offset_table s_cmd \"PARABOLATO(0,150,3);PARABOLATO(0,150,1)\"\n"
+"\n"
+"*sequenctial player*:\n"
+"\n"
+"    SEQ(<FUNC1>[:<FUNC2>[:<FUNCn>]])\n"
+"        where:\n"
+"        <FUNCi> - function to use\n"
+"\n"
+"    example:\n"
+"        vzCmdSender.exe localhost SET rect_offset_table s_cmd \"SEQ(PARABOLATO(0,150,1):PARABOLATO(300,150,3));\"\n"
+"        vzCmdSender.exe localhost SET rect_offset_table s_cmd \"SEQ(PARABOLATO(0,150,1):PARABOLATO(300,150,3));SEQ(PARABOLATO(0,150,3):PARABOLATO(300,150,1))\"\n"
+"\n"
+"*no operation*:\n"
+"\n"
+"    NOP(<field>)\n"
+"\n"
+"    example:\n"
+"        vzCmdSender.exe localhost SET rect_offset_table s_cmd \"SEQ(PARABOLATO(0,150,1):NOP(50):PARABOLATO(300,150,3));\"\n"
+"        vzCmdSender.exe localhost SET rect_offset_table s_cmd \"SEQ(PARABOLATO(0,150,1):NOP(50):PARABOLATO(300,150,3));SEQ(PARABOLATO(0,150,3):NOP(50):PARABOLATO(300,150,1))\"\n"
+"\n"
 ;
 
 #include "../vz/plugin-devel.h"
@@ -262,6 +281,9 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 
         if(func_list)
             split_str_free(&func_list);
+
+        /* mark cmd as dirty */
+        ctx->s_cmd[0] = 0;
     };
 
     // unlock
