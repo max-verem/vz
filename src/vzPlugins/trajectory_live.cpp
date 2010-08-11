@@ -283,7 +283,8 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
             split_str_free(&func_list);
 
         /* mark cmd as dirty */
-        ctx->s_cmd[0] = 0;
+        if(ctx->s_cmd)
+            ctx->s_cmd[0] = 0;
     };
 
     // unlock

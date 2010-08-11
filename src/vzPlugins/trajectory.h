@@ -24,6 +24,12 @@ static int split_str(char* str, char* splitter, char*** s)
 	int c = 0;
 	char *t1, *t2;
 
+    /* check if string defined */
+    if(!str || !splitter)
+    {
+        *s = NULL;
+        return 0;
+    };
 
 	/* allocate mem for struct */
 	*s = (char**)malloc(0);
@@ -70,8 +76,11 @@ static int split_str(char* str, char* splitter, char*** s)
 static void split_str_free(char*** s)
 {
 	char** strs = *s;
-	for(; *strs; strs++) free(*strs);
-	free(*s);
+    if(strs)
+    {
+        for(; *strs; strs++) free(*strs);
+        free(*s);
+    };
 	*s = NULL;
 };
 
