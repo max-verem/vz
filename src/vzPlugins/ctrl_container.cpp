@@ -49,14 +49,16 @@ DEFINE_PLUGIN_INFO("ctrl_container");
 typedef struct
 {
 	long L_value;
+    long l_value;
 	void* _parent;
 } vzPluginData;
 
 // default value of structore
 vzPluginData default_value = 
 {
-	VALUE_VISIBLE,
-	NULL
+    0,
+    -1,
+    NULL
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
@@ -65,7 +67,13 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 							"Set value '_VIS' to enable container or "
 							"set value '_INV' to disable container", 
 							PLUGIN_PARAMETER_OFFSET(default_value,L_value)},
-	{NULL,NULL,0}
+
+    {"l_value",             "Parent container visiblity control parameter. "
+                            "Set value 1 to enable container or "
+                            "set value 0 to disable container",
+                            PLUGIN_PARAMETER_OFFSET(default_value, l_value)},
+
+    {NULL,NULL,0}
 };
 
 
@@ -104,20 +112,27 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 
 PLUGIN_EXPORT void notify(void* data, char* param_name)
 {
-	/* set value for container data */
-	if
-	(
-		(VALUE_VISIBLE == _DATA->L_value)
-		&&
-		(NULL != _DATA->_parent)
-	)
-		vzContainerVisible(_DATA->_parent, 1);
-	
-	if
-	(
-		(VALUE_INVISIBLE == _DATA->L_value)
-		&&
-		(NULL != _DATA->_parent)
-	)
-		vzContainerVisible(_DATA->_parent, 0);
+    vzPluginData* ctx = (vzPluginData*)data;
+
+    if(!ctx->_parent) return;
+
+    if((!param_name || !strcmp(param_name, "L_value")) && _DATA->L_value)
+    {
+        /* set value for container data */
+        if(VALUE_VISIBLE == _DATA->L_value)
+            vzContainerVisible(_DATA->_parent, 1);
+
+        if(VALUE_INVISIBLE == _DATA->L_value)
+            vzContainerVisible(_DATA->_parent, 0);
+    };
+
+    if((!param_name || !strcmp(param_name, "l_value")) && -1 != _DATA->l_value)
+    {
+        /* set value for container data */
+        if(_DATA->l_value)
+            vzContainerVisible(_DATA->_parent, 1);
+        else
+            vzContainerVisible(_DATA->_parent, 0);
+    };
+
 };
