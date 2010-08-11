@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "LINETO(180, 1.1, 0);LINETO(121, 1.2, 0)"
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "LINETO(180, 0, 150);LINETO(121, 0, 150)"
+
+
+# speed rized
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "PARABOLATO(180,150,1);PARABOLATO(180,150,1)"
+# speed slowed down
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "PARABOLATO(-200,150,3);PARABOLATO(0,150,3)"
+# horizontal slowdown, vertial speedup
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "PARABOLATO(0,150,3);PARABOLATO(0,150,1)"
+
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "SEQ(PARABOLATO(0,350,1):PARABOLATO(0,350,3));SEQ(PARABOLATO(280,250,1):PARABOLATO(300,250,3))"
+
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "PARABOLATO(0,350,1);"
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "PARABOLATO(300,350,3);"
+
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "SEQ(PARABOLATO(0,150,1):NOP(50):PARABOLATO(300,150,3));"
+vzCmdSender.exe localhost SET rect_offset_table s_cmd "SEQ(PARABOLATO(0,150,1):NOP(50):PARABOLATO(300,150,3));SEQ(PARABOLATO(0,150,3):NOP(50):PARABOLATO(300,150,1))"
+
+
+-->
+<tree visible="1">
+
+    <container visible="1">
+        <!-- offset to center -->
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+
+            <!-- programmable offset  -->
+            <function name="translate" id="rect_offset">
+                <param name="f_x" value="360"/>
+                <param name="f_y" value="288"/>
+            </function>
+
+            <container visible="1">
+                <!-- visible block -->
+                <function name="rectangle" id="rect1">
+                    <param name="f_width" value="300"/>
+                    <param name="f_height" value="300"/>
+                    <param name="f_colour_R" value="0.5"/>
+                    <param name="f_colour_G" value="0.5"/>
+                    <param name="f_colour_B" value="1.0"/>
+                    <param name="f_colour_A" value="1.0"/>
+                    <param name="L_center" value="_CM_"/>
+                </function>
+
+            </container>
+
+        </container>
+
+       <function name="trajectory_live" datatarget="rect_offset" id="rect_offset_table">
+           <param name="s_params_list" value="f_x,f_y"/>
+           <param name="s_cmd" value="SET(-120);SET(200)"/>
+       </function>
+
+    </container>
+
+</tree>
+<motion>
+
+    <director id="corner_moving" dur="100" loop="1" pos="0" run="1">
+        <param name="tree.function.rect_offset_table.l_index">
+            <timeline t1="0" t2="99" y1="0" y2="199" f="1"/>
+        </param>
+    </director>	
+
+</motion>
+</scene>
+
