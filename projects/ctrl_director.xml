@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+1. simple director start
+
+    vzCmdSender.exe localhost START_DIRECTOR rotator 0
+
+2. trig director
+    vzCmdSender.exe localhost SET rotor_ctrl l_trig_start 1 SET rotor_ctrl l_trig_start 0
+
+3. Trig from sequnce
+    vzCmdSender.exe localhost SET rotor_seq_ctrl s_cmd "SEQ(SET(1):SET(0))"
+
+4. Delayed director start (2 sec):
+    vzCmdSender.exe localhost SET rotor_seq_ctrl s_cmd "SEQ(NOP(100):SET(1):SET(0))"
+
+4. Delayed director start (1 sec + 2 attempts):
+    vzCmdSender.exe localhost SET rotor_seq_ctrl s_cmd "SEQ(NOP(50):SET(1):SET(0):NOP(75):SET(1):SET(0))"
+
+-->
+<tree visible="1">
+
+    <function name="ctrl_director" id="rotor_ctrl">
+        <param name="s_director" value="rotator"/>
+    </function>
+
+    <function name="trajectory_live" datatarget="rotor_ctrl" id="rotor_seq_ctrl">
+       <param name="s_params_list" value="l_trig_start"/>
+       <param name="s_cmd" value="SET(0)"/>
+    </function>
+
+
+    <container visible="1">
+
+        <!-- offset to center -->
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+
+            <container visible="1">
+
+                <function name="rotate" id="rotor">
+                    <param name="f_angle" value="0.0"/>
+                    <param name="f_z" value="1.0"/>
+                </function>
+
+
+                <!-- visible block -->
+                <function name="rectangle" id="rect1">
+                    <param name="f_width" value="300"/>
+                    <param name="f_height" value="300"/>
+                    <param name="f_colour_R" value="0.5"/>
+                    <param name="f_colour_G" value="0.5"/>
+                    <param name="f_colour_B" value="1.0"/>
+                    <param name="f_colour_A" value="1.0"/>
+                    <param name="L_center" value="_CM_"/>
+                </function>
+
+            </container>
+
+        </container>
+
+    </container>
+
+</tree>
+<motion>
+
+    <director id="rotator" dur="101" loop="0" pos="0" run="0">
+        <param name="tree.function.rotor.f_angle">
+	    <timeline t1="0" t2="100" y1="0" y2="360.0" f="1"/>
+        </param>
+    </director>	
+
+</motion>
+</scene>
+
