@@ -27,7 +27,7 @@
 
     <function name="trajectory_live" datatarget="rotor_ctrl" id="rotor_seq_ctrl">
        <param name="s_params_list" value="l_trig_start"/>
-       <param name="s_cmd" value="SET(0)"/>
+       <param name="s_cmd" value="INIT(0)"/>
     </function>
 
 

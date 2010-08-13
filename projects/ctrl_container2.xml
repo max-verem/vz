@@ -17,7 +17,7 @@ Simple blink:
 
     <function name="trajectory_live" datatarget="vis_control" id="viz_seq_ctrl">
        <param name="s_params_list" value="l_value"/>
-       <param name="s_cmd" value="SET(1)"/>
+       <param name="s_cmd" value="INIT(1)"/>
     </function>
 
 

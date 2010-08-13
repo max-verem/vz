@@ -58,7 +58,7 @@ vzCmdSender.exe localhost SET rect_offset_table s_cmd "SEQ(PARABOLATO(0,150,1):N
 
        <function name="trajectory_live" datatarget="rect_offset" id="rect_offset_table">
            <param name="s_params_list" value="f_x,f_y"/>
-           <param name="s_cmd" value="SET(-120);SET(200)"/>
+           <param name="s_cmd" value="INIT(-120);INIT(200)"/>
        </function>
 
     </container>
