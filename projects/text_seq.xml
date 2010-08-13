@@ -1,0 +1,40 @@
+﻿<?xml version="1.0"?>
+
+<!--
+
+Start sequence setting
+    vzCmdSender.exe localhost SET txt_seq_ctrl l_trig_start 1
+
+Update newer sequence:
+    vzCmdSender.exe localhost SET txt_seq_ctrl s_seq "0:Ten^50:Nine^50:Eight^50:Seven^50:Six^50:Five^50:Four^50:Three^50:Two^50:One^50:Zero^50:BOOM"
+
+
+-->
+
+<scene>
+
+<!-- objects tree -->
+<tree visible="1">
+    <container visible="1">
+
+        <function name="text_seq" datatarget="t_msg" id="txt_seq_ctrl">
+           <param name="s_param" value="s_text"/>
+           <param name="s_seq" value="0:This is 0^50:First^50:Second^50:Third"/>
+        </function>
+
+
+        <function name="translate">
+            <param name="f_x" value="300"/>
+            <param name="f_y" value="300"/>
+        </function>
+        <function name="ttfont" id="t_msg">
+            <param name="s_text" value="TEST MESSAGE #2"/>
+            <param name="s_font" value="verdanab"/>
+            <param name="l_height" value="35"/>
+            <param name="h_colour" value="0xFF101010"/>
+            <param name="L_center" value="_LM_"/>
+        </function>
+     </container>
+</tree>
+
+</scene>

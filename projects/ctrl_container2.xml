@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+Turn visibility off:
+    vzCmdSender.exe localhost SET viz_seq_ctrl s_cmd "SET(0)"
+
+Turn visibility on:
+    vzCmdSender.exe localhost SET viz_seq_ctrl s_cmd "SET(1)"
+
+Simple blink:
+    vzCmdSender.exe localhost SET viz_seq_ctrl s_cmd "SEQ(SET(0):NOP(26):SET(1):NOP(50):SET(0):NOP(26):SET(1):NOP(50):SET(0):NOP(26):SET(1):NOP(50):SET(0):NOP(26):SET(1):NOP(50))"
+
+-->
+<tree visible="1">
+
+
+    <function name="trajectory_live" datatarget="vis_control" id="viz_seq_ctrl">
+       <param name="s_params_list" value="l_value"/>
+       <param name="s_cmd" value="SET(1)"/>
+    </function>
+
+
+    <container visible="1">
+
+        <!-- offset to center -->
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+
+            <container visible="1">
+
+                <function name="rotate" id="rotor">
+                    <param name="f_angle" value="0.0"/>
+                    <param name="f_z" value="1.0"/>
+                </function>
+
+               <function name="ctrl_container" id="vis_control">
+               </function>
+
+                <!-- visible block -->
+                <function name="rectangle" id="rect1">
+                    <param name="f_width" value="300"/>
+                    <param name="f_height" value="300"/>
+                    <param name="f_colour_R" value="0.5"/>
+                    <param name="f_colour_G" value="0.5"/>
+                    <param name="f_colour_B" value="1.0"/>
+                    <param name="f_colour_A" value="1.0"/>
+                    <param name="L_center" value="_CM_"/>
+                </function>
+
+            </container>
+
+        </container>
+
+    </container>
+
+</tree>
+<motion>
+
+    <director id="rotator" dur="101" loop="1" pos="0" run="1">
+        <param name="tree.function.rotor.f_angle">
+	    <timeline t1="0" t2="100" y1="0" y2="360.0" f="1"/>
+        </param>
+    </director>	
+
+</motion>
+</scene>
+
