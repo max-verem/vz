@@ -61,12 +61,13 @@ static int tlf_lineto_calc(void* context, float* value)
     if(ctx->dur)
     {
         /* check for out of range */
-        if(ctx->cnt <= ctx->dur)
+        if(ctx->cnt < ctx->dur)
         {
-            *value = ctx->A + ctx->cnt * (ctx->B - ctx->A) / ctx->dur;
-
             /* increment counter */
             ctx->cnt++;
+
+            /* set value */
+            *value = ctx->A + ctx->cnt * (ctx->B - ctx->A) / ctx->dur;
         };
 
         return 0;

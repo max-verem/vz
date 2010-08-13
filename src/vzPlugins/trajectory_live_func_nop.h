@@ -41,7 +41,7 @@ static int tlf_nop_calc(void* context, float* value)
     if(!ctx) return -1;
 
     /* check for out of range */
-    if(ctx->cnt <= ctx->dur)
+    if(ctx->cnt < ctx->dur)
     {
         ctx->cnt++;
         return 0;

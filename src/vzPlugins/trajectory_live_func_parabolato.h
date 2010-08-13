@@ -71,8 +71,10 @@ static int tlf_parabolato_calc(void* context, float* value)
 
     if(!ctx) return -1;
 
-    if(ctx->cnt <= ctx->dur)
+    if(ctx->cnt < ctx->dur)
     {
+        ctx->cnt++;
+
         switch(ctx->type)
         {
             case 1:
@@ -86,8 +88,6 @@ static int tlf_parabolato_calc(void* context, float* value)
             case 4:
                 break;
         };
-
-        ctx->cnt++;
     };
 
     return 0;

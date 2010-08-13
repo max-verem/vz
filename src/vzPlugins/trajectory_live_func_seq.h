@@ -73,7 +73,7 @@ static int tlf_seq_calc(void* context, float* value)
     if(!ctx) return -1;
 
     /* check if out of subsequence */
-    if(ctx->current.func && (ctx->current.func->dur(ctx->current.ctx) + 1) < ctx->current.cnt)
+    if(ctx->current.func && ctx->current.func->dur(ctx->current.ctx) <= ctx->current.cnt)
     {
         ctx->current.func->destroy(&ctx->current.ctx);
         ctx->current.func = NULL;
