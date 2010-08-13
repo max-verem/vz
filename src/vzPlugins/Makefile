@@ -84,6 +84,7 @@ LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
 TARGET = "$(OBJS_DIR)" "$(INSTALL_DIR)"		\
+	text_seq.dll				\
 	ctrl_director.dll			\
 	trajectory_live.dll			\
         blend.dll                               \
