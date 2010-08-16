@@ -162,7 +162,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
     else if(!strcmp(param_name, "l_trig_continue"))
     {
         if(ctx->l_trig_continue && ctx->_trig_continue != ctx->l_trig_continue)
-            _snprintf(buf, MAX_CMD_SIZE, "%s.%s.continue()",
+            _snprintf(buf, MAX_CMD_SIZE, "%s.%s.cont()",
                 tmpl, ctx->s_director);
 
         ctx->_trig_continue = ctx->l_trig_continue;
