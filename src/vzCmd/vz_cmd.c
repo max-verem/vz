@@ -71,9 +71,11 @@ int vz_cmd_lookup_by_name(char* name)
     int i;
     
     for(i = 0; commands[i].id; i++)
-	if(0 == strcmp(name, commands[i].name))
-	    return commands[i].id;
-	    
+    {
+        if(!strcmp(name, commands[i].name))
+            return commands[i].id;
+    };
+
     return 0;
 };
 

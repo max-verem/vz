@@ -233,9 +233,23 @@ static int cmdlist_from_strlist(char** argv, int argc, void ***cmds, unsigned in
 					argc--; argv++;
 					break;
 
+                case VZ_CMD_LAYER_UNLOAD:
+
+                    /* integer argument */
+                    if(argc)
+                    {
+                        (*cmds_args)[idx_arg] = (unsigned int)atol(*argv);
+                        (*cmds)[idx_cmd++] = (void*)&((*cmds_args)[idx_arg++]);
+                    }
+                    else
+                        e = -2;
+                    argc--; argv++;
+                    break;
+
 				case VZ_CMD_START_DIRECTOR:
 				case VZ_CMD_RESET_DIRECTOR:
 				case VZ_CMD_CONTAINER_VISIBLE:
+                case VZ_CMD_LAYER_LOAD:
 
 					/* name paramer */
 					if(argc)
