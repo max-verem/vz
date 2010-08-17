@@ -107,7 +107,7 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
     if(INVALID_SOCKET == s)
         return -WSAGetLastError();
 #else /* __linux__ */
-    if(-1 == r)
+    if(-1 == s)
         return -errno;                    
 #endif /* __linux__ */
 
