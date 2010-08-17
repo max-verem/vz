@@ -1034,6 +1034,10 @@ int main(int argc, char** argv)
     _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif /* _DEBUG */
 
+    /* clear layers */
+    for(int l = 0; l < VZ_MAX_LAYERS; l++)
+        layers[l] = NULL;
+
 	/* init timer period */
 	timeBeginPeriod(1);
 
