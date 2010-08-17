@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+# load scene
+    vzCmdSender.exe localhost LOAD_SCENE ./projects/inloopout.xml
+
+# start director
+    vzCmdSender.exe localhost START_DIRECTOR d_rotator 0
+
+# continue director if it under inloopout
+    vzCmdSender.exe localhost CONTINUE_DIRECTOR d_rotator
+
+-->
+<tree visible="1">
+
+    <container visible="1">
+
+        <!-- offset to center -->
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+
+            <container visible="1">
+
+                <function name="rotate" id="rotor">
+                    <param name="f_angle" value="0.0"/>
+                    <param name="f_z" value="1.0"/>
+                </function>
+
+                <!-- visible block -->
+                <function name="rectangle" id="rect1">
+                    <param name="f_width" value="300"/>
+                    <param name="f_height" value="300"/>
+                    <param name="f_colour_R" value="0.5"/>
+                    <param name="f_colour_G" value="0.5"/>
+                    <param name="f_colour_B" value="1.0"/>
+                    <param name="f_colour_A" value="1.0"/>
+                    <param name="L_center" value="_CM_"/>
+                </function>
+
+            </container>
+
+        </container>
+
+    </container>
+
+</tree>
+<motion>
+
+    <director id="d_rotator" dur="101" loop="0" pos="0" run="0">
+        <control>
+            <key time="80" enable="1" action="2" value="40" id="inloopout_1" /> 
+        </control>
+
+        <param name="tree.function.rotor.f_angle">
+	    <timeline t1="0" t2="100" y1="0" y2="360.0" f="1"/>
+        </param>
+    </director>	
+
+</motion>
+</scene>
+
