@@ -35,7 +35,9 @@ static int
     alSET[]					= {-1, -1, -1},
     alPING[]				= {0},
 	alCONTAINER_VISIBLE[]	= {-1, 4},
-	alSCREENSHOT[]			= {-1}
+    alSCREENSHOT[]          = {-1},
+    alLAYER_LOAD[]          = {-1, 4},
+    alLAYER_UNLOAD[]        = {4}
 ;
 
 #define REG_CMD(ID, ARGS, LENS)						\
@@ -57,6 +59,8 @@ static struct vz_cmd_desc commands[] =
     REG_CMD(VZ_CMD_PING,				0, alPING),
 	REG_CMD(VZ_CMD_CONTAINER_VISIBLE,	2, alCONTAINER_VISIBLE),
 	REG_CMD(VZ_CMD_SCREENSHOT,			1, alSCREENSHOT),
+    REG_CMD(VZ_CMD_LAYER_LOAD,          2, alLAYER_LOAD),
+    REG_CMD(VZ_CMD_LAYER_UNLOAD,        1, alLAYER_UNLOAD),
 
     REG_CMD(0, 0, NULL)
 };

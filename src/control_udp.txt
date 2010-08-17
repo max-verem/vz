@@ -14,6 +14,8 @@ CONTINUE_DIRECTOR <director>
 STOP_DIRECTOR <director>
 SET <container> <param> <value>
 CONTAINER_VISIBLE <container> <flag>
+LAYER_LOAD <filename> <layer_number>
+LAYER_UNLOAD <layer_number>
 
 Make sure udpserver is allowed to start:
 [...]
