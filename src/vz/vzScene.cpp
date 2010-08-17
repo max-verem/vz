@@ -352,8 +352,8 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
         if(renders_count && renderers_list)
         {
             for(int l = 0; l < renders_count; l++)
-                if(renderers_list[l])
-                    renderers_list[l]->motion_assign(frame, field);
+                if(renderers_list[renders_count - l - 1])
+                    renderers_list[renders_count - l - 1]->motion_assign(frame, field);
         }
         else
             motion_assign(frame, field);
@@ -411,8 +411,8 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
         if(renders_count && renderers_list)
         {
             for(int l = 0; l < renders_count; l++)
-                if(renderers_list[l])
-                    renderers_list[l]->draw(frame,field,1,1, 0);
+                if(renderers_list[renders_count - l - 1])
+                    renderers_list[renders_count - l - 1]->draw(frame,field,1,1, 0);
         }
         else
             draw(frame,field,1,1, 0);
