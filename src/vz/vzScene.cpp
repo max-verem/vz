@@ -245,8 +245,13 @@ vzScene::~vzScene()
 	TRACE_POINT();
 };
 
+void vzScene::motion_assign(long frame,long field)
+{
+    if(_motion)
+        _motion->assign(frame, field);
+};
 
-void vzScene::display(long frame)
+void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
 {
 
 	WaitForSingleObject(_lock_for_command,INFINITE);
@@ -344,8 +349,14 @@ void vzScene::display(long frame)
 	for(int field = 0; field <= _tv->TV_FRAME_INTERLACED; field++)
 	{
 		// set directors for propper position
-		if(_motion)
-			_motion->assign(frame, field);
+        if(renders_count && renderers_list)
+        {
+            for(int l = 0; l < renders_count; l++)
+                if(renderers_list[l])
+                    renderers_list[l]->motion_assign(frame, field);
+        }
+        else
+            motion_assign(frame, field);
 
 		/*
 			setup stencil function 
@@ -397,7 +408,14 @@ void vzScene::display(long frame)
 			glScalef(((float)_tv->TV_FRAME_PAR_DEN)/_tv->TV_FRAME_PAR_NOM, 1.0f, 1.0f);
 
 		/* draw */
-		draw(frame,field,1,1, 0);
+        if(renders_count && renderers_list)
+        {
+            for(int l = 0; l < renders_count; l++)
+                if(renderers_list[l])
+                    renderers_list[l]->draw(frame,field,1,1, 0);
+        }
+        else
+            draw(frame,field,1,1, 0);
 
 		/* honor PAR - restore H scale */
 		glPopMatrix();

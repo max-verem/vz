@@ -507,13 +507,11 @@ static void vz_scene_render(void)
 		WaitForSingleObject(layers_lock,INFINITE);
 
         /* draw layers */
-        for(idx = 0, cnt = 0; idx < VZ_MAX_LAYERS; idx++)
-            if(layers[idx])
-            {
-                vzMainSceneDisplay(layers[idx], global_frame_no);
-                cnt++;
-            };
-        if(!cnt)
+        void* render_starter = NULL;
+        for(idx = 0, cnt = 0; idx < VZ_MAX_LAYERS && !layers[idx]; idx++);
+        if(layers[idx])
+            vzMainSceneDisplay(layers[idx], global_frame_no, VZ_MAX_LAYERS, layers);
+        else
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// flush all 

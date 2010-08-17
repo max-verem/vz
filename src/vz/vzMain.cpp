@@ -120,9 +120,9 @@ VZMAIN_API int vzMainSceneCommand(void* scene, int cmd, int index, void* buf)
 	return ((vzScene*)scene)->command(cmd, index, buf);
 };
 
-VZMAIN_API void vzMainSceneDisplay(void* scene, long frame)
+VZMAIN_API void vzMainSceneDisplay(void* scene, long frame, long renders_count, void** renderers_list)
 {
-	((vzScene*)scene)->display(frame);
+    ((vzScene*)scene)->display(frame, renders_count, (vzScene**)renderers_list);
 };
 
 

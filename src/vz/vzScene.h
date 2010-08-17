@@ -79,11 +79,12 @@ class vzScene
 	long _stencil_done;
 
 	void draw(long frame,long field,long fill,long key,long order);
+    void motion_assign(long frame,long field);
 
 public:
 	vzScene(vzFunctions* functions,void* config,vzTVSpec* tv);
 	int load(char* file_name);
-	void display(long frame);
+    void display(long frame, long renders_count = 0, vzScene** renderers_list = NULL);
 	~vzScene();
 
 	void* get_ided_object(char* name, char** name_local);
