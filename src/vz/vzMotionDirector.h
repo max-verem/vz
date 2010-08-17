@@ -60,6 +60,7 @@ class vzMotionDirector
 
 	// run-time attributes
 	long 
+        _inloopout, //< 
 		_run,	// state of director - running or stopped
 		_dur,	// director duration
 		_loop,	// loop flags - "-1" mean endless, "10" mean 10 time and stop

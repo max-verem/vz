@@ -78,32 +78,17 @@ vzMotionControl::~vzMotionControl()
 		delete value(i);
 };
 
-long vzMotionControl::find_stop(long from,long to)
+vzMotionControlKey* vzMotionControl::find(long from, long to, enum vzMotionControlTypes type)
 {
-//printf("vzMotionControl: find_stop(%ld,%ld)=",from,to);
-	for(unsigned int i=0;i<count();i++)
-	{
-//printf("#1");
-		vzMotionControlKey* key = value(i);
-		if (key->time() <= to)
-		{
-//printf("#2");
-			if (from <= key->time())
-			{
-//printf("#3");
-				if (key->enable())
-				{
-//printf("#4");
-					if(key->action() == 1)
-					{
-//printf("#5\n");
-						return key->time();
-					};
-				};
-			};
-		};
-			
-	};
-//printf("\n");
-	return -1;
+    for(unsigned int i=0;i<count();i++)
+    {
+        vzMotionControlKey* key = value(i);
+
+        if(key->time() > to) continue;
+        if(key->time() < from) continue;
+        if(!key->enable()) continue;
+        if(key->action() != type) continue;
+        return key;
+    };
+    return NULL;
 };

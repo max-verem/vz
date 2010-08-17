@@ -37,12 +37,18 @@ ChangeLog:
 #include "vzMotionControlKey.h"
 #include "../templates/hash.hpp"
 
+enum vzMotionControlTypes
+{
+    vzMotionControlTypeSTOP = 1,
+    vzMotionControlTypeINLOOPOUT,
+};
+
 class vzMotionControl : public vzHash<vzMotionControlKey*>
 {
 public:
 	vzMotionControl(DOMNodeX* node,vzScene* scene);
 	~vzMotionControl();
-	long find_stop(long from,long to);
+    vzMotionControlKey* find(long from, long to, enum vzMotionControlTypes type);
 };
 
 

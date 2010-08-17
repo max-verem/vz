@@ -55,6 +55,7 @@ vzMotionDirector::vzMotionDirector(DOMNodeX* node,vzScene* scene)
 	_ready = 0;
 	_id = NULL;
 	_first_run = 1;
+    _inloopout = 0;
 
 	// load attributes
 	_attributes = new vzXMLAttributes(node);
@@ -162,25 +163,42 @@ void vzMotionDirector::assign(long frame, int field)
 			_last_frame = frame;
 		};
 
-		// stop tag
+        /* range of control key search */
+        vzMotionControlKey* control_key = NULL;
 		long _pos_prev = _pos;
 		long _pos_new = _pos + frame - _last_frame;
-		long _pos_stop;
-		if((_control) && ((_pos_stop = _control->find_stop(_pos_prev,_pos_new)) != (-1)))
+
+        /* control keys processing: stop tag */
+        if(_control && (control_key = _control->find(_pos_prev,_pos_new, vzMotionControlTypeSTOP)))
 		{
 			// stop tag found
-			_pos = _pos_stop;
+			_pos = control_key->time();
 			_run = 0;
 			_first_run = 1;
 		}
 		else
 		{
-			// stop tag not found
+            /* inloopout control key */
+            if(_control && (control_key = _control->find(/*_pos_prev*/_pos_new, _pos_new, vzMotionControlTypeINLOOPOUT)) && !field)
+            {
+                /* increment inloopout counter */
+                _inloopout++;
 
-			// move position of timeline
-			_pos += frame - _last_frame;
-		};
-		
+                /* check if we need to ignore that counter */
+                if(_inloopout)
+                {
+                    _pos = atol(control_key->value());
+                    _first_run = 1;
+                }
+                else
+                     control_key = NULL;
+            };
+        };
+        /* process in normal way if no control key influent */
+        if(!control_key)
+            // move position of timeline
+            _pos += frame - _last_frame;
+
 		// check if position is outside of timeline
 		if(_pos >= _dur)
 		{
@@ -233,6 +251,7 @@ void vzMotionDirector::start(char* arg)
 	_first_run = 1;
 	_run = 1;
 	_pos = atol(arg);
+    _inloopout = 0;
 	
 	ReleaseMutex(_lock);
 };
@@ -253,8 +272,10 @@ void vzMotionDirector::cont(char* arg)
 	WaitForSingleObject(_lock,INFINITE);
 
 	_first_run = 1;
-	_run = 1;
-	_pos += 1;
+    if(!_run)
+        _pos += 1;
+    _run = 1;
+    _inloopout = -1;
 
 	ReleaseMutex(_lock);
 };
