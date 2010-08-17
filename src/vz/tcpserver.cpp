@@ -144,6 +144,7 @@ static char
 
 static int tcpserver_client_exec(char* buffer, char** error_log)
 {
+    int idx, cnt;
 	*error_log = shell_error_recog;
 
 	logger_printf(0, "recieved: '%s'",buffer);
@@ -185,14 +186,15 @@ static int tcpserver_client_exec(char* buffer, char** error_log)
 		// send command tp
 		logger_printf(0, "tcpserver: CMD scene \"%s\" recieved",buffer);
 		*error_log = shell_ok_scene; 
-					
-		// lock scene
-//		WaitForSingleObject(scene_lock,INFINITE);
-		if(scene)
-			vzMainSceneCommand(scene, buffer,error_log);
-		else
-			*error_log = shell_error_scene;
-//		ReleaseMutex(scene);
+
+        for(idx = 0, cnt = 0; idx < VZ_MAX_LAYERS; idx++)
+        {
+            if(!layers[idx]) continue;
+            vzMainSceneCommand(layers[idx], buffer, error_log);
+            cnt++;
+        };
+        if(!cnt)
+            *error_log = shell_error_scene;
 	}
 	else if (FIND_FROM_LITERAL(buffer, TAG_RENDERMAN_LOAD))
 	{
@@ -204,7 +206,7 @@ static int tcpserver_client_exec(char* buffer, char** error_log)
 			// where scene name is stored
 			logger_printf(0, "tcpserver: CMD load \"%s\" recieved",buf);
 			*error_log = shell_ok_load;
-			CMD_loadscene(buf,error_log);
+            CMD_layer_load(buf, 0);
 		}
 		else
 			*error_log = shell_error_prenth;

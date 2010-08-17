@@ -90,6 +90,7 @@ ChangeLog:
 #include "serserver.h"
 #include "udpserver.h"
 
+#include "main.h"
 
 #pragma comment(lib, "winmm.lib")
 #pragma comment(lib, "ws2_32.lib") 
@@ -109,13 +110,13 @@ vzTVSpec tv;
 */
 int f_exit = 0;;
 
-void* scene = NULL;	// scene loaded
-char* scene_file = NULL;
+void* layers[VZ_MAX_LAYERS];
+char* startup_scene_file = NULL;
+HANDLE layers_lock;
 
 char* config_file = "vz.conf";
 void* config = NULL; // config loaded
 
-HANDLE scene_lock;
 void* functions = NULL; // list of loaded function
 void* output_module = NULL; // output module
 char start_path[1024];
@@ -129,60 +130,92 @@ int CMD_screenshot(char* filename, char** error_log)
 	logger_printf(0, "CMD_screenshot [%s]", filename);
 
 	// lock scene
-	WaitForSingleObject(scene_lock, INFINITE);
+	WaitForSingleObject(layers_lock, INFINITE);
 
 	// copy filename
 	strcpy(screenshot_file, filename);
 
 	// unlock scene
-	ReleaseMutex(scene_lock);
+	ReleaseMutex(layers_lock);
 
 	return 0;
 };
 
-int CMD_loadscene(char* filename, char** error_log)
+int CMD_layer_unload(long idx)
 {
-	int r;
+    int r = 0;
 
-	/* notify */
-	logger_printf(0, "CMD_loadscene [%s]", filename);
+    /* notify */
+    logger_printf(0, "CMD_layer_unload [%ld]", idx);
 
-	// lock scene
-	if (WAIT_OBJECT_0 != WaitForSingleObject(scene_lock, INFINITE))
-	{
-		logger_printf(2, "Unable to lock scene handle");
+    // lock scene
+    WaitForSingleObject(layers_lock, INFINITE);
 
-		if(NULL != error_log)
-			*error_log = "Error! Unable to lock scene handle";
+    if(idx < 0 || idx >= VZ_MAX_LAYERS)
+    {
+        r = -1;
+        logger_printf(2, "Unable to unload layer [%ld] - OUT OF LAYER", idx);
+    }
+    else
+    {
+        /* free loaded scene */
+        if(layers[idx])
+            vzMainSceneFree(layers[idx]);
 
-		return -1;
-	};
+        layers[idx] = NULL;
+    };
 
-	if(scene)
-		vzMainSceneFree(scene);
+    // unlock scene
+    ReleaseMutex(layers_lock);
 
-	scene = vzMainSceneNew(functions,config,&tv);
+    return r;
+};
 
-	if (!vzMainSceneLoad(scene, filename))
-	{
-		logger_printf(2, "Unable to load scene [%s]", filename);
+int CMD_layer_load(char* filename, long idx)
+{
+    int r = 0;
 
-		if(NULL != error_log)
-			*error_log = "Error! Unable to load scene";
-		
-		vzMainSceneFree(scene);
+    /* notify */
+    logger_printf(0, "CMD_layer_load [%s,%ld]", filename, idx);
 
-		scene = NULL;
+    // lock scene
+    WaitForSingleObject(layers_lock, INFINITE);
 
-		r = -2;
-	}
-	else
-		r = 0;
+    if(idx < 0 || idx >= VZ_MAX_LAYERS)
+    {
+        r = -1;
+        logger_printf(2, "Unable to load scene [%s] - OUT OF LAYER", filename);
+    }
+    else
+    {
+        void* scene_tmp;
 
-	// unlock scene
-	ReleaseMutex(scene_lock);
+        /* create a new scene */
+        scene_tmp = vzMainSceneNew(functions, config, &tv);
 
-	return r;
+        /* check if scene loaded correctly */
+        if (!vzMainSceneLoad(scene_tmp, filename))
+        {
+            logger_printf(2, "Unable to load scene [%s]", filename);
+
+            vzMainSceneFree(scene_tmp);
+
+            r = -2;
+        }
+        else
+        {
+            /* free loaded scene */
+            if(layers[idx])
+                vzMainSceneFree(layers[idx]);
+
+            layers[idx] = scene_tmp;
+        };
+    };
+
+    // unlock scene
+    ReleaseMutex(layers_lock);
+
+    return r;
 };
 
 /* -------------------------------------------------------- */
@@ -455,6 +488,8 @@ static void vz_scene_render(void)
 
 	while(force_render)
 	{
+        int idx, cnt;
+
 		/* reset force render flag */
 		force_render = 0;
 		force_rendered++;
@@ -469,15 +504,17 @@ static void vz_scene_render(void)
 		rendered_frames++;
 
 		// lock scene
-		WaitForSingleObject(scene_lock,INFINITE);
+		WaitForSingleObject(layers_lock,INFINITE);
 
-		// draw scene
-		if (scene)
-			vzMainSceneDisplay(scene,global_frame_no);
-		else
-		{
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		};
+        /* draw layers */
+        for(idx = 0, cnt = 0; idx < VZ_MAX_LAYERS; idx++)
+            if(layers[idx])
+            {
+                vzMainSceneDisplay(layers[idx], global_frame_no);
+                cnt++;
+            };
+        if(!cnt)
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// flush all 
 		glFlush();
@@ -489,7 +526,7 @@ static void vz_scene_render(void)
 		long draw_stop_time = timeGetTime();
 		render_time = draw_stop_time - draw_start_time;
 
-		ReleaseMutex(scene_lock);
+		ReleaseMutex(layers_lock);
 
 		/* check if we need to draw more frames */
 		if
@@ -740,25 +777,26 @@ static LRESULT vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpa
 				case 'C':
 					//  Alarm scene clear !!!!!
 
-					// lock scene
-					WaitForSingleObject(scene_lock,INFINITE);
+                    // lock layers
+                    WaitForSingleObject(layers_lock,INFINITE);
 
-					if(scene)
-						vzMainSceneFree(scene);
-					scene = NULL;
+                    for(int idx= 0; idx < VZ_MAX_LAYERS; idx++)
+                    {
+                        if(layers[idx]) vzMainSceneFree(layers[idx]);
+                        layers[idx] = NULL;
+                    };
 
-					// unlock scene
-					ReleaseMutex(scene_lock);
+                    // unlock layers
+                    ReleaseMutex(layers_lock);
 
 					break;
 
 				case 's':
 				case 'S':
-					/* create a screen shot */
-					WaitForSingleObject(scene_lock,INFINITE);
-					if(scene)
-						timestamp_screenshot();
-					ReleaseMutex(scene_lock);
+                    /* create a screen shot */
+                    WaitForSingleObject(layers_lock,INFINITE);
+                    timestamp_screenshot();
+                    ReleaseMutex(layers_lock);
 					break;
 				};
 			break;
@@ -1036,8 +1074,8 @@ int main(int argc, char** argv)
 		}
 		else if (strcmp(*argv,"-f") == 0)
 		{
-			// set scene file name
-			argc -= 2;argv++;scene_file = *argv; argv++;
+            // set startup scene file name
+            argc -= 2; argv++; startup_scene_file = *argv; argv++;
 		}
 		else if ( (strcmp(*argv,"-h") == 0) || (strcmp(*argv,"/?") == 0) )
 		{
@@ -1097,7 +1135,7 @@ int main(int argc, char** argv)
 		// syncs
 		global_frame_event = CreateEvent(NULL, TRUE, FALSE, NULL);
 		ResetEvent(global_frame_event);
-		scene_lock = CreateMutex(NULL,FALSE,NULL);
+        layers_lock = CreateMutex(NULL,FALSE,NULL);
 
 		// init functions
 		functions = vzMainNewFunctionsList(config);
@@ -1139,17 +1177,11 @@ int main(int argc, char** argv)
 		};
 
 		// check if we need automaticaly load scene
-		if(scene_file)
-		{
-			// init scene
-			scene = vzMainSceneNew(functions,config,&tv);
-			if (!vzMainSceneLoad(scene, scene_file))
-			{
-				logger_printf(1, "Unable to load scene '%s'",scene_file);
-				vzMainSceneFree(scene);
-			};
-			scene_file = NULL;
-		};
+        if(startup_scene_file)
+        {
+            CMD_layer_load(startup_scene_file, 0);
+            startup_scene_file = NULL;
+        };
 
 		// start (tcp|udp)server
 		unsigned long thread;
@@ -1235,14 +1267,13 @@ int main(int argc, char** argv)
 			CloseHandle(internal_sync_generator_handle);
 		};
 
-		/* unload scene */
-		if(NULL != scene)
-		{
-			logger_printf(1, "main: waiting for vzMainSceneFree(scene)...");
-			vzMainSceneFree(scene);
-			logger_printf(1, "main: vzMainSceneFree(scene) finished");
-			scene = NULL;
-		};
+        /* unload layers */
+        for(int idx = 0; idx < VZ_MAX_LAYERS; idx++)
+        {
+            logger_printf(1, "main: waiting for CMD_layer_unload(%d)...", idx);
+            CMD_layer_unload(idx);
+            logger_printf(1, "main: CMD_layer_unload(%d) finished", idx);
+        };
 
 		logger_printf(1, "main: waiting for vzMainFreeFunctionsList(functions)...");
 		vzMainFreeFunctionsList(functions);
@@ -1254,7 +1285,7 @@ int main(int argc, char** argv)
 		logger_printf(1, "main: vz_destroy_window() finished...");
 
 		/* close mutexes */
-		CloseHandle(scene_lock);
+        CloseHandle(layers_lock);
 		CloseHandle(vz_window_desc.lock);
 	};
 

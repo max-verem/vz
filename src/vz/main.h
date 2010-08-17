@@ -28,10 +28,13 @@ ChangeLog:
 #ifndef MAIN_H
 #define MAIN_H
 
+#define VZ_MAX_LAYERS 16
+
 extern int f_exit;
-extern void* scene;	// scene loaded
+extern void* layers[VZ_MAX_LAYERS];
 extern void* config;
 int CMD_screenshot(char* filename,char** error_log);
-int CMD_loadscene(char* filename,char** error_log);
+int CMD_layer_unload(long idx);
+int CMD_layer_load(char* filename, long idx);
 
 #endif /* MAIN_H */

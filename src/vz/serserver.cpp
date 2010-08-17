@@ -41,6 +41,7 @@ ChangeLog:
 #include <stdio.h>
 #include <process.h>
 #include <windows.h>
+#include <stdint.h>
 
 #include "vzMain.h"
 #include "vzImage.h"
@@ -61,8 +62,9 @@ void serserver_kill(void)
 
 int serserver_cmd(void* buf, int *p_bytes)
 {
-	int r, i, commands_count, cmd;
+    int r, i, commands_count, cmd, l;
 	char *filename, *cmd_name;
+    uint32_t* idx = NULL;
 
 	/* probe */
 	r = vz_serial_cmd_probe(buf, p_bytes);
@@ -89,8 +91,8 @@ int serserver_cmd(void* buf, int *p_bytes)
 				/* map variable */
 				vz_serial_cmd_parseNmap(buf, i, (void*)&filename);
 
-				/* do it */
-				CMD_loadscene(filename, NULL);
+                /* load into level zero */
+                CMD_layer_load(filename, 0);
 				break;
 
 			case VZ_CMD_SCREENSHOT:
@@ -102,9 +104,32 @@ int serserver_cmd(void* buf, int *p_bytes)
 				CMD_screenshot(filename, NULL);
 				break;
 
-			default:
-				if(scene)
-					vzMainSceneCommand(scene, cmd, i, buf);
+            case VZ_CMD_LAYER_LOAD:
+
+                /* map variable */
+                vz_serial_cmd_parseNmap(buf, i, (void*)&filename, (void*)&idx);
+
+                /* load into defined level */
+                if(idx)
+                    CMD_layer_load(filename, *idx);
+
+                break;
+
+            case VZ_CMD_LAYER_UNLOAD:
+
+                /* map variable */
+                vz_serial_cmd_parseNmap(buf, i, (void*)&idx);
+
+                /* load into defined level */
+                if(idx)
+                    CMD_layer_unload(*idx);
+
+                break;
+
+            default:
+                for(l = 0; l < VZ_MAX_LAYERS; l++)
+                    if(layers[l])
+                        vzMainSceneCommand(layers[l], cmd, i, buf);
 				break;
 
 		};
