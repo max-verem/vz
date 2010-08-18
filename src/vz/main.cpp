@@ -189,12 +189,16 @@ int CMD_layer_load(char* filename, long idx)
     }
     else
     {
-        void* scene_tmp;
+        void* scene_tmp = NULL;
 
         /* free loaded scene */
-        if(layers[idx])
-            vzMainSceneFree(layers[idx]);
+        scene_tmp = layers[idx];
         layers[idx] = NULL;
+
+        ReleaseMutex(layers_lock);
+
+        if(scene_tmp)
+            vzMainSceneFree(scene_tmp);
 
         /* create a new scene */
         scene_tmp = vzMainSceneNew(functions, config, &tv);
@@ -207,9 +211,12 @@ int CMD_layer_load(char* filename, long idx)
             vzMainSceneFree(scene_tmp);
 
             r = -2;
-        }
-        else
-            layers[idx] = scene_tmp;
+            scene_tmp = NULL;
+        };
+
+        WaitForSingleObject(layers_lock, INFINITE);
+
+        layers[idx] = scene_tmp;
     };
 
     // unlock scene
