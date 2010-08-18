@@ -487,7 +487,7 @@ static void vz_scene_render(void)
 	)
 		force_render = 1;
 
-	while(force_render)
+	while(force_render && !f_exit)
 	{
         int idx, cnt;
 
