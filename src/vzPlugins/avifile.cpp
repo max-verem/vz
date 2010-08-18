@@ -487,7 +487,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
     desc->buf_filled    = (int*)malloc(sizeof(int) * desc->buf_cnt);
     if(!desc->buf_frame || !desc->buf_clear || !desc->buf_fill || !desc->buf_filled)
     {
-        logger_printf(1, "avifile: aviloader_proc ENOMEM1");
+        logger_printf(1, "avifile: aviloader_proc ENOMEM1, file=%s", desc->filename);
         goto ex1;
     };
 
@@ -495,7 +495,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
     desc->buf_data = (void**)malloc(sizeof(void*) * desc->buf_cnt);
     if(!desc->buf_data)
     {
-        logger_printf(1, "avifile: aviloader_proc ENOMEM2");
+        logger_printf(1, "avifile: aviloader_proc ENOMEM2, file=%s", desc->filename);
         goto ex1;
     };
     memset(desc->buf_data, 0, sizeof(void*) * desc->buf_cnt);
@@ -509,7 +509,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
     };
     if(j)
     {
-        logger_printf(1, "avifile: aviloader_proc ENOMEM3");
+        logger_printf(1, "avifile: aviloader_proc ENOMEM3, file=%s", desc->filename);
         goto ex1;
     };
 
