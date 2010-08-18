@@ -76,6 +76,7 @@ ChangeLog:
 #include <string.h>
 #include <process.h>
 #include <time.h>
+#include <direct.h>
 #include "vzVersion.h"
 #include "vzGlExt.h"
 
@@ -509,7 +510,7 @@ static void vz_scene_render(void)
         /* draw layers */
         void* render_starter = NULL;
         for(idx = 0, cnt = 0; idx < VZ_MAX_LAYERS && !layers[idx]; idx++);
-        if(layers[idx])
+        if(idx < VZ_MAX_LAYERS && layers[idx])
             vzMainSceneDisplay(layers[idx], global_frame_no, VZ_MAX_LAYERS, layers);
         else
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1177,6 +1178,10 @@ int main(int argc, char** argv)
 
 			SetThreadPriority(sync_render_handle , THREAD_PRIORITY_HIGHEST);
 		};
+
+        /* change working directory */
+        if(vzConfigParam(config, "main", "change_root"))
+            _chdir(vzConfigParam(config, "main", "change_root"));
 
 		// check if we need automaticaly load scene
         if(startup_scene_file)
