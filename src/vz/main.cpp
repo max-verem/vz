@@ -191,6 +191,11 @@ int CMD_layer_load(char* filename, long idx)
     {
         void* scene_tmp;
 
+        /* free loaded scene */
+        if(layers[idx])
+            vzMainSceneFree(layers[idx]);
+        layers[idx] = NULL;
+
         /* create a new scene */
         scene_tmp = vzMainSceneNew(functions, config, &tv);
 
@@ -204,13 +209,7 @@ int CMD_layer_load(char* filename, long idx)
             r = -2;
         }
         else
-        {
-            /* free loaded scene */
-            if(layers[idx])
-                vzMainSceneFree(layers[idx]);
-
             layers[idx] = scene_tmp;
-        };
     };
 
     // unlock scene
