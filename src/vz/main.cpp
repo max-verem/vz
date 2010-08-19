@@ -513,6 +513,14 @@ static void vz_scene_render(void)
 		// lock scene
 		WaitForSingleObject(layers_lock,INFINITE);
 
+        /* release textures */
+        {
+            int r = glExtReleaseTextures();
+        
+            if(GL_NO_ERROR != r)
+                logger_printf(1, "glExtReleaseTextures ERROR 0x%.4X", r);
+        };
+
         /* draw layers */
         void* render_starter = NULL;
         for(idx = 0, cnt = 0; idx < VZ_MAX_LAYERS && !layers[idx]; idx++);

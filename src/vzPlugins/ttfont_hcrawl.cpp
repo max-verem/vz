@@ -47,6 +47,7 @@ static char* _plugin_notes =
 #include "../vz/plugin-procs.h"
 #include "../templates/hash.hpp"
 #include "../vz/vzTTFont.h"
+#include "../vz/vzGlExt.h"
 
 #include <process.h>
 #include <stdio.h>
@@ -231,7 +232,7 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
-		glDeleteTextures (1, &(_DATA->_texture));
+        glExtDeleteTextures(1, &(_DATA->_texture));
 
 	// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
@@ -696,7 +697,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		/* detelete prev texture */
 		if(_DATA->_texture_initialized)
 		{
-			glDeleteTextures (1, &(_DATA->_texture));
+			glDeleteTextures_D (1, &(_DATA->_texture));
 			_DATA->_texture_initialized = 0;
 		};
 

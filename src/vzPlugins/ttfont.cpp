@@ -52,6 +52,7 @@ static char* _plugin_notes =
 #include "../vz/plugin-procs.h"
 #include "../templates/hash.hpp"
 #include "../vz/vzTTFont.h"
+#include "../vz/vzGlExt.h"
 
 #pragma comment(lib, "winmm.lib")
 
@@ -360,7 +361,7 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
-		glDeleteTextures (1, &(_DATA->_texture));
+        glExtDeleteTextures(1, &(_DATA->_texture));
 
 	// async renderer
 	_DATA->_exit_flag = 1;
@@ -444,12 +445,10 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 		// free image
 		vzImageRelease(&_DATA->_image);
 
-		// check if need to release old texture
-		if(_DATA->_texture_initialized)
-		{
-			// release previous texture
-			glDeleteTextures (1, &texture);	
-		};
+        // check if need to release old texture
+        if(_DATA->_texture_initialized)
+            // release previous texture
+            glDeleteTextures_D (1, &texture);
 
 		// set flag about new texture initialized
 		_DATA->_texture_initialized = 1;

@@ -55,6 +55,7 @@ static char* _plugin_notes =
 #include "../vz/plugin.h"
 #include "../vz/plugin-procs.h"
 #include "../vz/vzImage.h"
+#include "../vz/vzGlExt.h"
 
 #include <stdio.h>
 #include <windows.h>
@@ -1117,7 +1118,7 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
-		glDeleteTextures (1, &(_DATA->_texture));
+        glExtDeleteTextures(1, &(_DATA->_texture));
 
 	/* destroy loaders */
 	for(i = 0; i<MAX_AVI_LOADERS; i++)
@@ -1168,7 +1169,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			/* texture should be (re)initialized */
 
 			if(_DATA->_texture_initialized)
-				glDeleteTextures (1, &(_DATA->_texture));
+				glDeleteTextures_D (1, &(_DATA->_texture));
 
 			/* generate new texture */
 			glGenTextures(1, &_DATA->_texture);

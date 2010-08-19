@@ -50,6 +50,7 @@ static char* _plugin_notes =
 #include "../vz/plugin.h"
 #include "../vz/vzImage.h"
 #include "../vz/plugin-procs.h"
+#include "../vz/vzGlExt.h"
 
 #include <process.h>
 #include <stdio.h>
@@ -186,7 +187,7 @@ PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 	_DATA->_filename = (char*)malloc(MAX_PATH);
 	_DATA->_filename[0] = 0;
 
-	// return pointer
+    // return pointer
 	return data;
 };
 
@@ -194,7 +195,7 @@ PLUGIN_EXPORT void destructor(void* data)
 {
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
-		glDeleteTextures (1, &(_DATA->_texture));
+        glExtDeleteTextures(1, &(_DATA->_texture));
 
 	// Wait until previous thread finish
 	if (INVALID_HANDLE_VALUE != _DATA->_async_image_loader)
@@ -259,7 +260,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 
 			/* delete old texture in some case */
 			if(_DATA->_texture_initialized)
-				glDeleteTextures (1, &(_DATA->_texture));
+				glDeleteTextures_D (1, &(_DATA->_texture));
 
 			/* generate new texture */
 			glGenTextures(1, &_DATA->_texture);

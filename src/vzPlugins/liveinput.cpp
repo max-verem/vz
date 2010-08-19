@@ -269,7 +269,7 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
-		glDeleteTextures (1, &(_DATA->_texture));
+        glExtDeleteTextures(1, &(_DATA->_texture));
 
 	/* free arrays coords */
 	if(_DATA->_ft_vertices) free(_DATA->_ft_vertices);
@@ -316,7 +316,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			/* texture should be (re)initialized */
 
 			if(_DATA->_texture_initialized)
-				glDeleteTextures (1, &(_DATA->_texture));
+				glDeleteTextures_D (1, &(_DATA->_texture));
 
 			/* generate new texture */
 			glGenTextures(1, &_DATA->_texture);

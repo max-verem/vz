@@ -234,4 +234,7 @@ extern VZGLEXT_API int  glExtInitDone;
 VZGLEXT_API void vzGlExtInit();
 VZGLEXT_API GLenum vzGlExtEnumLookup(char* name);
 
+extern VZGLEXT_API void glExtDeleteTextures(GLsizei n, const GLuint *textures);
+extern VZGLEXT_API int glExtReleaseTextures();
+
 #endif /* VZGLEXT_H */

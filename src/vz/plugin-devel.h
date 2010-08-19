@@ -86,5 +86,14 @@ PLUGIN_EXPORT vzPluginInfo info =											\
 	_plugin_notes															\
 }
 
+#define glDeleteTextures_D(N, T)                            \
+{                                                           \
+    int r;                                                  \
+    glDeleteTextures(N, T);                                 \
+    r = glGetError();                                       \
+    if(GL_NO_ERROR != r)                                    \
+    logger_printf(1, "glDeleteTextures ERROR 0x%.4X at %s:%d",  \
+        r, __FILE__, __LINE__);                             \
+}
 
 #endif
