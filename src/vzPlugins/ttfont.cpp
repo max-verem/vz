@@ -552,11 +552,15 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		/* reallocate data for font name and text */
 		if(tmp->s_font)
 		{
-			strcpy(tmp2 = (char*)malloc(strlen(tmp->s_font) + 1) , tmp->s_font); tmp->s_font = tmp2;
+            tmp2 = (char*)malloc(strlen(tmp->s_font) + 1);
+            strcpy(tmp2 , tmp->s_font);
+            tmp->s_font = tmp2;
 		};
 		if(tmp->s_text)
 		{
-			strcpy(tmp2 = (char*)malloc(strlen(tmp->s_text) + 1) , tmp->s_text); tmp->s_text = tmp2;
+            tmp2 = (char*)malloc(strlen(tmp->s_text) + 1);
+            strcpy(tmp2 , tmp->s_text);
+            tmp->s_text = tmp2;
 		};
 
 		/* release struct lock */
