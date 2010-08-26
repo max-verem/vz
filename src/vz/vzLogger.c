@@ -307,7 +307,8 @@ VZLOGGER_API int logger_printf(int type, char* message, ...)
 		fprintf(stderr, "ERROR! message queue TIMEOUT or FAIL!!!\n");
 
     /* free useless message */
-	free(buf);
+    if(buf)
+        free(buf);
 
     /* init va arg */
     va_end(args);
