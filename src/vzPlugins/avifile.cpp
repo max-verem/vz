@@ -379,6 +379,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
 {
     HRESULT hr;
     struct aviloader_desc* desc;
+    PAVIFILE avi_file = NULL;
     PAVISTREAM avi_stream = NULL;
     AVISTREAMINFO *strhdr = NULL;   /* AVI stream definition structs */
     LPBITMAPINFOHEADER frame_info;
@@ -400,20 +401,32 @@ static unsigned long WINAPI aviloader_proc(void* p)
     ReleaseMutex(_avi_op_lock);
 #endif /* AVI_OP_LOCK */
 
-    /* open avi file stream */
-    hr = AVIStreamOpenFromFile
+    hr = AVIFileOpen
     (
-        &avi_stream,            /* PAVISTREAM * ppavi,    */
-        desc->filename,         /* LPCTSTR szFile,        */
-        streamtypeVIDEO,        /* DWORD fccType,         */
-        0,                      /* LONG lParam,           */
-        OF_READ,                /* UINT mode,             */
-        NULL                    /* CLSID * pclsidHandler  */
+        &avi_file,              /* PAVIFILE *ppfile,    */
+        desc->filename,         /* LPCTSTR szFile,      */
+        OF_READ,                /* UINT mode,           */
+        NULL                    /* CLSID pclsidHandler  */
     );
     if(hr)
     {
-        logger_printf(1, "avifile: aviloader_proc AVIStreamOpenFromFile('%s') FAILED",
-            desc->filename);
+        logger_printf(1, "avifile: aviloader_proc AVIFileOpen('%s') FAILED: %s",
+            desc->filename, avi_err(hr));
+        goto ex1;
+    };
+
+    /* open avi file stream */
+    hr = AVIFileGetStream
+    (
+        avi_file,               /* PAVIFILE pfile,      */
+        &avi_stream,            /* PAVISTREAM  *ppavi,  */
+        streamtypeVIDEO,        /* DWORD fccType,       */
+        0                       /* LONG lParam          */
+    );
+    if(hr)
+    {
+        logger_printf(1, "avifile: aviloader_proc AVIFileGetStream('%s') FAILED: %s",
+            desc->filename, avi_err(hr));
         goto ex1;
     };
 
@@ -593,13 +606,17 @@ ex1:
 
     /* release avi file */
     if(avi_stream)
-        AVIStreamClose(avi_stream);
+        AVIStreamRelease(avi_stream);
+
+    if(avi_file)
+        AVIFileRelease(avi_file);
 
     /* init AVI for this thread */
 #ifdef AVI_OP_LOCK
     WaitForSingleObject(_avi_op_lock,INFINITE);
 #endif /* AVI_OP_LOCK */
     AVIFileExit();
+    ::CoUninitialize();
 #ifdef AVI_OP_LOCK
     ReleaseMutex(_avi_op_lock);
 #endif /* AVI_OP_LOCK */
