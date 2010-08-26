@@ -28,6 +28,7 @@ ChangeLog:
 
 #include <stdio.h>
 #include <winsock2.h>
+#include <Ws2tcpip.h>
 
 #include "vzVersion.h"
 #include "vzMain.h"
@@ -65,6 +66,7 @@ unsigned long WINAPI udpserver(void* _config)
 	int l;
 	sockaddr_in s_local;
 	sockaddr_in s_remote;
+    struct ip_mreq imreq;
 
 	/* check if server is enabled */
 	if(!vzConfigParam(_config, "udpserver", "enable"))
@@ -96,10 +98,27 @@ unsigned long WINAPI udpserver(void* _config)
 	if (SOCKET_ERROR == bind(socket_listen,(sockaddr*)&s_local, sizeof(sockaddr_in))) 
 	{
 		logger_printf(1, "udpserver: bind() failed");
+err:
 		closesocket(socket_listen);
 		ExitThread(0);
 		return 0;
 	};
+
+    if(temp = vzConfigParam(_config, "udpserver", "multicast"))
+    {
+        memset(&imreq, 0, sizeof(struct ip_mreq));
+        imreq.imr_multiaddr.s_addr = inet_addr(temp);
+        imreq.imr_interface.s_addr = INADDR_ANY; // use DEFAULT interface
+
+        r = setsockopt(socket_listen, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+              (const char *)&imreq, sizeof(struct ip_mreq));
+        if(SOCKET_ERROR == r)
+        {
+            logger_printf(1, "udpserver: setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, '%s') failed, r=%d",
+                temp, r);
+            goto err;
+        };
+    };
 
 	/* initialize buffer */
 	buf = malloc(UDPSERVER_BUFSIZE);

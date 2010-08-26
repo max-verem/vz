@@ -45,6 +45,7 @@ ChangeLog:
 #define WS_VER_MAJOR 2
 #define WS_VER_MINOR 2
 #include <winsock2.h>
+#include <Ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 #define SNPRINTF _snprintf
 #endif /* __linux__ */
@@ -70,6 +71,7 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
 	char host[128];
 	int port, r, l;
 	struct sockaddr_in addr;
+    struct sockaddr_in saddr;
 	struct hostent *host_ip;
 #ifndef __linux__
 	SOCKET
@@ -111,10 +113,49 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
         return -errno;                    
 #endif /* __linux__ */
 
+    /* setup source address */
+    memset(&saddr, 0, sizeof(struct sockaddr_in));
+    saddr.sin_family = PF_INET;
+    saddr.sin_port = htons(0); // Use the first free port
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY); // bind socket to any interface
+    r = bind(s, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in));
+#ifndef __linux__
+    if(INVALID_SOCKET == s)
+        return -WSAGetLastError();
+#else /* __linux__ */
+    if(-1 == s)
+        return -errno;
+#endif /* __linux__ */
+
 	/* prepare address */
     addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(inet_ntoa(*(struct in_addr*)(host_ip->h_addr_list[0])));
 	addr.sin_port = htons((unsigned short)port);
+
+    /* check for multicast setup */
+    if((addr.sin_addr.s_addr > inet_addr("224.0.0.0")) &&
+        (addr.sin_addr.s_addr < inet_addr("239.255.255.255")))
+    {
+        struct in_addr iaddr;
+        unsigned char ttl = 3;
+        unsigned char one = 1;
+
+        memset(&iaddr, 0, sizeof(struct in_addr));
+
+        iaddr.s_addr = INADDR_ANY; // use DEFAULT interface
+
+        // Set the outgoing interface to DEFAULT
+        r = setsockopt(s, IPPROTO_IP, IP_MULTICAST_IF,
+            (const char *)&iaddr, sizeof(struct in_addr));
+
+        // Set multicast packet TTL to 3; default TTL is 1
+        r = setsockopt(s, IPPROTO_IP, IP_MULTICAST_TTL,
+            (const char *)&ttl, sizeof(unsigned char));
+
+        // send multicast traffic to myself too
+        r = setsockopt(s, IPPROTO_IP, IP_MULTICAST_LOOP,
+            (const char *)&one, sizeof(unsigned char));
+    };
 
 	/* send datagram */
 	l = sizeof(struct sockaddr_in);
