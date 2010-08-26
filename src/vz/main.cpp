@@ -159,11 +159,21 @@ int CMD_layer_unload(long idx)
     }
     else
     {
+        void* scene_tmp = NULL;
+
         /* free loaded scene */
         if(layers[idx])
-            vzMainSceneFree(layers[idx]);
+        {
+            scene_tmp = layers[idx];
+            layers[idx] = NULL;
 
-        layers[idx] = NULL;
+            // unlock scene
+            ReleaseMutex(layers_lock);
+
+            vzMainSceneFree(scene_tmp);
+
+            return r;
+        };
     };
 
     // unlock scene
@@ -762,6 +772,10 @@ static void vz_window_reshape(int w, int h)
 	glLoadIdentity();
 };
 
+#ifdef SCENE_LOAD_LEAK_DETECT
+static void* test_scene = NULL;
+static _CrtMemState s;
+#endif /* SCENE_LOAD_LEAK_DETECT */
 static LRESULT vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	switch (message)
@@ -786,6 +800,32 @@ static LRESULT vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpa
 		case WM_KEYDOWN:
 			switch (wparam)
 			{
+#ifdef SCENE_LOAD_LEAK_DETECT
+                case 'd':
+                case 'D':
+                    if(!test_scene)
+                    {
+                        _CrtMemCheckpoint(&s);
+                        _CrtMemDumpStatistics(&s);
+                        test_scene = vzMainSceneNew(functions, config, &tv);
+                        vzMainSceneLoad(test_scene, "./weather_five-days/weather_five-days_v02_01.xml");
+                    };
+                    break;
+                case 'f':
+                case 'F':
+                    if(test_scene)
+                        vzMainSceneFree(test_scene);
+                    _CrtMemDumpAllObjectsSince(&s);
+                    _CrtMemDumpStatistics(&s);
+                    test_scene = NULL;
+                    break;
+                case 'e':
+                case 'E':
+                    _CrtMemDumpAllObjectsSince(&s);
+                    _CrtMemDumpStatistics(&s);
+                    break;
+#endif /* SCENE_LOAD_LEAK_DETECT */
+
 				case 'c':
 				case 'C':
 					//  Alarm scene clear !!!!!
