@@ -214,7 +214,7 @@ static void imgseqloader_full(struct aviloader_desc* desc,
                 /* setup flags */
                 desc->buf_fill[i] = 0;
                 desc->buf_clear[i] = 0;
-                desc->buf_filled[i] = i;
+                desc->buf_filled[i] = i + 1;
             }
             else
                 r = 1;
@@ -281,7 +281,7 @@ static void aviloader_full(struct aviloader_desc* desc, PGETFRAME pgf,
             /* setup flags */
             desc->buf_fill[i] = 0;
             desc->buf_clear[i] = 0;
-            desc->buf_filled[i] = i;
+            desc->buf_filled[i] = i + 1;
         }
         else
         {
