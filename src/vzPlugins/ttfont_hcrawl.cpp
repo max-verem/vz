@@ -97,6 +97,8 @@ struct txt_msg_descr
 	HANDLE async;
 	char* buffer;
 	void* parent;
+
+    vzTTFont* font;
 };
 
 // declare name and version of plugin
@@ -229,6 +231,7 @@ PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 PLUGIN_EXPORT void destructor(void* data)
 {
 	int i;
+    vzPluginData* ctx = (vzPluginData*)data;
 
 	// check if texture initialized
 	if(_DATA->_texture_initialized)
@@ -238,19 +241,19 @@ PLUGIN_EXPORT void destructor(void* data)
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 
 	/* wait for all rendering objects and destroy*/
-	for(i = 0; i<_DATA->_txt_msg_len; i++)
+    for(i = 0; i < ctx->_txt_msg_len; i++)
 	{
-		if(INVALID_HANDLE_VALUE != _DATA->_txt_msg[i]->async)
-        {
-			CloseHandle(_DATA->_txt_msg[i]->async);
-            _DATA->_txt_msg[i]->async = INVALID_HANDLE_VALUE;
-        };
+        struct txt_msg_descr *msg = ctx->_txt_msg[i];
+
+        /* close a async renderer handler */
+        if(INVALID_HANDLE_VALUE != msg->async)
+            CloseHandle(msg->async);
 
         /* destroy symbols */
-        if(_DATA->_font)
-            _DATA->_font->delete_symbols(_DATA->_txt_msg[i]->id);
+        if(msg->id >= 0)
+            msg->font->delete_symbols(msg->id);
 
-		free(_DATA->_txt_msg[i]);
+        free(msg);
 	};
 	free(_DATA->_txt_msg);
 	_DATA->_txt_msg_len = 0;
@@ -268,6 +271,7 @@ PLUGIN_EXPORT void destructor(void* data)
 PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 {
 	int i, j, l;
+    vzPluginData* ctx = (vzPluginData*)data;
 
 	/* try to lock struct */
 	if(WaitForSingleObject(_DATA->_lock_update,0) != WAIT_OBJECT_0)
@@ -636,15 +640,12 @@ unsigned long WINAPI _msg_layouter(void* param)
 	struct txt_msg_descr* txt_msg = (struct txt_msg_descr*)param;
 	void* data = txt_msg->parent;
 
-	/* detect font used */
-	vzTTFont* font = _DATA->_font;
-
 	/* check if font is ok */
-	if(font)
+	if(txt_msg->font)
 	{
 		/* compose */
-		txt_msg->id = font->compose(txt_msg->buffer, &_DATA->font_layout);
-		txt_msg->width = font->get_symbol_width(txt_msg->id);
+		txt_msg->id = txt_msg->font->compose(txt_msg->buffer, &_DATA->font_layout);
+		txt_msg->width = txt_msg->font->get_symbol_width(txt_msg->id);
 #ifdef _DEBUG
 		logger_printf(2, DEBUG_LINE_ARG 
 			"Composed: txt_msg->id='%d' txt_msg->width='%d'", DEBUG_LINE_PARAM, 
@@ -673,6 +674,8 @@ unsigned long WINAPI _msg_layouter(void* param)
 PLUGIN_EXPORT void notify(void* data, char* param_name)
 {
 	int i;
+
+    vzPluginData* ctx = (vzPluginData*)data;
 
 	//wait for mutext free
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
@@ -751,8 +754,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 	};
 
 	/* appending message check */
-//	if(_DATA->_s_trig_append != _DATA->s_trig_append)
-	if(NULL != _DATA->s_trig_append)
+    if((!param_name || !strcmp(param_name, "s_trig_append")) && ctx->s_trig_append && ctx->s_trig_append[0])
 	{
 #ifdef _DEBUG
 		logger_printf(0, DEBUG_LINE_ARG 
@@ -773,14 +775,15 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		memcpy(txt_msg->buffer = (char*)malloc(l),  _DATA->s_trig_append, l);
 		txt_msg->parent = _DATA;
 
+        /* setup configured font */
+        txt_msg->font = ctx->_font;
+
 		/* start async thread */
 		txt_msg->async = CreateThread(0, 0, _msg_layouter, txt_msg, 0, NULL);
         SetThreadPriority(txt_msg->async , VZPLUGINS_AUX_THREAD_PRIO);
 
-        /* free string to append */
-        free(_DATA->s_trig_append);
-		/* clear bit */
-        _DATA->s_trig_append = NULL;
+        /* make a dirty */
+        ctx->s_trig_append[0] = 0;
 	};
 
 	/* check if reset rised */
