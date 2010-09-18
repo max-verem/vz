@@ -309,7 +309,7 @@ int vzTTFont::_get_glyph(unsigned short char_code, void** font_glyph, void** str
 			FT_Load_Glyph( (FT_Face)_font_face, glyph_index, FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING);
 			FT_Get_Glyph( ((FT_Face)_font_face)->glyph, &temp_glyph);
 			FT_Glyph_Stroke( &temp_glyph, (FT_Stroker)_font_stroker, 1);
-			FT_Glyph_To_Bitmap(&temp_glyph, FT_RENDER_MODE_NORMAL, NULL, 0);
+            FT_Glyph_To_Bitmap(&temp_glyph, FT_RENDER_MODE_NORMAL, NULL, 1);
 			_strokes_cache[char_code] = temp_glyph;
 		};
 
