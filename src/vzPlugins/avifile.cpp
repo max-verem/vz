@@ -1207,7 +1207,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			(
 				GL_TEXTURE_2D,			// GLenum target,
 				0,						// GLint level,
-				4,						// GLint components,
+                GL_RGBA8,               // GLint components,
 				_DATA->_width,			// GLsizei width, 
 				_DATA->_height,			// GLsizei height, 
 				0,						// GLint border,
