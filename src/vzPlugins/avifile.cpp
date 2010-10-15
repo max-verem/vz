@@ -1163,6 +1163,7 @@ PLUGIN_EXPORT void destructor(void* data)
 PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 {
 	unsigned long r;
+    vzPluginData* ctx = (vzPluginData*)data;
 
 	// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
@@ -1233,20 +1234,23 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			(_DATA->_loaders[0]->buf_filled[ _DATA->_loaders[0]->cursor ] )
 		)
 		{
-			/* load */
-			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
-			glTexSubImage2D
-			(
-				GL_TEXTURE_2D,									// GLenum target,
-				0,												// GLint level,
-				(_DATA->_width - _DATA->_loaders[0]->width)/2,	// GLint xoffset,
-				(_DATA->_height - _DATA->_loaders[0]->height)/2,// GLint yoffset,
-				_DATA->_loaders[0]->width,						// GLsizei width,
-				_DATA->_loaders[0]->height,						// GLsizei height,
-				_DATA->_loaders[0]->bpp,						// GLenum format,
-				GL_UNSIGNED_BYTE,								// GLenum type,
-				_DATA->_loaders[0]->buf_data[ _DATA->_loaders[0]->cursor ]	// const GLvoid *pixels 
-			);
+            /* load frame */
+            if(!(0.0f == session->f_alpha && ctx->l_loop))  // we ignore loading texture for looped hidden animations
+            {
+                glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+                glTexSubImage2D
+                (
+                    GL_TEXTURE_2D,                                      // GLenum target,
+                    0,                                                  // GLint level,
+                    (_DATA->_width - _DATA->_loaders[0]->width)/2,      // GLint xoffset,
+                    (_DATA->_height - _DATA->_loaders[0]->height)/2,    // GLint yoffset,
+                    _DATA->_loaders[0]->width,                          // GLsizei width,
+                    _DATA->_loaders[0]->height,                         // GLsizei height,
+                    _DATA->_loaders[0]->bpp,                            // GLenum format,
+                    GL_UNSIGNED_BYTE,                                   // GLenum type,
+                    _DATA->_loaders[0]->buf_data[ _DATA->_loaders[0]->cursor ] // const GLvoid *pixels 
+                );
+            };
 
 			/* sync cursor value */
 			_DATA->_cursor_loaded = _DATA->_loaders[0]->cursor;
