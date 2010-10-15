@@ -237,6 +237,9 @@ VZGLEXT_API GLenum vzGlExtEnumLookup(char* name);
 extern VZGLEXT_API void glExtDeleteTextures(GLsizei n, const GLuint *textures);
 extern VZGLEXT_API int glExtReleaseTextures();
 
+extern VZGLEXT_API void glExtDeleteBuffers(GLsizei n, const GLuint *buffers);
+extern VZGLEXT_API int glExtReleaseBuffers();
+
 #define glDeleteTextures_D(N, T)                            \
 {                                                           \
     int r;                                                  \

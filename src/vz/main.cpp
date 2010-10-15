@@ -531,6 +531,14 @@ static void vz_scene_render(void)
                 logger_printf(1, "glExtReleaseTextures ERROR 0x%.4X", r);
         };
 
+        /* release buffers */
+        {
+            int r = glExtReleaseBuffers();
+        
+            if(GL_NO_ERROR != r)
+                logger_printf(1, "glExtReleaseTextures ERROR 0x%.4X", r);
+        };
+
         /* draw layers */
         void* render_starter = NULL;
         for(idx = 0, cnt = 0; idx < VZ_MAX_LAYERS && !layers[idx]; idx++);
