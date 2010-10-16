@@ -1121,6 +1121,7 @@ PLUGIN_EXPORT int load(void* config)
     p = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
     memset(p, 0, _pbo_empty_size);
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
     return 0;
 };
