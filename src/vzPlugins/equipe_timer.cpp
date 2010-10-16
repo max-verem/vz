@@ -283,8 +283,9 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{NULL,NULL,0}
 };
 
-PLUGIN_EXPORT void configure(void* config_ptr)
+PLUGIN_EXPORT int load(void* config_ptr)
 {
+    int r = 0;
 	char* serial_port_name;
 
 	/* detect if we need to start async reader */
@@ -296,7 +297,12 @@ PLUGIN_EXPORT void configure(void* config_ptr)
 		timers_reader = CreateThread(0, 0, timers_reader_proc, serial_port_name, 0, &thread);
 	}
 	else
+    {
+        r = 1;
 		logger_printf(1, DEBUG_LINE_ARG " Warning 'serial_port_name' in section 'equipe_timer' not defined!", DEBUG_LINE_PARAM);
+    };
+
+    return r;
 };
 
 
