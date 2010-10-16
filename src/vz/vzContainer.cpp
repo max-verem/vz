@@ -155,6 +155,28 @@ vzContainer::~vzContainer()
 	TRACE_POINT();
 };
 
+void vzContainer::init()
+{
+    unsigned int i;
+
+    for(i=0; i<_functions.count(); i++)
+        _functions.value(i)->init();
+
+    for(i=0;i<_containers.count();i++)
+        _containers.value(i)->init();
+};
+
+void vzContainer::release()
+{
+    unsigned int i;
+
+    for(i=0; i<_functions.count(); i++)
+        _functions.value(i)->release();
+
+    for(i=0;i<_containers.count();i++)
+        _containers.value(i)->release();
+};
+
 void vzContainer::draw(vzRenderSession* render_session)
 {
 	// check if it visible

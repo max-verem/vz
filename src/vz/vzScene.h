@@ -97,6 +97,8 @@ public:
 	inline void register_timeline(char* id,vzMotionTimeline* timeline){_id_timelines.push(id,timeline);};
 	inline void register_director(char* id,vzMotionDirector* director){_id_directors.push(id,director);};
 	inline void register_controlkey(char* id,vzMotionControlKey* control){_id_controlkeys.push(id,control);};
+    void init();
+    void release();
 
 	// processor method describing
 	int command(char* cmd,char** error_log);

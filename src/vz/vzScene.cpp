@@ -430,6 +430,9 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
 
 static char* target_id_seps = " ,;:";
 
+void vzScene::init(){ if(_tree) _tree->init();};
+void vzScene::release(){ if(_tree) _tree->release();};
+
 void vzScene::draw(long frame,long field,long fill,long key,long order)
 {
 	// init render session and set defaults

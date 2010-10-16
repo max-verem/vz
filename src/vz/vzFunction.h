@@ -46,6 +46,8 @@ typedef void (*plugin_proc_render)(void* data,vzRenderSession* render_session);
 typedef void (*plugin_proc_notify)(void* data, char* param_name);
 typedef int (*plugin_proc_load)(void* config);
 typedef long (*plugin_proc_datasource)(void* data,vzRenderSession* render_session, long index, char** name, char** value);
+typedef int (*plugin_proc_init)(void*);
+typedef int (*plugin_proc_release)(void*);
 
 class vzFunction: public vzHash<vzPluginParameter*>
 {
@@ -65,6 +67,8 @@ class vzFunction: public vzHash<vzPluginParameter*>
 	plugin_proc_datasource	proc_datasource;
     plugin_proc_load        proc_load;
     plugin_proc_load        proc_unload;
+    plugin_proc_init        proc_init;
+    plugin_proc_release     proc_release;
 
 	// config
 	void* _config;
@@ -105,6 +109,10 @@ public:
 	long datasource(void* data,vzRenderSession* render_session, long index, char** name, char** value);
 	vzPluginInfo* info(void);
 #endif
+    inline int vzFunction::release(void* data){
+        return (proc_release)?proc_release(data):0;};
+    inline int vzFunction::init(void* data){
+        return (proc_init)?proc_init(data):0;};
 	
 	
 	unsigned long offset(char* parameter);

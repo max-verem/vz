@@ -110,6 +110,16 @@ VZMAIN_API int vzMainSceneLoad(void* scene, char* file_name)
 	return ((vzScene*)scene)->load(file_name);
 };
 
+VZMAIN_API void vzMainSceneInit(void* scene)
+{
+    if(scene) ((vzScene*)scene)->init();
+};
+
+VZMAIN_API void vzMainSceneRelease(void* scene)
+{
+    if(scene) ((vzScene*)scene)->release();
+};
+
 VZMAIN_API int vzMainSceneCommand(void* scene, char* cmd,char** error_log)
 {
 	return ((vzScene*)scene)->command(cmd,error_log);

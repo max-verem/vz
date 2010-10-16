@@ -142,6 +142,51 @@ int CMD_screenshot(char* filename, char** error_log)
 	return 0;
 };
 
+/* -------------------------------------------------------- */
+
+static void timestamp_screenshot()
+{
+	time_t ltime;
+	struct tm *rtime;
+
+	/* request time */
+	time( &ltime );
+
+	/* local */
+	rtime = localtime( &ltime );
+
+	/* format name */
+	strftime
+	(
+		screenshot_file , 
+		sizeof(screenshot_file),
+		"./vz-sc-%Y%m%d_%H%M%S.tga",
+		rtime 
+	);
+};
+
+/* ----------------------------------------------------------
+	Sync rendering & frame counting
+---------------------------------------------------------- */
+
+static struct
+{
+	HINSTANCE instance;
+	HDC hdc;
+	HWND wnd;
+	HGLRC glrc;
+	HANDLE lock;
+} vz_window_desc;
+
+static HANDLE global_frame_event;
+static unsigned long global_frame_no = 0;
+//static unsigned long stop_global_frames_counter = 0;
+static long skip_draw = 0;
+static long not_first_at = 0;
+
+/* ---------------------------------------------------------
+    scene load/unload
+-----------------------------------------------------------*/
 int CMD_layer_unload(long idx)
 {
     int r = 0;
@@ -208,7 +253,17 @@ int CMD_layer_load(char* filename, long idx)
         ReleaseMutex(layers_lock);
 
         if(scene_tmp)
+        {
+            /* release scene */
+            WaitForSingleObject(vz_window_desc.lock, INFINITE);
+            wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
+            vzMainSceneRelease(scene_tmp);
+            wglMakeCurrent(NULL, NULL);
+            ReleaseMutex(vz_window_desc.lock);
+
+            /* free scene */
             vzMainSceneFree(scene_tmp);
+        };
 
         /* create a new scene */
         scene_tmp = vzMainSceneNew(functions, config, &tv);
@@ -224,6 +279,13 @@ int CMD_layer_load(char* filename, long idx)
             scene_tmp = NULL;
         };
 
+        /* init scene */
+        WaitForSingleObject(vz_window_desc.lock, INFINITE);
+        wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
+        vzMainSceneInit(scene_tmp);
+        wglMakeCurrent(NULL, NULL);
+        ReleaseMutex(vz_window_desc.lock);
+
         WaitForSingleObject(layers_lock, INFINITE);
 
         layers[idx] = scene_tmp;
@@ -234,48 +296,6 @@ int CMD_layer_load(char* filename, long idx)
 
     return r;
 };
-
-/* -------------------------------------------------------- */
-
-static void timestamp_screenshot()
-{
-	time_t ltime;
-	struct tm *rtime;
-
-	/* request time */
-	time( &ltime );
-
-	/* local */
-	rtime = localtime( &ltime );
-
-	/* format name */
-	strftime
-	(
-		screenshot_file , 
-		sizeof(screenshot_file),
-		"./vz-sc-%Y%m%d_%H%M%S.tga",
-		rtime 
-	);
-};
-
-/* ----------------------------------------------------------
-	Sync rendering & frame counting
----------------------------------------------------------- */
-
-static struct
-{
-	HINSTANCE instance;
-	HDC hdc;
-	HWND wnd;
-	HGLRC glrc;
-	HANDLE lock;
-} vz_window_desc;
-
-static HANDLE global_frame_event;
-static unsigned long global_frame_no = 0;
-//static unsigned long stop_global_frames_counter = 0;
-static long skip_draw = 0;
-static long not_first_at = 0;
 
 /*----------------------------------------------------------
 	sync srcs

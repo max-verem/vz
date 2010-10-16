@@ -89,6 +89,12 @@ public:
 		
 	inline long datasource(vzRenderSession* render_session, long index, char** name, char** value)
 	{ if(_function) return _function->datasource(_data,render_session, index, name, value) ; else return 0;};
+
+    inline void init()
+    { if (_function) _function->init(_data);};
+
+    inline void release()
+    { if (_function) _function->release(_data);};
 };
 
 #endif

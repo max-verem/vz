@@ -62,6 +62,8 @@ VZMAIN_API int vzMainSceneLoad(void* scene, char* filename);
 VZMAIN_API int vzMainSceneCommand(void* scene, char* cmd, char** error_log);
 VZMAIN_API int vzMainSceneCommand(void* scene, int cmd, int index, void* buf);
 VZMAIN_API void vzMainSceneDisplay(void* scene, long frame, long renders_count = 0, void** renderers_list = 0);
+VZMAIN_API void vzMainSceneInit(void* scene);
+VZMAIN_API void vzMainSceneRelease(void* scene);
 
 // config interface
 VZMAIN_API void* vzConfigOpen(char* filename);

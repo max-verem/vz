@@ -65,6 +65,8 @@ public:
 	void visible(char* value);
 	void visible(long value);
 	long visible();
+    void init();
+    void release();
 };
 
 
