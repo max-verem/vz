@@ -96,6 +96,8 @@ static int _avi_concur_working = 0;
 #endif /* MAX_CONCUR_LOAD */
 
 #define PBO_SLICES  4
+#define _pbo_empty_size (2048 * 2048 * 4) /* 1920x1080 should fit */
+static unsigned int _pbo_empty_buf;
 
 BOOL APIENTRY DllMain
 (
@@ -107,26 +109,12 @@ BOOL APIENTRY DllMain
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-#ifdef AVI_OP_LOCK
-		_avi_op_lock = CreateMutex(NULL,FALSE,NULL);
-#endif /* AVI_OP_LOCK */
-#ifdef MAX_CONCUR_LOAD
-        _avi_concur_lock = CreateMutex(NULL,FALSE,NULL);
-#endif /* MAX_CONCUR_LOAD */
 			break;
 		case DLL_THREAD_ATTACH:
-			// init avi lib !
-			// AVIFileInit();
 			break;
 		case DLL_THREAD_DETACH:
 			break;
 		case DLL_PROCESS_DETACH:
-#ifdef AVI_OP_LOCK
-		CloseHandle(_avi_op_lock);
-#endif /* AVI_OP_LOCK */
-#ifdef MAX_CONCUR_LOAD
-        CloseHandle(_avi_concur_lock);
-#endif /* MAX_CONCUR_LOAD */
 			break;
     }
     return TRUE;
@@ -1113,6 +1101,45 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{NULL,NULL,0}
 };
 
+PLUGIN_EXPORT int load(void* config)
+{
+    int r;
+    void* p;
+
+#ifdef AVI_OP_LOCK
+    _avi_op_lock = CreateMutex(NULL,FALSE,NULL);
+#endif /* AVI_OP_LOCK */
+#ifdef MAX_CONCUR_LOAD
+    _avi_concur_lock = CreateMutex(NULL,FALSE,NULL);
+#endif /* MAX_CONCUR_LOAD */
+
+    /* init empty PBO object */
+    glGenBuffers(1, &_pbo_empty_buf);
+    r = glGetError();
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_buf);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_size, 0, GL_STREAM_DRAW);
+    p = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
+    memset(p, 0, _pbo_empty_size);
+    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
+
+    return 0;
+};
+
+PLUGIN_EXPORT int unload(void* config)
+{
+    /* check for global empty pbo */
+    glDeleteBuffers(1, &_pbo_empty_buf);
+
+#ifdef AVI_OP_LOCK
+    CloseHandle(_avi_op_lock);
+#endif /* AVI_OP_LOCK */
+#ifdef MAX_CONCUR_LOAD
+    CloseHandle(_avi_concur_lock);
+#endif /* MAX_CONCUR_LOAD */
+
+    return 0;
+};
+
 PLUGIN_EXPORT void* constructor(void)
 {
 	// init memmory for structure
@@ -1252,11 +1279,8 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			_DATA->_height = POT(_DATA->_loaders[0]->height);
 			_DATA->_texture_initialized = 1;
 
-			/* generate fake surface */
-			void* fake_frame = malloc(4*_DATA->_width*_DATA->_height);
-			memset(fake_frame,0,4*_DATA->_width*_DATA->_height);
-
 			/* create texture (init texture memory) */
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_buf);
 			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
 			glTexImage2D
 			(
@@ -1268,13 +1292,12 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 				0,						// GLint border,
 				GL_BGRA_EXT,			// GLenum format,
 				GL_UNSIGNED_BYTE,		// GLenum type,
-				fake_frame				// const GLvoid *pixels
+                NULL                    // const GLvoid *pixels
 			);
 			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
-			/* free memory of fake image */
-			free(fake_frame);
 #ifdef VERBOSE
 			logger_printf("avifile: reinitialized texture %dx%d", _DATA->_width, _DATA->_height);
 #endif /* VERBOSE */
