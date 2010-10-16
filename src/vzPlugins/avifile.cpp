@@ -618,7 +618,15 @@ ex1:
 };
 
 #ifndef MAX
-#define MAX(a,b) (((a)>(b))?(a):(b))
+#define MAX(a,b) VZ_MAX(a,b)
+#endif
+
+#ifndef VZ_MIN
+#define VZ_MIN(a,b) (((a)>(b))?(b):(a))
+#endif
+
+#ifndef VZ_MAX
+#define VZ_MAX(a,b) (((a)>(b))?(a):(b))
 #endif
 
 static int tmplcmp(char* a, char* b)
@@ -971,6 +979,8 @@ typedef struct
 
     unsigned int _pbo[PBO_SLICES];
     unsigned int _pbo_size;
+    unsigned int _pbo_slice_size;
+    unsigned int _pbo_slice_height;
 
 } vzPluginData;
 
@@ -1023,7 +1033,9 @@ vzPluginData default_value =
 	NULL,					// float* _ft_vertices;
 	NULL,					// float* _ft_texels;
     {0},                    // unsigned int _pbo[PBO_SLICES];
-    0                       // unsigned int _pbo_size;
+    0,                      // unsigned int _pbo_size;
+    0,                      // unsigned int _pbo_slice_height;
+    0                       // unsigned int _pbo_slice_size;
 };
 
 PLUGIN_EXPORT vzPluginParameter parameters[] = 
@@ -1259,6 +1271,9 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             /* update frame size */
             ctx->_pbo_size = pix_size(_DATA->_loaders[0]->bpp) *
                 _DATA->_loaders[0]->width * _DATA->_loaders[0]->height;
+            ctx->_pbo_slice_height = (_DATA->_loaders[0]->height + PBO_SLICES - 1) / PBO_SLICES;
+            ctx->_pbo_slice_size = pix_size(_DATA->_loaders[0]->bpp) *
+                _DATA->_loaders[0]->width * ctx->_pbo_slice_height;
 
             /* generate new buffers */
             glGenBuffers(PBO_SLICES, ctx->_pbo);
@@ -1267,7 +1282,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             for(b = 0; b < PBO_SLICES; b++)
             {
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[b]);
-                glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_size / PBO_SLICES, 0, GL_STREAM_DRAW);
+                glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_slice_size, 0, GL_STREAM_DRAW);
             };
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
         };
@@ -1338,11 +1353,13 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
                     pbo_ptr = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
                     if(pbo_ptr)
                     {
-                        void* src_slice = 
+                        void* src_slice_ptr = 
                             (unsigned char*)_DATA->_loaders[0]->buf_data[ _DATA->_loaders[0]->cursor ] +
-                            b * (ctx->_pbo_size / PBO_SLICES);
+                            b * ctx->_pbo_slice_size;
+                        unsigned int src_slice_size =
+                            VZ_MIN(ctx->_pbo_size - b * ctx->_pbo_slice_size, ctx->_pbo_slice_size);
 
-                        memcpy(pbo_ptr, src_slice, ctx->_pbo_size / PBO_SLICES);
+                        memcpy(pbo_ptr, src_slice_ptr, src_slice_size);
 
                         glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
                     };
@@ -1354,11 +1371,10 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
                         0,                                                  // GLint level,
                         (_DATA->_width - _DATA->_loaders[0]->width)/2,      // GLint xoffset,
                         (_DATA->_height - _DATA->_loaders[0]->height)/2 +
-                            b * (_DATA->_loaders[0]->height / PBO_SLICES),
-//                        (_DATA->_height - _DATA->_loaders[0]->height)/2,    // GLint yoffset,
+                            b * ctx->_pbo_slice_height,                     // GLint yoffset,
                         _DATA->_loaders[0]->width,                          // GLsizei width,
-                        _DATA->_loaders[0]->height / PBO_SLICES,
-//                        _DATA->_loaders[0]->height,                         // GLsizei height,
+                        VZ_MIN(_DATA->_loaders[0]->height - b * ctx->_pbo_slice_height,
+                            ctx->_pbo_slice_height),                        // GLsizei height,
                         _DATA->_loaders[0]->bpp,                            // GLenum format,
                         GL_UNSIGNED_BYTE,                                   // GLenum type,
                         NULL                                                // const GLvoid *pixels 
