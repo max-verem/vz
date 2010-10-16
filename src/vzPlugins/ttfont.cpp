@@ -364,7 +364,7 @@ PLUGIN_EXPORT int release(void* data)
 
     // check if texture initialized
     if(ctx->_texture_initialized)
-        glDeleteTextures_D(1, &ctx->_texture);
+        glErrorLog(glDeleteTextures(1, &ctx->_texture););
 
     // unlock
     ReleaseMutex(_DATA->_lock_update);
@@ -461,7 +461,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
         // check if need to release old texture
         if(_DATA->_texture_initialized)
             // release previous texture
-            glDeleteTextures_D (1, &texture);
+            glErrorLog(glDeleteTextures(1, &texture););
 
 		// set flag about new texture initialized
 		_DATA->_texture_initialized = 1;

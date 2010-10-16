@@ -234,24 +234,16 @@ extern VZGLEXT_API int  glExtInitDone;
 VZGLEXT_API void vzGlExtInit();
 VZGLEXT_API GLenum vzGlExtEnumLookup(char* name);
 
-#define glDeleteTextures_D(N, T)                            \
-{                                                           \
-    int r;                                                  \
-    glDeleteTextures(N, T);                                 \
-    r = glGetError();                                       \
-    if(GL_NO_ERROR != r)                                    \
-    logger_printf(1, "glDeleteTextures ERROR 0x%.4X at %s:%d",  \
-        r, __FILE__, __LINE__);                             \
-}
-
-#define glDeleteBuffers_D(N, T)                            \
-{                                                           \
-    int r;                                                  \
-    glDeleteBuffers(N, T);                                 \
-    r = glGetError();                                       \
-    if(GL_NO_ERROR != r)                                    \
-    logger_printf(1, "glDeleteBuffers ERROR 0x%.4X at %s:%d",  \
-        r, __FILE__, __LINE__);                             \
+#define glErrorLog(OPER)                                            \
+{                                                                   \
+    int glErrorLogValue;                                            \
+    OPER;                                                           \
+    glErrorLogValue = glGetError();                                 \
+    if(GL_NO_ERROR != glErrorLogValue)                              \
+        logger_printf(1,                                            \
+            "glGetError 0x%.4X=\"%s\" for [" #OPER "] at  %s:%d",   \
+            glErrorLogValue, gluErrorString(glErrorLogValue),       \
+            __FILE__, __LINE__);                                    \
 }
 
 #endif /* VZGLEXT_H */

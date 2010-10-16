@@ -237,7 +237,7 @@ PLUGIN_EXPORT int release(void* data)
 
     // check if texture initialized
     if(ctx->_texture_initialized)
-        glDeleteTextures_D(1, &ctx->_texture);
+        glErrorLog(glDeleteTextures(1, &ctx->_texture));
 
     // unlock
     ReleaseMutex(_DATA->_lock_update);
@@ -713,7 +713,7 @@ PLUGIN_EXPORT void notify(void* data, char* param_name)
 		/* detelete prev texture */
 		if(_DATA->_texture_initialized)
 		{
-			glDeleteTextures_D (1, &(_DATA->_texture));
+            glErrorLog(glDeleteTextures(1, &(_DATA->_texture)););
 			_DATA->_texture_initialized = 0;
 		};
 

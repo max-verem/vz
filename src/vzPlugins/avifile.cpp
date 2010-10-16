@@ -1169,11 +1169,11 @@ PLUGIN_EXPORT int release(void* data)
 
     // check if texture initialized
     if(ctx->_texture_initialized)
-        glDeleteTextures_D(1, &ctx->_texture);
+        glErrorLog(glDeleteTextures(1, &ctx->_texture););
 
     /* delete buffers from non opengl context */
     if(ctx->_pbo_size)
-        glDeleteBuffers_D(PBO_SLICES, ctx->_pbo);
+        glErrorLog(glDeleteBuffers(PBO_SLICES, ctx->_pbo););
 
     // unlock
     ReleaseMutex(_DATA->_lock_update);
@@ -1282,7 +1282,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			/* texture should be (re)initialized */
 
 			if(_DATA->_texture_initialized)
-				glDeleteTextures_D (1, &(_DATA->_texture));
+                glErrorLog(glDeleteTextures(1, &(_DATA->_texture)););
 
 			/* generate new texture */
 			glGenTextures(1, &_DATA->_texture);

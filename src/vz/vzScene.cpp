@@ -339,7 +339,7 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
 
 			glDisable(GL_TEXTURE_2D);
 
-			glDeleteTextures_D(1, &tex);
+			glErrorLog(glDeleteTextures(1, &tex););
 
 			_stencil_done = 1;
 		};
