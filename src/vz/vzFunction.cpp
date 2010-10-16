@@ -39,6 +39,8 @@ vzFunction::vzFunction() : vzHash<vzPluginParameter*>()
 	proc_render = NULL;
 	proc_postrender = NULL;
 	proc_prerender = NULL;
+    proc_load = NULL;
+    proc_unload = NULL;
 
 	// reset libriary pointer
 	_lib = NULL;
@@ -49,6 +51,8 @@ vzFunction::~vzFunction()
 	// unload lib
 	if(_lib)
 	{
+        if(proc_unload)
+            proc_unload(_config);
 		FreeLibrary(_lib);
 		_lib = NULL;
 	};
@@ -85,11 +89,12 @@ char* vzFunction::load(void* config, char* filename)
 	proc_prerender		= (plugin_proc_prerender)	GetProcAddress(_lib,"prerender");
 	proc_notify			= (plugin_proc_notify)		GetProcAddress(_lib,"notify");
 	proc_datasource		= (plugin_proc_datasource)	GetProcAddress(_lib,"datasource");
-	proc_configure		= (plugin_proc_configure)	GetProcAddress(_lib,"configure");
+    proc_load           = (plugin_proc_load)        GetProcAddress(_lib, "load");
+    proc_unload         = (plugin_proc_load)        GetProcAddress(_lib, "unload");
 
-	// configure module
-	if(proc_configure)
-		proc_configure(_config);
+    // "load" module
+    if(proc_load)
+        proc_load(_config);
 
 	return _info->name;
 };

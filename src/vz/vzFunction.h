@@ -44,7 +44,7 @@ typedef void (*plugin_proc_postrender)(void* data,vzRenderSession* render_sessio
 typedef void (*plugin_proc_prerender)(void* data,vzRenderSession* render_session);
 typedef void (*plugin_proc_render)(void* data,vzRenderSession* render_session);
 typedef void (*plugin_proc_notify)(void* data, char* param_name);
-typedef void (*plugin_proc_configure)(void* config);
+typedef int (*plugin_proc_load)(void* config);
 typedef long (*plugin_proc_datasource)(void* data,vzRenderSession* render_session, long index, char** name, char** value);
 
 class vzFunction: public vzHash<vzPluginParameter*>
@@ -62,8 +62,9 @@ class vzFunction: public vzHash<vzPluginParameter*>
 	plugin_proc_postrender	proc_postrender;
 	plugin_proc_prerender	proc_prerender;
 	plugin_proc_notify		proc_notify;
-	plugin_proc_configure	proc_configure;
 	plugin_proc_datasource	proc_datasource;
+    plugin_proc_load        proc_load;
+    plugin_proc_load        proc_unload;
 
 	// config
 	void* _config;
