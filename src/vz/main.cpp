@@ -1203,7 +1203,9 @@ int main(int argc, char** argv)
         layers_lock = CreateMutex(NULL,FALSE,NULL);
 
 		// init functions
+        wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
 		functions = vzMainNewFunctionsList(config);
+        wglMakeCurrent(NULL, NULL);
 
 		// try to create sync thread in output module
 		int output_module_sync = 0;
@@ -1345,7 +1347,9 @@ int main(int argc, char** argv)
         };
 
 		logger_printf(1, "main: waiting for vzMainFreeFunctionsList(functions)...");
+        wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
 		vzMainFreeFunctionsList(functions);
+        wglMakeCurrent(NULL, NULL);
 		logger_printf(1, "main: vzMainFreeFunctionsList(functions) finished");
 
 		/* destroy window */
