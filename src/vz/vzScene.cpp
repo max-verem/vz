@@ -296,13 +296,13 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
 
 			unsigned int tex, tex_data = 0xFFFFFFFF;
 
-			glGenTextures(1, &tex);
-			glBindTexture(GL_TEXTURE_2D, tex);
+            glErrorLog(glGenTextures(1, &tex););
+            glErrorLog(glBindTexture(GL_TEXTURE_2D, tex););
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			glTexImage2D
+            glErrorLog(glTexImage2D
 			(
 				GL_TEXTURE_2D, 
 				0, 
@@ -311,10 +311,10 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
 				0, 
 				GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
 				&tex_data
-			);
+            ););
 
 			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, tex);
+            glErrorLog(glBindTexture(GL_TEXTURE_2D, tex););
 
 			for(float X = 0.0f, Y = 1.0f , W = 2048.0f, H = 1.0f; Y < _tv->TV_FRAME_HEIGHT; Y += 2)
 			{
@@ -339,7 +339,7 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
 
 			glDisable(GL_TEXTURE_2D);
 
-			glErrorLog(glDeleteTextures(1, &tex););
+            glErrorLog(glDeleteTextures(1, &tex););
 
 			_stencil_done = 1;
 		};
