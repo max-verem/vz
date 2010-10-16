@@ -34,12 +34,6 @@ ChangeLog:
 #include "vzGlExt.h"
 #include "vzLogger.h"
 
-static HANDLE delete_lock;
-static int delete_texture_count = 0;
-static GLuint delete_textures[1024];
-static int delete_buffer_count = 0;
-static GLuint delete_buffers[1024];
-
 BOOL APIENTRY DllMain
 (
 	HANDLE hModule, 
@@ -50,13 +44,11 @@ BOOL APIENTRY DllMain
     switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-            delete_lock = CreateMutex(NULL,FALSE,NULL);
 			break;
 		case DLL_THREAD_ATTACH:
 		case DLL_THREAD_DETACH:
             break;
 		case DLL_PROCESS_DETACH:
-            CloseHandle(delete_lock);
 			break;
     }
     return TRUE;
@@ -225,72 +217,4 @@ VZGLEXT_API GLenum vzGlExtEnumLookup(char* name)
     };
 
     return GL_UNKNOWN_ATTR;
-};
-
-VZGLEXT_API void glExtDeleteTextures(GLsizei n, const GLuint *textures)
-{
-    WaitForSingleObject(delete_lock, INFINITE);
-
-    for(int i = 0; i < n; i++)
-        delete_textures[delete_texture_count + i] = textures[i];
-
-    delete_texture_count += n;
-
-    ReleaseMutex(delete_lock);
-};
-
-VZGLEXT_API int glExtReleaseTextures()
-{
-    int r;
-
-    WaitForSingleObject(delete_lock, INFINITE);
-
-    if(delete_texture_count)
-    {
-        glDeleteTextures(delete_texture_count, delete_textures);
-
-        delete_texture_count = 0;
-
-        r = glGetError();
-    }
-    else
-        r = GL_NO_ERROR;
-
-    ReleaseMutex(delete_lock);
-
-    return (GL_NO_ERROR == r)?0:r;
-};
-
-VZGLEXT_API void glExtDeleteBuffers(GLsizei n, const GLuint *buffers)
-{
-    WaitForSingleObject(delete_lock, INFINITE);
-
-    for(int i = 0; i < n; i++)
-        delete_buffers[delete_buffer_count + i] = buffers[i];
-
-    delete_buffer_count += n;
-
-    ReleaseMutex(delete_lock);
-};
-
-VZGLEXT_API int glExtReleaseBuffers()
-{
-    int r;
-
-    WaitForSingleObject(delete_lock, INFINITE);
-
-    if(delete_buffer_count)
-    {
-        glDeleteBuffers(delete_buffer_count, delete_buffers);
-
-        delete_buffer_count = 0;
-
-        r = glGetError();
-    }
-    else
-        r = GL_NO_ERROR;
-
-    ReleaseMutex(delete_lock);
-
-    return (GL_NO_ERROR == r)?0:r;
 };

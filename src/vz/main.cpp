@@ -184,6 +184,26 @@ static unsigned long global_frame_no = 0;
 static long skip_draw = 0;
 static long not_first_at = 0;
 
+#define ENSURE_OPENGL_CONTEXT(BLOCK)                                \
+{                                                                   \
+    BOOL b = TRUE;                                                  \
+    HGLRC curr;                                                     \
+    WaitForSingleObject(vz_window_desc.lock, INFINITE);             \
+    curr = wglGetCurrentContext();                                  \
+    if(!curr)                                                       \
+        b = wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);\
+    if(b)                                                           \
+    {                                                               \
+        BLOCK                                                       \
+    }                                                               \
+    else                                                            \
+        logger_printf(1, "wglMakeCurrent FAILED at %s:%d",          \
+            __FILE__, __LINE__);                                    \
+    if(!curr)                                                       \
+        wglMakeCurrent(NULL, NULL);                                 \
+    ReleaseMutex(vz_window_desc.lock);                              \
+}
+
 /* ---------------------------------------------------------
     scene load/unload
 -----------------------------------------------------------*/
@@ -214,6 +234,8 @@ int CMD_layer_unload(long idx)
 
             // unlock scene
             ReleaseMutex(layers_lock);
+
+            ENSURE_OPENGL_CONTEXT(vzMainSceneRelease(scene_tmp););
 
             vzMainSceneFree(scene_tmp);
 
@@ -255,11 +277,7 @@ int CMD_layer_load(char* filename, long idx)
         if(scene_tmp)
         {
             /* release scene */
-            WaitForSingleObject(vz_window_desc.lock, INFINITE);
-            wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
-            vzMainSceneRelease(scene_tmp);
-            wglMakeCurrent(NULL, NULL);
-            ReleaseMutex(vz_window_desc.lock);
+            ENSURE_OPENGL_CONTEXT(vzMainSceneRelease(scene_tmp););
 
             /* free scene */
             vzMainSceneFree(scene_tmp);
@@ -280,11 +298,7 @@ int CMD_layer_load(char* filename, long idx)
         };
 
         /* init scene */
-        WaitForSingleObject(vz_window_desc.lock, INFINITE);
-        wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
-        vzMainSceneInit(scene_tmp);
-        wglMakeCurrent(NULL, NULL);
-        ReleaseMutex(vz_window_desc.lock);
+        ENSURE_OPENGL_CONTEXT(vzMainSceneInit(scene_tmp););
 
         WaitForSingleObject(layers_lock, INFINITE);
 
@@ -543,22 +557,6 @@ static void vz_scene_render(void)
 		// lock scene
 		WaitForSingleObject(layers_lock,INFINITE);
 
-        /* release textures */
-        {
-            int r = glExtReleaseTextures();
-        
-            if(GL_NO_ERROR != r)
-                logger_printf(1, "glExtReleaseTextures ERROR 0x%.4X", r);
-        };
-
-        /* release buffers */
-        {
-            int r = glExtReleaseBuffers();
-        
-            if(GL_NO_ERROR != r)
-                logger_printf(1, "glExtReleaseTextures ERROR 0x%.4X", r);
-        };
-
         /* draw layers */
         void* render_starter = NULL;
         for(idx = 0, cnt = 0; idx < VZ_MAX_LAYERS && !layers[idx]; idx++);
@@ -815,9 +813,10 @@ static LRESULT vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpa
 		case WM_PAINT:
 			break;
 
-		case WM_DESTROY:
-			PostQuitMessage(0);
-			break;
+        case WM_CLOSE:
+            f_exit = 1;
+            PostQuitMessage(0);
+            break;
 
 		case WM_COMMAND: 
 //			switch ( LOWORD ( wparam ) )
@@ -884,11 +883,7 @@ static LRESULT vz_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpa
 		
 		case WM_SIZE: 
 			/* Resize the window with the new width and height. */
-			WaitForSingleObject(vz_window_desc.lock, INFINITE);
-			wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
-			vz_window_reshape(LOWORD(lparam), HIWORD(lparam));
-			wglMakeCurrent(NULL, NULL);
-			ReleaseMutex(vz_window_desc.lock);
+            ENSURE_OPENGL_CONTEXT(vz_window_reshape(LOWORD(lparam), HIWORD(lparam)););
 			break;
 
 		default:
@@ -1086,18 +1081,13 @@ static void vz_window_event_loop()
 {
 	/* event loop */
 	MSG msg;
-	int f_exit = 0;
+
 	while (!f_exit)
 	{
 		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
         {
-			if (msg.message == WM_QUIT)
-				f_exit = 1;
-			else
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-            };
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
 		};
     };
 };

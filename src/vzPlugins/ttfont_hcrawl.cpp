@@ -228,14 +228,27 @@ PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 	return data;
 };
 
+PLUGIN_EXPORT int release(void* data)
+{
+    vzPluginData* ctx = (vzPluginData*)data;
+
+    // try to lock struct
+    WaitForSingleObject(ctx->_lock_update,INFINITE);
+
+    // check if texture initialized
+    if(ctx->_texture_initialized)
+        glDeleteTextures_D(1, &ctx->_texture);
+
+    // unlock
+    ReleaseMutex(_DATA->_lock_update);
+
+    return 0;
+};
+
 PLUGIN_EXPORT void destructor(void* data)
 {
 	int i;
     vzPluginData* ctx = (vzPluginData*)data;
-
-	// check if texture initialized
-	if(_DATA->_texture_initialized)
-        glExtDeleteTextures(1, &(_DATA->_texture));
 
 	// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);

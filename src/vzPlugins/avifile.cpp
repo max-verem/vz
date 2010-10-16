@@ -1160,6 +1160,27 @@ PLUGIN_EXPORT void* constructor(void)
 	return data;
 };
 
+PLUGIN_EXPORT int release(void* data)
+{
+    vzPluginData* ctx = (vzPluginData*)data;
+
+    // try to lock struct
+    WaitForSingleObject(ctx->_lock_update,INFINITE);
+
+    // check if texture initialized
+    if(ctx->_texture_initialized)
+        glDeleteTextures_D(1, &ctx->_texture);
+
+    /* delete buffers from non opengl context */
+    if(ctx->_pbo_size)
+        glDeleteBuffers_D(PBO_SLICES, ctx->_pbo);
+
+    // unlock
+    ReleaseMutex(_DATA->_lock_update);
+
+    return 0;
+};
+
 PLUGIN_EXPORT void destructor(void* data)
 {
 	int i;
@@ -1168,14 +1189,6 @@ PLUGIN_EXPORT void destructor(void* data)
 
 	// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
-
-	// check if texture initialized
-	if(_DATA->_texture_initialized)
-        glExtDeleteTextures(1, &(_DATA->_texture));
-
-    /* delete buffers from non opengl context */
-    if(ctx->_pbo_size)
-        glExtDeleteBuffers(PBO_SLICES, ctx->_pbo);
 
 	/* destroy loaders */
 	for(i = 0; i<MAX_AVI_LOADERS; i++)
