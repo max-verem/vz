@@ -217,7 +217,7 @@ VZLOGGER_API int logger_printf(int type, char* message, ...)
 {
 	int r;
 	char* buf;
-    long mili_seconds;
+    unsigned long mili_seconds;
 	va_list args;
 	static char *templ = "[%Y-%m-%d %H:%M:%S";
     static char *mili_seconds_template = ".%.03d] ";
