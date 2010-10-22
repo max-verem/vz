@@ -91,6 +91,7 @@ static HANDLE _avi_op_lock;
 
 #ifdef MAX_CONCUR_LOAD
 static HANDLE _avi_concur_lock;
+static HANDLE _avi_concur_sem;
 static int _avi_concur_pending = 0;
 static int _avi_concur_working = 0;
 #endif /* MAX_CONCUR_LOAD */
@@ -529,18 +530,15 @@ static unsigned long WINAPI aviloader_proc(void* p)
         ReleaseMutex(_avi_concur_lock);
 
         /* wait */
-        for(int c = 1; c ; Sleep(80))
-        {
-            WaitForSingleObject(_avi_concur_lock, INFINITE);
-            if(_avi_concur_working < MAX_CONCUR_LOAD)
-            {
-                _avi_concur_working++;
-                c = 0;
-                logger_printf(0, "avifile: aviloader_proc pending %d, working %d: START[%s]",
-                    _avi_concur_pending, _avi_concur_working, desc->filename);
-            };
-            ReleaseMutex(_avi_concur_lock);
-        };
+        WaitForSingleObject(_avi_concur_sem, INFINITE);
+
+        /* update counters */
+        WaitForSingleObject(_avi_concur_lock, INFINITE);
+        _avi_concur_working++;
+        ReleaseMutex(_avi_concur_lock);
+        logger_printf(0, "avifile: aviloader_proc pending %d, working %d: START[%s]",
+                _avi_concur_pending, _avi_concur_working, desc->filename);
+
 #endif /* MAX_CONCUR_LOAD */
 
         /* call mem preloader */
@@ -548,12 +546,15 @@ static unsigned long WINAPI aviloader_proc(void* p)
             aviloader_full(desc, pgf, frame_info, frame_size);
 
 #ifdef MAX_CONCUR_LOAD
+        /* update counters */
         WaitForSingleObject(_avi_concur_lock, INFINITE);
         _avi_concur_pending--;
         _avi_concur_working--;
         logger_printf(0, "avifile: aviloader_proc pending %d, working %d: FINISHED[%s]",
             _avi_concur_pending, _avi_concur_working, desc->filename);
         ReleaseMutex(_avi_concur_lock);
+
+        ReleaseSemaphore(_avi_concur_sem, 1, NULL);
 #endif /* MAX_CONCUR_LOAD */
 
         /* wait for exit flag */
@@ -806,18 +807,14 @@ static unsigned long WINAPI imgseqloader_proc(void* p)
     ReleaseMutex(_avi_concur_lock);
 
     /* wait */
-    for(int c = 1; c ; Sleep(80))
-    {
-        WaitForSingleObject(_avi_concur_lock, INFINITE);
-        if(_avi_concur_working < MAX_CONCUR_LOAD)
-        {
-            _avi_concur_working++;
-            c = 0;
-            logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: START[%s]",
-                _avi_concur_pending, _avi_concur_working, desc->filename);
-        };
-        ReleaseMutex(_avi_concur_lock);
-    };
+    WaitForSingleObject(_avi_concur_sem, INFINITE);
+
+    /* increment counters */
+    WaitForSingleObject(_avi_concur_lock, INFINITE);
+    _avi_concur_working++;
+    logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: START[%s]",
+        _avi_concur_pending, _avi_concur_working, desc->filename);
+    ReleaseMutex(_avi_concur_lock);
 #endif /* MAX_CONCUR_LOAD */
 
     /* call mem preloader */
@@ -825,12 +822,15 @@ static unsigned long WINAPI imgseqloader_proc(void* p)
         imgseqloader_full(desc, list_data, list_len, image, frame_size);
 
 #ifdef MAX_CONCUR_LOAD
+    /* increment counters */
     WaitForSingleObject(_avi_concur_lock, INFINITE);
     _avi_concur_pending--;
     _avi_concur_working--;
     logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: FINISHED[%s]",
         _avi_concur_pending, _avi_concur_working, desc->filename);
     ReleaseMutex(_avi_concur_lock);
+
+    ReleaseSemaphore(_avi_concur_sem, 1, NULL);
 #endif /* MAX_CONCUR_LOAD */
 
     /* wait for exit flag */
@@ -1123,6 +1123,7 @@ PLUGIN_EXPORT int load(void* config)
 #endif /* AVI_OP_LOCK */
 #ifdef MAX_CONCUR_LOAD
     _avi_concur_lock = CreateMutex(NULL,FALSE,NULL);
+    _avi_concur_sem = CreateSemaphore(NULL, MAX_CONCUR_LOAD, MAX_CONCUR_LOAD, NULL);
 #endif /* MAX_CONCUR_LOAD */
 
     /* init empty PBO object */
@@ -1147,6 +1148,7 @@ PLUGIN_EXPORT int unload(void* config)
     CloseHandle(_avi_op_lock);
 #endif /* AVI_OP_LOCK */
 #ifdef MAX_CONCUR_LOAD
+    CloseHandle(_avi_concur_sem);
     CloseHandle(_avi_concur_lock);
 #endif /* MAX_CONCUR_LOAD */
 
@@ -1175,10 +1177,16 @@ PLUGIN_EXPORT void* constructor(void)
 
 PLUGIN_EXPORT int release(void* data)
 {
+    int i;
     vzPluginData* ctx = (vzPluginData*)data;
 
     // try to lock struct
     WaitForSingleObject(ctx->_lock_update,INFINITE);
+
+    /* mark loaders to exit */
+    for(i = 0; i<MAX_AVI_LOADERS; i++)
+        if(ctx->_loaders[i])
+            ctx->_loaders[i]->flag_exit = 1;
 
     // check if texture initialized
     if(ctx->_texture_initialized)
