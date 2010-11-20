@@ -28,6 +28,7 @@ ChangeLog:
 
 #define LIBPNG
 #define LIBJPEG
+#define LIBCURL
 
 #include <windows.h>
 #include <stdlib.h>
@@ -374,8 +375,13 @@ static int vzImageLoadPNG(vzImage** pimg, char* filename){ return -1; };
 #include "vzImageLoadPNG.h"
 #endif /* LIBPNG */
 
-VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename, long pix_fmt)
+#ifdef LIBCURL
+#include "vzImageDownload.h"
+#endif /* LIBCURL */
+
+VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename2, long pix_fmt)
 {
+    char filename[MAX_PATH];
     int k, l, i, r;
     static const struct
     {
@@ -391,6 +397,15 @@ VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename, long pix_fmt)
         {".dib",    vzImageLoadBMP},
         {"", NULL}
     };
+
+#ifdef LIBCURL
+    r = vzImageDownload(filename2, filename);
+    if(r < 0)
+        return -2;
+
+    if(!r)
+#endif /* LIBCURL */
+        strncpy(filename, filename2, MAX_PATH);
 
     /* try to detect extension */
     l = (int)strlen(filename);

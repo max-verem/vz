@@ -437,6 +437,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\vz\vzImageDownload.h"
+				>
+			</File>
+			<File
 				RelativePath="..\vz\vzImageLoad.h"
 				>
 			</File>
