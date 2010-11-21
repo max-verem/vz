@@ -1122,10 +1122,11 @@ int main(int argc, char** argv)
 	vzTTFontAddFontPath("fonts");
     get_font_init();
 
-//#define _DEBUG_IMG
+//#define _DEBUG_IMG "http://we-manager.internal.m1stereo.tv/spool/photos/00000008.png"
+#define _DEBUG_IMG "ftp://10.1.1.17/pub/XCHG/1/test.png"
 #ifdef _DEBUG_IMG
     vzImage* img = NULL;
-    int r = vzImageLoad(&img, "C:\\projects\\vz\\install\\debug\\projects\\demo8\\jpg24.jpg");
+    int r = vzImageLoad(&img, _DEBUG_IMG);
     vzImageRelease(&img);
 #endif /* _DEBUG_IMG */
 

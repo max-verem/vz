@@ -30,6 +30,8 @@ ChangeLog:
 #define LIBJPEG
 #define LIBCURL
 
+#define MAX_PATH10 (MAX_PATH * 10)
+
 #include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -381,7 +383,7 @@ static int vzImageLoadPNG(vzImage** pimg, char* filename){ return -1; };
 
 VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename2, long pix_fmt)
 {
-    char filename[MAX_PATH];
+    char filename[MAX_PATH10];
     int k, l, i, r;
     static const struct
     {
@@ -405,7 +407,7 @@ VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename2, long pix_fmt)
 
     if(!r)
 #endif /* LIBCURL */
-        strncpy(filename, filename2, MAX_PATH);
+        strncpy(filename, filename2, MAX_PATH10);
 
     /* try to detect extension */
     l = (int)strlen(filename);

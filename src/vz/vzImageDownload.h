@@ -58,7 +58,7 @@ static int vzImageDownload(char* filename_url, char* filename_local)
     ReleaseMutex(curl_downloads_lock);
 
     /* build name */
-    _snprintf(filename_local, MAX_PATH, "%s/vzImage-%.5d-%.5d",
+    _snprintf(filename_local, MAX_PATH10, "%s/vzImage-%.5d-%.5d",
         getenv("TEMP"), GetCurrentProcessId(), r);
 
     /* open local file */
@@ -99,10 +99,10 @@ static int vzImageDownload(char* filename_url, char* filename_local)
 
             if(ext)
             {
-                char buf[MAX_PATH];
+                char buf[MAX_PATH10];
 
                 /* backup localname */
-                strncpy(buf, filename_local, MAX_PATH);
+                strncpy(buf, filename_local, MAX_PATH10);
 
                 /* append ext to local name */
                 strcat(filename_local, ".");
