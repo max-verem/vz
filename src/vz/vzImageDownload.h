@@ -1,16 +1,29 @@
 #ifndef vzImageDownload_h
 #define vzImageDownload_h
 
-#define CURL_STATICLIB
+//#define CURL_STATICLIB
 #include <curl/curl.h>
 
-#ifdef _DEBUG
-#pragma comment(lib, "libcurl_D.lib")
-#else
-#pragma comment(lib, "libcurl.lib")
-#endif
+#ifdef CURL_STATICLIB
+
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Wldap32.lib")
+
+#ifdef _DEBUG
+#pragma comment(lib, "libcurl_DEBUG_STATIC.lib")
+#else
+#pragma comment(lib, "libcurl_RELEASE_STATIC.lib")
+#endif
+
+#else
+
+#ifdef _DEBUG
+#pragma comment(lib, "libcurl_DEBUG_DLL.lib")
+#else
+#pragma comment(lib, "libcurl_RELEASE_DLL.lib")
+#endif
+
+#endif /* CURL_STATICLIB */
 
 static int curl_downloads_cnt;
 static HANDLE curl_downloads_lock;
