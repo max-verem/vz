@@ -42,14 +42,16 @@ static size_t vzImageDownload_cb_write( void *ptr, size_t size, size_t nmemb, vo
 
 static int vzImageDownload(char* filename_url, char* filename_local)
 {
-    int r;
+    int r, proto = 0;
     FILE* f;
     CURLcode res;
     CURL *curl_handle;
     long http_responce = 0;
 
     /* check if protocol given is http or ftp */
-    if(_strnicmp(filename_url, "http://", 7) && _strnicmp(filename_url, "ftp://", 6))
+    if(!proto && !_strnicmp(filename_url, "http://", 7)) proto = 1;
+    if(!proto && !_strnicmp(filename_url, "ftp://", 6)) proto = 2;
+    if(!proto)
         return 0;
 
     /* inc counter */
@@ -83,9 +85,11 @@ static int vzImageDownload(char* filename_url, char* filename_local)
     {
         curl_easy_getinfo(curl_handle, CURLINFO_HTTP_CODE, &http_responce);
 
-        if(200 != http_responce)
-            r = -201;
-        else
+        if
+        (
+            (1 == proto && 200 == http_responce) ||
+            (2 == proto && 226 == http_responce)
+        )
         {
             char* ext = NULL;
             char* content_type = NULL;
@@ -96,6 +100,8 @@ static int vzImageDownload(char* filename_url, char* filename_local)
             /* get extenstion - part of image/XXX content-type header */
             if(content_type && !_strnicmp("image/", content_type, 6))
                 ext = content_type + 6;
+
+            curl_easy_getinfo(curl_handle, CURLINFO_FTP_ENTRY_PATH, &content_type);
 
             if(ext)
             {
@@ -113,7 +119,9 @@ static int vzImageDownload(char* filename_url, char* filename_local)
             };
 
             r = 1;
-        };
+        }
+        else
+            r = -201;
     }
     else
         r = -202;
