@@ -101,8 +101,25 @@ static int vzImageDownload(char* filename_url, char* filename_local)
             if(content_type && !_strnicmp("image/", content_type, 6))
                 ext = content_type + 6;
 
-            curl_easy_getinfo(curl_handle, CURLINFO_FTP_ENTRY_PATH, &content_type);
+            /* check if content type not supported */
+            if(!content_type && !ext)
+            {
+                int i, k, l;
+                static char* exts[] = { ".tga", ".png", ".jpg", ".jpeg", ".bmp", ".dib", NULL };
 
+                /* try to find extension */
+                l = (int)strlen(filename_url);
+
+                for(i = 0; exts[i] && !ext; i++)
+                {
+                    k = (int)strlen(exts[i]);
+
+                    if((l > k) && !_stricmp(filename_url + l - k, exts[i]))
+                        ext = exts[i] + 1;
+                };
+            };
+
+            /* append ext */
             if(ext)
             {
                 char buf[MAX_PATH10];

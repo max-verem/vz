@@ -1123,7 +1123,7 @@ int main(int argc, char** argv)
     get_font_init();
 
 //#define _DEBUG_IMG "http://we-manager.internal.m1stereo.tv/spool/photos/00000008.png"
-#define _DEBUG_IMG "ftp://10.1.1.17/pub/XCHG/1/test.png"
+//#define _DEBUG_IMG "ftp://10.1.1.17/pub/XCHG/1/test.png"
 #ifdef _DEBUG_IMG
     vzImage* img = NULL;
     int r = vzImageLoad(&img, _DEBUG_IMG);
