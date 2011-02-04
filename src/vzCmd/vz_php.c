@@ -103,5 +103,15 @@ ZEND_FUNCTION(vz_send)
     else
         r = -2;
 
+    if(cmd_list_len)
+    {
+        int i;
+
+        for(i = 0; i < cmd_list_len; i++)
+            free(cmd_list_data[i]);
+
+        free(cmd_list_data);
+    };
+
     RETURN_LONG(r);
 }
