@@ -14,11 +14,18 @@ INSTALL_BIN=$(INSTALL_PATH)/bin
 INSTALL_LIB=$(INSTALL_PATH)/lib
 INSTALL_INC=$(INSTALL_PATH)/include
 
-TARGETS=libvz_cmd.so libvz_cmd_send.so vz_cmd_sender
+ifneq ($(PHP),)
+PHP_INCLUDE_DIR=$(shell php-config --include-dir)
+PHP_CFLAGS=-I$(PHP_INCLUDE_DIR)/Zend -I$(PHP_INCLUDE_DIR)/main -I$(PHP_INCLUDE_DIR)/TSRM -I$(PHP_INCLUDE_DIR)
+PHP_MODULE=vz_php.so
+endif
+
+TARGETS=libvz_cmd.so libvz_cmd_send.so vz_cmd_sender $(PHP_MODULE)
 all: $(TARGETS)
 OBJS_VZ_CMD=vz_cmd_serial.o vz_cmd_shell.o vz_cmd.o
 OBJS_VZ_CMD_SEND=vz_cmd_send.o
 OBJS_VZ_CMD_SENDER=vz_cmd_send.o vz_cmd_sender.o vz_cmd_serial.o vz_cmd_shell.o vz_cmd.o
+OBJS_VZ_PHP=vz_cmd_send.o vz_php.o vz_cmd_serial.o vz_cmd_shell.o vz_cmd.o
 
 vz_cmd_sender: $(OBJS_VZ_CMD_SENDER)
 	$(CC) -o vz_cmd_sender $(OBJS_VZ_CMD_SENDER) $(DEBUG)
@@ -32,6 +39,10 @@ libvz_cmd_send.so: $(OBJS_VZ_CMD_SEND)
 	$(CC) -g -shared -Wl,-soname,lib$(VZ_CMD_SEND).so.$(SHORT_VERSION) -o lib$(VZ_CMD_SEND).so.$(LONG_VERSION) $(OBJS_VZ_CMD_SEND) $(DEBUG) -l$(VZ_CMD) -L.
 	ln -sf lib$(VZ_CMD_SEND).so.$(LONG_VERSION) lib$(VZ_CMD_SEND).so.$(SHORT_VERSION)
 	ln -sf lib$(VZ_CMD_SEND).so.$(SHORT_VERSION) lib$(VZ_CMD_SEND).so
+
+vz_php.so: $(OBJS_VZ_PHP)
+	$(CC) -shared -rdynamic -Wall -O3 -o vz_php.so $(OBJS_VZ_PHP)
+
 
 vz_cmd_serial.o: vz_cmd.h vz_cmd_serial.c vz_cmd-private.h
 	$(CC) -fPIC -Wall -g -c vz_cmd_serial.c $(DEBUG)
@@ -47,6 +58,9 @@ vz_cmd_send.o: vz_cmd_send.h vz_cmd_send.c vz_cmd.h
 
 vz_cmd_sender.o: vz_cmd_send.h vz_cmd_sender.c
 	$(CC) -fPIC -Wall -g -c vz_cmd_sender.c $(DEBUG) -DSVNVERSION='"$(LONG_VERSION_SVN)"'
+
+vz_php.o: vz_php.c vz_cmd_send.h vz_cmd.h
+	$(CC) -fPIC -Wall -g -c vz_php.c $(DEBUG) $(PHP_CFLAGS) -DSVNVERSION='"$(LONG_VERSION_SVN)"'
 
 clean:
 	@echo $(LONG_VERSION_SVN)
