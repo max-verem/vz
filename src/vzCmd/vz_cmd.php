@@ -4,7 +4,7 @@ class vz_cmd
 {
     public static function LOAD_SCENE(&$cmd_array, $filename)
     {
-        array_push($cmd_array, array($filename));
+        array_push($cmd_array, array('LOAD_SCENE', $filename));
     }
 
     public static function START_DIRECTOR(&$cmd_array, $director, $pos = "0.0")
