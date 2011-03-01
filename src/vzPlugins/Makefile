@@ -29,14 +29,18 @@ VSINSTALLDIR	=	C:\Program Files (x86)\Microsoft Visual Studio 9.0\
 WindowsSdkDir	=	C:\Program Files\Microsoft SDKs\Windows\v7.0\
 
 INCLUDES	=	-I"$(VCINSTALLDIR)\include" \
-			-I"$(WindowsSdkDir)\Include"
+			-I"$(WindowsSdkDir)\Include" \
+			-I"C:\SDK\curl\include"
+
+LIB_PATH_64	=	/LIBPATH:"C:\SDK\curl\lib\x64"
+LIB_PATH_32	=	/LIBPATH:"C:\SDK\curl\lib\win32"
 
 !IF "$(CFG)" == "Debug64"
 CPP		= "$(VCINSTALLDIR)\bin\x86_amd64\cl.exe"
 DEBUGFLAGS	= -D_DEBUG /RTC1 /EHsc /Zi /FD
 INSTALL_DIR	= ../../install/Debug-x64/plugins/
 OBJS_DIR	= ../../temp/x64/Debug/plugins/
-LIB_PATH	= /LIBPATH:"../../temp/x64/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64"
+LIB_PATH	= /LIBPATH:"../../temp/x64/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64" $(LIB_PATH_64)
 LINKER_OPT	= /LDd /nologo 
 LINKER_FLAGS	= $(LIB_PATH) /DEBUG /Profile
 CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
@@ -48,7 +52,7 @@ CPP		= "$(VCINSTALLDIR)\bin\x86_amd64\cl.exe"
 DEBUGFLAGS	= 
 INSTALL_DIR	= ../../install/Release-x64/plugins/
 OBJS_DIR	= ../../temp/x64/Release/plugins/
-LIB_PATH	= /LIBPATH:"../../temp/x64/Release/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64"
+LIB_PATH	= /LIBPATH:"../../temp/x64/Release/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64" $(LIB_PATH_64)
 LINKER_OPT	= /LD /nologo 
 LINKER_FLAGS	= $(LIB_PATH)
 CPPFLAGS	= $(CPPFLAGS) /MD /Zp16
@@ -58,7 +62,7 @@ CPPFLAGS	= $(CPPFLAGS) /MD /Zp16
 DEBUGFLAGS	= -D_DEBUG /RTC1 /EHsc /Zi /FD
 INSTALL_DIR	= ../../install/Debug-win32/plugins/
 OBJS_DIR	= ../../temp/win32/Debug/plugins/
-LIB_PATH	= /LIBPATH:"../../temp/win32/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib" /LIBPATH:"$(VCINSTALLDIR)\lib"
+LIB_PATH	= /LIBPATH:"../../temp/win32/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib" /LIBPATH:"$(VCINSTALLDIR)\lib" $(LIB_PATH_32)
 LINKER_OPT	= /LDd /nologo 
 LINKER_FLAGS	= $(LIB_PATH) /DEBUG /Profile
 CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
@@ -70,7 +74,7 @@ CPPFLAGS	= $(CPPFLAGS) /MDd /Zp16
 DEBUGFLAGS	= 
 INSTALL_DIR	= ../../install/Release-win32/plugins/
 OBJS_DIR	= ../../temp/win32/Release/plugins/
-LIB_PATH	= /LIBPATH:"../../temp/win32/Release/" /LIBPATH:"$(WindowsSdkDir)\lib" /LIBPATH:"$(VCINSTALLDIR)\lib"
+LIB_PATH	= /LIBPATH:"../../temp/win32/Release/" /LIBPATH:"$(WindowsSdkDir)\lib" /LIBPATH:"$(VCINSTALLDIR)\lib" $(LIB_PATH_32)
 LINKER_OPT	= /LD /nologo 
 LINKER_FLAGS	= $(LIB_PATH)
 CPPFLAGS	= $(CPPFLAGS) /MD /Zp16
@@ -84,6 +88,7 @@ LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
 TARGET = "$(OBJS_DIR)" "$(INSTALL_DIR)"		\
+	url_frame_notify.dll			\
 	text_seq.dll				\
 	ctrl_director.dll			\
 	trajectory_live.dll			\
