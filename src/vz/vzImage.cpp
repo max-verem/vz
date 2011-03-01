@@ -403,7 +403,7 @@ VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename2, long pix_fmt)
 #ifdef LIBCURL
     r = vzImageDownload(filename2, filename);
     if(r < 0)
-        return -2;
+        return r;
 
     if(!r)
 #endif /* LIBCURL */

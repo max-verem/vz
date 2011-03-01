@@ -47,6 +47,9 @@ static int vzImageDownload(char* filename_url, char* filename_local)
     CURLcode res;
     CURL *curl_handle;
     long http_responce = 0;
+#ifdef _DEBUG
+    char errorBuffer[CURL_ERROR_SIZE];
+#endif /* _DEBUG */
 
     /* check if protocol given is http or ftp */
     if(!proto && !_strnicmp(filename_url, "http://", 7)) proto = 1;
@@ -76,6 +79,9 @@ static int vzImageDownload(char* filename_url, char* filename_local)
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, vzImageDownload_cb_write);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, f);
     curl_easy_setopt(curl_handle, CURLOPT_FAILONERROR, 1); 
+#ifdef _DEBUG
+    curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errorBuffer);
+#endif /* _DEBUG */
 
     res = curl_easy_perform(curl_handle);
 
@@ -141,7 +147,14 @@ static int vzImageDownload(char* filename_url, char* filename_local)
             r = -201;
     }
     else
+#ifdef _DEBUG
+    {
+        fprintf(stderr, "curl_easy_perform: %s\n", errorBuffer);
+#endif /* _DEBUG */
         r = -202;
+#ifdef _DEBUG
+    };
+#endif /* _DEBUG */
 
     /* always cleanup */ 
     curl_easy_cleanup(curl_handle);
