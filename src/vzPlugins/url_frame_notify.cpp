@@ -100,6 +100,30 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 
 #define MAX_URL_LEN 2048
 
+static struct
+{
+    char* name;
+    char* section;
+    char* param;
+    char* value;
+} _config_cookies[] =
+{
+    { "tv_mode", "tvspec", "TV_MODE", NULL },
+    { "output", "main", "output", NULL },
+    { "instance", "main", "id", NULL},
+    {NULL, NULL, NULL, NULL}
+};
+PLUGIN_EXPORT int load(void* config_ptr)
+{
+    int i;
+
+    for(i = 0; _config_cookies[i].name; i++)
+        _config_cookies[i].value = vzConfigParam(config_ptr,
+            _config_cookies[i].section, _config_cookies[i].param);
+
+    return 0;
+};
+
 PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 {
     // init memmory for structure
@@ -150,6 +174,16 @@ static unsigned long WINAPI get_url_proc(void* data)
 {
     int r;
     CURL *curl_handle;
+    char *cookies, *cookies_head;
+
+    cookies = (char*)malloc(MAX_URL_LEN);
+    for(cookies[0] = 0, r = 0; _config_cookies[r].name; r++)
+    {
+        int l = strlen(cookies);
+        cookies_head = cookies + l;
+        _snprintf(cookies_head, MAX_URL_LEN - l - 1, "%s=%s;",
+            _config_cookies[r].name, _config_cookies[r].value);
+    };
 
     vzPluginData* ctx = (vzPluginData*)data;
 
@@ -161,12 +195,16 @@ static unsigned long WINAPI get_url_proc(void* data)
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, get_url_proc_cb);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, NULL);
     curl_easy_setopt(curl_handle, CURLOPT_FAILONERROR, 1); 
+    curl_easy_setopt(curl_handle, CURLOPT_COOKIE, cookies); 
 
     /* we do not care about result */
     curl_easy_perform(curl_handle);
 
     /* always cleanup */ 
     curl_easy_cleanup(curl_handle);
+
+    /* free data */
+    free(cookies);
 
     // and thread
     ExitThread(0);
