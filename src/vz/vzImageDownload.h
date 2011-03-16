@@ -108,7 +108,7 @@ static int vzImageDownload(char* filename_url, char* filename_local)
                 ext = content_type + 6;
 
             /* check if content type not supported */
-            if(!content_type && !ext)
+            if(!ext)
             {
                 int i, k, l;
                 static char* exts[] = { ".tga", ".png", ".jpg", ".jpeg", ".bmp", ".dib", NULL };
