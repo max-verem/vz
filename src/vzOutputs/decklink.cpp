@@ -77,6 +77,7 @@ ChangeLog:
 #define O_OUT_SETUP_IS_75		"OUT_SETUP_IS_75"
 #define O_TIMING_OFFSET			"TIMING_OFFSET"
 #define O_KEYER_ALPHA			"KEYER_ALPHA"
+#define O_BOARD_INDEX           "BOARD_INDEX"
 
 /* ------------------------------------------------------------------
 
@@ -276,6 +277,31 @@ static void decklink_destroy(void)
 static int decklink_init()
 {
 	HRESULT hr;
+    int decklink_index = 0;
+
+    static char* decklink_clsid_name_array[] =
+    {
+        "CLSID_DecklinkVideoRenderFilter",
+        "CLSID_DecklinkVideoRenderFilter2",
+        "CLSID_DecklinkVideoRenderFilter3",
+        "CLSID_DecklinkVideoRenderFilter4",
+        "CLSID_DecklinkVideoRenderFilter5",
+        "CLSID_DecklinkVideoRenderFilter6",
+        "CLSID_DecklinkVideoRenderFilter7",
+        "CLSID_DecklinkVideoRenderFilter8"
+    };
+
+    static CLSID decklink_clsid_array[] =
+    {
+        CLSID_DecklinkVideoRenderFilter,
+        CLSID_DecklinkVideoRenderFilter2,
+        CLSID_DecklinkVideoRenderFilter3,
+        CLSID_DecklinkVideoRenderFilter4,
+        CLSID_DecklinkVideoRenderFilter5,
+        CLSID_DecklinkVideoRenderFilter6,
+        CLSID_DecklinkVideoRenderFilter7,
+        CLSID_DecklinkVideoRenderFilter8
+    };
 
 	logger_printf(0, MODULE_PREFIX "init...");
 	/*
@@ -290,13 +316,25 @@ static int decklink_init()
 	hr = AddToRot(pGraph, &graph_rot_id);
 #endif
 
-	/*
-		CLSID_DecklinkVideoRenderFilter
-	*/
-	NOTIFY_RESULT("CLSID_DecklinkVideoRenderFilter");
-	hr = CoCreateInstance(CLSID_DecklinkVideoRenderFilter, NULL, 
-		CLSCTX_INPROC_SERVER, IID_IBaseFilter, (void **)&decklink_renderer);
-	CHECK_RESULT;
+    /* setup proper board index */
+    if(CONFIG_O(O_BOARD_INDEX))
+    {
+        int idx = atol(CONFIG_O(O_BOARD_INDEX));
+        if(idx >= 0 && idx <= 7)
+            decklink_index = idx;
+        else
+            logger_printf(1, MODULE_PREFIX "BOARD_INDEX is out of range, allowed [0...7]");
+    };
+    logger_printf(0, MODULE_PREFIX "BOARD_INDEX=%d, will choose clsid=%s",
+        decklink_index, decklink_clsid_name_array[decklink_index]);
+
+    /*
+        CLSID_DecklinkVideoRenderFilter
+    */
+    NOTIFY_RESULT("CLSID_DecklinkVideoRenderFilterX");
+    hr = CoCreateInstance(decklink_clsid_array[decklink_index], NULL, 
+        CLSCTX_INPROC_SERVER, IID_IBaseFilter, (void **)&decklink_renderer);
+    CHECK_RESULT;
 
 	/*
 		IDecklinkIOControl
