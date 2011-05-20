@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<scene>
+<!--
+
+-->
+<tree visible="1">
+    <container visible="1">
+
+        <function name="translate">
+            <param name="f_x" value="360"/>
+            <param name="f_y" value="288"/>
+        </function>
+
+        <container visible="1">
+            <function name="fillarc" id="fillarc">
+
+	            <param name="f_r" value="150" />
+
+	            <param name="f_angle_from" value="50" />
+	            <param name="f_angle_to" value="290" />
+
+	            <param name="f_colour_R" value="0.94" />
+	            <param name="f_colour_G" value="0.44" />
+	            <param name="f_colour_B" value="0.14" />
+	            <param name="f_colour_A" value="1" />
+            </function>
+        </container>
+
+    </container>
+</tree>
+<motion>
+</motion>
+</scene>
