@@ -237,7 +237,8 @@ HRESULT CVZPushPin::FillBuffer(IMediaSample *pSample)
 {
     BYTE *pData;
     long cbData;
-	void *output_buffer, **input_buffers, *output_a_buffer, **input_a_buffers;
+    int buf_idx;
+    struct vzOutputBuffers* buffers = vzOutputIOBuffers();
 //fprintf(stderr, "HERE2\n");
     CheckPointer(pSample, E_POINTER);
 
@@ -260,8 +261,9 @@ HRESULT CVZPushPin::FillBuffer(IMediaSample *pSample)
 	points[points_index++] = timeGetTime();
 #endif /* TIME_DUMP_POINTS */
 
-	/* request pointers to buffers */
-	tbc->lock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
+    /* request pointers to buffers */
+    tbc->lock_io_bufs(&buf_idx);
+//        &output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
 #ifdef TIME_DUMP_POINTS
 	points[points_index++] = timeGetTime();
@@ -275,15 +277,15 @@ HRESULT CVZPushPin::FillBuffer(IMediaSample *pSample)
 	points[points_index++] = timeGetTime();
 #endif /* TIME_DUMP_POINTS */
 
-	/* set datas */
-	memcpy(pData, output_buffer, cbData);
+    /* set datas */
+    memcpy(pData, buffers->output.data[buf_idx], cbData);
 
 #ifdef TIME_DUMP_POINTS
 	points[points_index++] = timeGetTime();
 #endif /* TIME_DUMP_POINTS */
 
-	/* unlock buffers */
-	tbc->unlock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
+    /* unlock buffers */
+    tbc->unlock_io_bufs();
 
 #ifdef TIME_DUMP_POINTS
 	points[points_index++] = timeGetTime();
