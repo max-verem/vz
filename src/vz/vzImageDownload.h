@@ -47,9 +47,7 @@ static int vzImageDownload(char* filename_url, char* filename_local)
     CURLcode res;
     CURL *curl_handle;
     long http_responce = 0;
-#ifdef _DEBUG
     char errorBuffer[CURL_ERROR_SIZE];
-#endif /* _DEBUG */
 
     /* check if protocol given is http or ftp */
     if(!proto && !_strnicmp(filename_url, "http://", 7)) proto = 1;
@@ -79,9 +77,7 @@ static int vzImageDownload(char* filename_url, char* filename_local)
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, vzImageDownload_cb_write);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, f);
     curl_easy_setopt(curl_handle, CURLOPT_FAILONERROR, 1); 
-#ifdef _DEBUG
     curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, errorBuffer);
-#endif /* _DEBUG */
 
     res = curl_easy_perform(curl_handle);
 
@@ -90,6 +86,8 @@ static int vzImageDownload(char* filename_url, char* filename_local)
     if(!res)
     {
         curl_easy_getinfo(curl_handle, CURLINFO_HTTP_CODE, &http_responce);
+
+        logger_printf(1, "vzImage: curl_easy_getinfo http_responce=%d", http_responce);
 
         if
         (
@@ -106,6 +104,8 @@ static int vzImageDownload(char* filename_url, char* filename_local)
             /* get extenstion - part of image/XXX content-type header */
             if(content_type && !_strnicmp("image/", content_type, 6))
                 ext = content_type + 6;
+            logger_printf(1, "vzImage: curl_easy_getinfo content_type=[%s], ext=[%s]",
+                content_type, ext);
 
             /* check if content type not supported */
             if(!ext)
@@ -123,6 +123,7 @@ static int vzImageDownload(char* filename_url, char* filename_local)
                     if((l > k) && !_stricmp(filename_url + l - k, exts[i]))
                         ext = exts[i] + 1;
                 };
+                logger_printf(1, "vzImage: found extension ext=[%s]", ext);
             };
 
             /* append ext */
@@ -138,7 +139,9 @@ static int vzImageDownload(char* filename_url, char* filename_local)
                 strcat(filename_local, ext);
 
                 /* rename file */
-                MoveFile(buf, filename_local);
+                DeleteFile(filename_local);
+                if(!MoveFile(buf, filename_local))
+                    logger_printf(1, "vzImage: MoveFile failed, GetLastError=%d", GetLastError());
             };
 
             r = 1;
@@ -147,14 +150,10 @@ static int vzImageDownload(char* filename_url, char* filename_local)
             r = -201;
     }
     else
-#ifdef _DEBUG
     {
-        fprintf(stderr, "curl_easy_perform: %s\n", errorBuffer);
-#endif /* _DEBUG */
+        logger_printf(1, "vzImage: curl_easy_perform: %s\n", errorBuffer);
         r = -202;
-#ifdef _DEBUG
     };
-#endif /* _DEBUG */
 
     /* always cleanup */ 
     curl_easy_cleanup(curl_handle);
