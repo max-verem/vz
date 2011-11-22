@@ -125,8 +125,8 @@ public:
 	int render_slots();
 
 	/* output driver interface for output buffer */
-	void lock_io_bufs(void** v_output, void*** v_input, void** a_output, void*** a_input);
-	void unlock_io_bufs(void** v_output, void*** v_input, void** a_output, void*** a_input);
+	void lock_io_bufs(int* buf_idx);
+	void unlock_io_bufs();
 };
 
 #endif //VZOUTPUTINTERNAL_H

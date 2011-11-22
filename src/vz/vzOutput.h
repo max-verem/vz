@@ -102,13 +102,12 @@ struct vzOutputBuffers
 
 	struct
 	{
-		int channels;
 		int field_mode;
 		int twice_fields;
 
-		void* data[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS*2];
-		void* audio[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS];
-		unsigned int nums[VZOUTPUT_MAX_BUFS][VZOUTPUT_MAX_CHANNELS*2];
+        void* data[VZOUTPUT_MAX_BUFS][2];
+        void* audio[VZOUTPUT_MAX_BUFS];
+        unsigned int nums[VZOUTPUT_MAX_BUFS][2];
 		long audio_buf_size;
 
 		long gold;
@@ -117,7 +116,8 @@ struct vzOutputBuffers
 
 		long width;
 		long height;
-	} input;
+    } input[VZOUTPUT_MAX_CHANNELS];
+    int input_channels;
 
 	struct vzOutputMixerBuffers mix_queue[2];
 	int mix_current;
