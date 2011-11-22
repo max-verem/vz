@@ -283,11 +283,11 @@ pixel:
 
 unsigned long WINAPI output_loop(void* obj)
 {
-	int j, b, i, c;
-	void *output_buffer, **input_buffers, *output_a_buffer, **input_a_buffers;
+	int j, b, i, c, buf_idx;
+//	void *output_buffer, **input_buffers, *output_a_buffer, **input_a_buffers;
 
-	// cast pointer to vzOutput
-	vzOutput* tbc = (vzOutput*)obj;
+    // cast pointer to vzOutput
+    vzOutput* tbc = (vzOutput*)obj;
 
 	// init buffers
 	void* alpha_buffer = memset(malloc(_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*ALPHA_PIXEL_SIZE),0,_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*ALPHA_PIXEL_SIZE);
@@ -317,8 +317,8 @@ unsigned long WINAPI output_loop(void* obj)
 		
 		// 2. start transfering transcoded buffer
 
-		// 3. request pointer to new buffer
-		tbc->lock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
+        // 3. request pointer to new buffer
+        tbc->lock_io_bufs(&buf_idx);
 
 		/* send sync */
 		if(_fc)
@@ -327,37 +327,37 @@ unsigned long WINAPI output_loop(void* obj)
 		// 4. transcode buffer
 #ifndef _M_X64
 		if(vzConfigParam(_config,"nullvideo","YUV_CONVERT"))
-			if (output_buffer)
+			if (_buffers_info->output.data)
 				vzImageBGRA2YUAYVA
 				(
-					output_buffer,
+					_buffers_info->output.data,
 					yuv_buffer,
 					alpha_buffer,
 					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT
 				);
 #endif /* !_M_X64 */
-		/* transfer buffer */
-		if(vzConfigParam(_config,"nullvideo","OUTPUT_BUF_TRANSFER"))
-			if (output_buffer)
-				memcpy
-				(
-					fake_buffer,
-					output_buffer,
-					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*4
-				);
+        /* transfer buffer */
+        if(vzConfigParam(_config, "nullvideo", "OUTPUT_BUF_TRANSFER"))
+            if (_buffers_info->output.data)
+                memcpy
+                (
+                    fake_buffer,
+                    _buffers_info->output.data,
+                    _tv->TV_FRAME_WIDTH * _tv->TV_FRAME_HEIGHT*4
+                );
 
-		/* transfer input(s) */
-		for(c = 0; c < _buffers_info->input.channels; c++)
-		{
-			/* defferent methods for fields and frame mode */
-			if(_buffers_info->input.field_mode)
+        /* transfer input(s) */
+        for(c = 0; c < _buffers_info->input_channels; c++)
+        {
+            /* different methods for fields and frame mode */
+            if(_buffers_info->input[i].field_mode)
 			{
 				/* field mode */
 				long l = _tv->TV_FRAME_WIDTH*4;
 				unsigned char
 					*src = (unsigned char*)tps[channels_tp[c]],
-					*dstA = (unsigned char*)input_buffers[2*c],
-					*dstB = (unsigned char*)input_buffers[2*c + 1];
+					*dstA = (unsigned char*)_buffers_info->input[c].data[buf_idx][0],
+					*dstB = (unsigned char*)_buffers_info->input[c].data[buf_idx][1];
 
 				for(i = 0; i < _tv->TV_FRAME_HEIGHT; i++)
 				{
@@ -365,7 +365,7 @@ unsigned long WINAPI output_loop(void* obj)
 					int d = 
 						((i&1)?2:0)
 						|
-						((_buffers_info->input.twice_fields)?1:0);
+						((_buffers_info->input[i].twice_fields)?1:0);
 
 					switch(d)
 					{
@@ -421,13 +421,13 @@ unsigned long WINAPI output_loop(void* obj)
 				/* frame mode */
 				memcpy
 				(
-					input_buffers[c],
+					_buffers_info->input[c].data[buf_idx][0],
 					tps[channels_tp[c]],
 					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*4
 				);
 			};
 		};
-				
+
 
 		tbc->notify_frame_stop();
 
@@ -435,7 +435,7 @@ unsigned long WINAPI output_loop(void* obj)
 		long B = timeGetTime();
 
 		// 3. request pointer to new buffer
-		tbc->unlock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
+		tbc->unlock_io_bufs();
 
 		// mark time to sleep
 		long C = B - A;
@@ -500,25 +500,27 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 	b->output.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
 	b->output.gold = ((b->output.size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
 
-	/* inputs count conf */
-	if(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"))
-	{
-		b->input.channels = atol(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"));
-		b->input.field_mode = vzConfigParam(_config,"nullvideo","FIELD_MODE")?1:0;
-		if(b->input.field_mode)
-			b->input.twice_fields = vzConfigParam(_config,"nullvideo","TWICE_FIELDS")?1:0;
-		else
-			b->input.twice_fields = 0;
+    /* inputs count conf */
+    if(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"))
+    {
+        b->input_channels = atol(vzConfigParam(_config,"nullvideo","INPUTS_COUNT"));
+        for(i = 0; i < b->input_channels; i++)
+        {
+            b->input[i].field_mode = vzConfigParam(_config,"nullvideo","FIELD_MODE")?1:0;
+            if(b->input[i].field_mode)
+                b->input[i].twice_fields = vzConfigParam(_config,"nullvideo","TWICE_FIELDS")?1:0;
+            else
+                b->input[i].twice_fields = 0;
 
-		int k = ((b->input.field_mode) && (!(b->input.twice_fields)))?2:1;
+            int k = ((b->input[i].field_mode) && (!(b->input[i].twice_fields)))?2:1;
 
-		b->input.offset = 0;
-		b->input.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT / k;
-		b->input.gold = ((b->input.size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
+            b->input[i].offset = 0;
+            b->input[i].size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT / k;
+            b->input[i].gold = ((b->input[i].size + DMA_PAGE_SIZE)/DMA_PAGE_SIZE)*DMA_PAGE_SIZE;
 
-		b->input.width = _tv->TV_FRAME_WIDTH;
-		b->input.height = _tv->TV_FRAME_HEIGHT / k;
-	};
+            b->input[i].width = _tv->TV_FRAME_WIDTH;
+            b->input[i].height = _tv->TV_FRAME_HEIGHT / k;
+    };
 
 	/* input test pattern */
 	for(i = 0; i< VZOUTPUT_MAX_CHANNELS ; i++)
