@@ -236,13 +236,13 @@ static unsigned long WINAPI hanc_decode(void* p)
 };
 
 
-static unsigned long WINAPI demux_fields(void* p)
+static unsigned long WINAPI demux_fields(void* p, int input_idx)
 {
 	int i;
 	struct io_in_desc* desc = (struct io_in_desc*)p;
 
 	/* defferent methods for fields and frame mode */
-	if(_buffers_info->input.field_mode)
+	if(_buffers_info->input[input_idx].field_mode)
 	{
 		dump_line;
 
@@ -259,7 +259,7 @@ static unsigned long WINAPI demux_fields(void* p)
 			int d = 
 				((i&1)?2:0)
 				|
-				((_buffers_info->input.twice_fields)?1:0);
+				((_buffers_info->input[input_idx].twice_fields)?1:0);
 
 			switch(d)
 			{
@@ -314,6 +314,9 @@ static unsigned long WINAPI demux_fields(void* p)
 
 	return 0;
 };
+
+static unsigned long WINAPI demux_fields_1(void* p) { return demux_fields(p, 0); };
+static unsigned long WINAPI demux_fields_2(void* p) { return demux_fields(p, 1); };
 
 /* composite audio */
 #define MAX_AUDIO_SAMPLE_SIZE 4
@@ -532,7 +535,7 @@ static unsigned long WINAPI io_in(void* p)
 
 		if (buffer_id  != -1)
 		{
-			if(!(_buffers_info->input.field_mode))
+            if(!(_buffers_info->input[0].field_mode))                   // FIX ME
 				/* if no transformation required - directly */
 				buf = desc->buffers[0];
 			else
@@ -651,8 +654,9 @@ static unsigned long WINAPI main_io_loop(void* p)
 {
 	/* cast pointer to vzOutput */
 	vzOutput* tbc = (vzOutput*)p;
+    struct vzOutputBuffers* buffers = vzOutputIOBuffers();
 
-	void *output_buffer, **input_buffers, *output_a_buffer, **input_a_buffers;
+//	void *output_buffer, **input_buffers, *output_a_buffer, **input_a_buffers;
 	struct io_in_desc in1;
 	struct io_in_desc in2;
 	struct io_out_desc out_main;
@@ -660,7 +664,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 	unsigned long f1;
 	HANDLE io_ops[9];
 	unsigned long io_ops_id[9];
-	int r, i;
+    int r, i, buf_idx;
 
 	/* clear thread handles values */
 	for(i = 0; i<9 ; i++)
@@ -805,20 +809,22 @@ static unsigned long WINAPI main_io_loop(void* p)
 		if(_fc)
 			_fc();
 
-		/* request pointers to buffers */
-		tbc->lock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
+        /* request pointers to buffers */
+        tbc->lock_io_bufs(&buf_idx);
+        //&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
 		dump_line;
 
 		/* start output thread */
-		out_main.audio = output_a_buffer;
-		out_main.buffer = output_buffer;
+		out_main.audio = buffers->output.audio;
+		out_main.buffer = buffers->output.data;
 		dump_line;
 		io_ops[0] = CreateThread(0, 0, io_out,  &out_main , 0, &io_ops_id[0]);
 		dump_line;
 		io_ops[8] = CreateThread(0, 0, io_out_a,  &out_main , 0, &io_ops_id[8]);
 		dump_line;
 
+#if 0
 		/* start audio output */
 		if
 		(
@@ -832,7 +838,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 		else
 			io_ops[3] = INVALID_HANDLE_VALUE;
 		dump_line;
-
+#endif
 
 		/* start inputs */
 		io_ops[1] = INVALID_HANDLE_VALUE;
@@ -844,19 +850,19 @@ static unsigned long WINAPI main_io_loop(void* p)
 		if(inputs_count)
 		{
 			in1.id = 1;
-			in1.buffers = &input_buffers[0];
-			in1.audio = input_a_buffers[0];
+			in1.buffers = buffers->input[0].data[buf_idx];
+			in1.audio = buffers->input[0].audio[buf_idx];
 			io_ops[1] = CreateThread(0, 0, io_in,  &in1 , 0, &io_ops_id[1]);
-			io_ops[4] = CreateThread(0, 0, demux_fields,  &in1 , 0, &io_ops_id[4]);
+			io_ops[4] = CreateThread(0, 0, demux_fields_1,  &in1 , 0, &io_ops_id[4]);
 			io_ops[6] = CreateThread(0, 0, hanc_decode,  &in1 , 0, &io_ops_id[6]);
 
 			if(inputs_count > 1)
 			{
 				in2.id = 2;
-				in2.buffers = &input_buffers[ (_buffers_info->input.field_mode)?2:1 ];
-				in2.audio = input_a_buffers[1];
+				in2.buffers = buffers->input[1].data[buf_idx];
+				in2.audio = buffers->input[1].audio[buf_idx];
 				io_ops[2] = CreateThread(0, 0, io_in,  &in2 , 0, &io_ops_id[2]);
-				io_ops[5] = CreateThread(0, 0, demux_fields,  &in2 , 0, &io_ops_id[5]);
+				io_ops[5] = CreateThread(0, 0, demux_fields_2,  &in2 , 0, &io_ops_id[5]);
 				io_ops[7] = CreateThread(0, 0, hanc_decode,  &in2 , 0, &io_ops_id[7]);
 			}
 		};
@@ -871,8 +877,8 @@ static unsigned long WINAPI main_io_loop(void* p)
 			};
 		dump_line;
 
-		/* unlock buffers */
-		tbc->unlock_io_bufs(&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
+        /* unlock buffers */
+        tbc->unlock_io_bufs();
 		dump_line;
 
 #ifdef OVERRUN_RECOVERY
@@ -1459,7 +1465,7 @@ VZOUTPUTS_EXPORT long vzOutput_SetSync(frames_counter_proc fc)
 
 VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 {
-	int i;
+    int i;
 	char temp[128];
 
 	b->output.offset = 0;
@@ -1471,30 +1477,29 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 		2 /* 2 channels */ * 
 		VZOUTPUT_AUDIO_SAMPLES;
 
-	/* inputs count conf */
-	
+    /* inputs count conf */
+    b->input_channels = inputs_count;
+    for(i = 0; i < inputs_count; i++)
+    {
+        b->input[i].audio_buf_size =
+            2 /* 16 bits */ *
+            2 /* 2 channels */ *
+            VZOUTPUT_AUDIO_SAMPLES;
 
-	if(0 != inputs_count)
-	{
-		b->input.audio_buf_size = 
-			2 /* 16 bits */ * 
-			2 /* 2 channels */ * 
-			VZOUTPUT_AUDIO_SAMPLES;
-		b->input.channels = inputs_count;
-		b->input.field_mode = CONFIG_O(O_SOFT_FIELD_MODE)?1:0;
-		if(b->input.field_mode)
-			b->input.twice_fields = CONFIG_O(O_SOFT_TWICE_FIELDS)?1:0;
-		else
-			b->input.twice_fields = 0;
+        b->input[i].field_mode = CONFIG_O(O_SOFT_FIELD_MODE)?1:0;
+        if(b->input[i].field_mode)
+            b->input[i].twice_fields = CONFIG_O(O_SOFT_TWICE_FIELDS)?1:0;
+        else
+            b->input[i].twice_fields = 0;
 
-		int k = ((b->input.field_mode) && (!(b->input.twice_fields)))?2:1;
+        int k = ((b->input[i].field_mode) && (!(b->input[i].twice_fields)))?2:1;
 
-		b->input.offset = 0;
-		b->input.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT / k;
-		b->input.gold = buffers_golden;
+        b->input[i].offset = 0;
+        b->input[i].size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT / k;
+        b->input[i].gold = buffers_golden;
 
-		b->input.width = _tv->TV_FRAME_WIDTH;
-		b->input.height = _tv->TV_FRAME_HEIGHT / k;
+        b->input[i].width = _tv->TV_FRAME_WIDTH;
+        b->input[i].height = _tv->TV_FRAME_HEIGHT / k;
 	};
 };
 
