@@ -1103,6 +1103,8 @@ static void vz_window_event_loop()
 
 int main(int argc, char** argv)
 {
+    char *output_module_name;
+
 #ifdef _DEBUG
     _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif /* _DEBUG */
@@ -1184,27 +1186,27 @@ int main(int argc, char** argv)
 	// setting tv system
 	vzConfigTVSpec(config,"tvspec", &tv);
 
-	// init output module
-	char *output_module_name = vzConfigParam(config,"main","output");
-	if(output_module_name)
-	{
-		logger_printf(0, "Loading output module '%s'...", output_module_name);
-		output_module = vzOutputNew(config,output_module_name,&tv);
-		if (!(vzOutputReady(output_module)))
-		{
-			logger_printf(1, "Failed to load '%s'", output_module_name);
-			vzOutputFree(output_module);
-		}
-		else
-			logger_printf(0, "Module '%s' loaded", output_module_name);
-	};
-
 	/* add font path */
 	vzTTFontAddFontPath(vzConfigParam(config,"main","font_path"));
 
 	/* create output window */
 	if(0 == vz_create_window())
 	{
+        // init output module
+        output_module_name = vzConfigParam(config, "main", "output");
+        if(output_module_name)
+        {
+            logger_printf(0, "Loading output module '%s'...", output_module_name);
+            output_module = vzOutputNew(config,output_module_name,&tv);
+            if (!(vzOutputReady(output_module)))
+            {
+                logger_printf(1, "Failed to load '%s'", output_module_name);
+                vzOutputFree(output_module);
+            }
+            else
+                logger_printf(0, "Module '%s' loaded", output_module_name);
+        };
+
 		/* create gl lock */
 		vz_window_desc.lock = CreateMutex(NULL,FALSE,NULL);
 
