@@ -520,6 +520,7 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 
             b->input[i].width = _tv->TV_FRAME_WIDTH;
             b->input[i].height = _tv->TV_FRAME_HEIGHT / k;
+        };
     };
 
 	/* input test pattern */
