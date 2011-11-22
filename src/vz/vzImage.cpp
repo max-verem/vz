@@ -39,6 +39,7 @@ ChangeLog:
 
 #include "vzImage.h"
 #include "vzGlExt.h"
+#include "vzLogger.h"
 
 typedef struct {
    char  idlength;
@@ -400,8 +401,11 @@ VZIMAGE_API int vzImageLoad(vzImage** pimg, char* filename2, long pix_fmt)
         {"", NULL}
     };
 
+    logger_printf(1, "vzImage: vzImageLoad(%s)", filename2);
+
 #ifdef LIBCURL
     r = vzImageDownload(filename2, filename);
+    logger_printf(1, "vzImage: vzImageDownload(%s, %s) = %d", filename2, filename, r);
     if(r < 0)
         return r;
 
