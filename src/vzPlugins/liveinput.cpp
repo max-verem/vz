@@ -300,191 +300,203 @@ PLUGIN_EXPORT void destructor(void* data)
 
 PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 {
-	unsigned long r;
-	int i;
+    vzPluginData* ctx = (vzPluginData*)data;
+    unsigned long r;
+    int i, I, buffer_id, y_offset;
+    void* buffer_ptr;
 
 	// try to lock struct
 	WaitForSingleObject(_DATA->_lock_update,INFINITE);
 
-	/* check if we need to init/reinit texture */
-	if
-	(
-		(_DATA->_buffers)										/* buffers objects defined */
-		&&														/* and */
-		(_DATA->_buffers->input.channels)						/* input chennels present */
-		&&
-		(_DATA->l_input)										/* input defined */
-		&&
-		(_DATA->l_input <= _DATA->_buffers->input.channels)		/* and input id in range */
-	)
-	{
-		/* pipeline ready - check texture */
-		if
-		(
-			(_DATA->_width != POT(_DATA->_buffers->input.width))
-			||
-			(_DATA->_height != POT(_DATA->_buffers->input.height))
-		)
-		{
-			/* texture should be (re)initialized */
+    /* check if we need to init/reinit texture */
+    if
+    (!(
+        (_DATA->_buffers)                                       /* buffers objects defined */
+        &&                                                      /* and */
+        (_DATA->_buffers->input_channels)                       /* input chennels present */
+        &&
+        (_DATA->l_input)                                        /* input defined */
+        &&
+        (_DATA->l_input <= _DATA->_buffers->input_channels)     /* and input id in range */
+    ))
+    {
+        // release mutex
+        ReleaseMutex(_DATA->_lock_update);
+        return;
+    };
 
-			if(_DATA->_texture_initialized)
-                glErrorLog(glDeleteTextures(1, &(_DATA->_texture)););
+    I = _DATA->l_input - 1;
 
-			/* generate new texture */
-			glGenTextures(1, &_DATA->_texture);
+    /* pipeline ready - check texture */
+    if
+    (
+        (_DATA->_width != POT(_DATA->_buffers->input[I].width))
+        ||
+        (_DATA->_height != POT(_DATA->_buffers->input[I].height))
+    )
+    {
+        /* texture should be (re)initialized */
 
-			/* set flags */
-			_DATA->_width = POT(_DATA->_buffers->input.width);
-			_DATA->_height = POT(_DATA->_buffers->input.height);
-			_DATA->_texture_initialized = 1;
+        if(_DATA->_texture_initialized)
+            glErrorLog(glDeleteTextures(1, &(_DATA->_texture)););
 
-			/* generate fake surface */
-			void* fake_frame = malloc(4*_DATA->_width*_DATA->_height);
-			memset(fake_frame,0,4*_DATA->_width*_DATA->_height);
+        /* generate new texture */
+        glGenTextures(1, &_DATA->_texture);
 
-			/* create texture (init texture memory) */
-			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
-			glTexImage2D
-			(
-				GL_TEXTURE_2D,			// GLenum target,
-				0,						// GLint level,
-				4,						// GLint components,
-				_DATA->_width,			// GLsizei width, 
-				_DATA->_height,			// GLsizei height, 
-				0,						// GLint border,
-				GL_BGRA_EXT,			// GLenum format,
-				GL_UNSIGNED_BYTE,		// GLenum type,
-				fake_frame				// const GLvoid *pixels
-			);
-			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+        /* set flags */
+        _DATA->_width = POT(_DATA->_buffers->input[I].width);
+        _DATA->_height = POT(_DATA->_buffers->input[I].height);
+        _DATA->_texture_initialized = 1;
 
-			/* free memory of fake image */
-			free(fake_frame);
-		};
+        /* generate fake surface */
+        void* fake_frame = malloc(4*_DATA->_width*_DATA->_height);
+        memset(fake_frame,0,4*_DATA->_width*_DATA->_height);
 
-		/* detect buffers id and ptr */
-		if(_DATA->_buffers->input.field_mode)
-			i = (_DATA->l_input - 1)*2 + session->field;
-		else
-			i = (_DATA->l_input - 1);
-		int buffer_id = _DATA->_buffers->input.nums[_DATA->_buffers->pos_render][i];
-		void* buffer_ptr = _DATA->_buffers->input.data[_DATA->_buffers->pos_render][i];
+        /* create texture (init texture memory) */
+        glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+        glTexImage2D
+        (
+            GL_TEXTURE_2D,          // GLenum target,
+            0,                      // GLint level,
+            4,                      // GLint components,
+            _DATA->_width,          // GLsizei width, 
+            _DATA->_height,         // GLsizei height, 
+            0,                      // GLint border,
+            GL_BGRA_EXT,            // GLenum format,
+            GL_UNSIGNED_BYTE,       // GLenum type,
+            fake_frame              // const GLvoid *pixels
+        );
+        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 
-		/* y offset trick */
-		long y_offset = (_DATA->_buffers->input.twice_fields)?0:(session->field*_DATA->l_offset_y); 
+        /* free memory of fake image */
+        free(fake_frame);
+    };
 
-		/* load new texture , if it ready*/
-		glBindTexture(GL_TEXTURE_2D, _DATA->_texture);			/* bind to buffer */
-		if
-		(
-			(0 == buffer_id)
-			&&
-			(NULL != buffer_ptr)
-			&&
-			(
-				/* in frame mode we upload texture one time (per frame) */
-				(
-					(0 == session->field)
-					&&
-					(0 == _DATA->_buffers->input.field_mode)
-				)
-				||
-				/* in field mode we update texture each field */
-				(1 == _DATA->_buffers->input.field_mode)
-			)
+    /* detect buffers id and ptr */
+    if(_DATA->_buffers->input[I].field_mode)
+        i = session->field;
+    else
+        i = 0;
+    buffer_id = _DATA->_buffers->input[I].nums[_DATA->_buffers->pos_render][i];
+    buffer_ptr = _DATA->_buffers->input[I].data[_DATA->_buffers->pos_render][i];
 
-		)
-		{
-			/* classic method - loading buffer */
+    /* y offset trick */
+    y_offset = (_DATA->_buffers->input[I].twice_fields)?0:(session->field*_DATA->l_offset_y); 
 
-			/* load */
-			glTexSubImage2D
-			(
-				GL_TEXTURE_2D,									// GLenum target,
-				0,												// GLint level,
-				(_DATA->_width - _DATA->_buffers->input.width)/2,	// GLint xoffset,
-				(_DATA->_height - _DATA->_buffers->input.height)/2 + y_offset,// GLint yoffset,
-				_DATA->_buffers->input.width,					// GLsizei width,
-				_DATA->_buffers->input.height,					// GLsizei height,
-				GL_BGRA_EXT,									// GLenum format,
-				GL_UNSIGNED_BYTE,								// GLenum type,
-				((unsigned char*)buffer_ptr)					// const GLvoid *pixels
-				+
-				_DATA->_buffers->input.offset
-			);
-		}
-		else if (0 != buffer_id)
-		{
-			/* using pbuffers */
+    /* load new texture , if it ready*/
+    glBindTexture(GL_TEXTURE_2D, _DATA->_texture);  /* bind to buffer */
+    if
+    (
+        (0 == buffer_id)
+        &&
+        (NULL != buffer_ptr)
+        &&
+        (
+            /* in frame mode we upload texture one time (per frame) */
+            (
+                (0 == session->field)
+                &&
+                (0 == _DATA->_buffers->input[I].field_mode)
+            )
+            ||
+            /* in field mode we update texture each field */
+            (1 == _DATA->_buffers->input[I].field_mode)
+        )
+    )
+    {
+        /* classic method - loading buffer */
 
-			/* bind buffer */
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, buffer_id);
+        /* load */
+        glTexSubImage2D
+        (
+            GL_TEXTURE_2D,                                  // GLenum target,
+            0,                                              // GLint level,
+            (_DATA->_width - _DATA->_buffers->input[I].width)/2, // GLint xoffset,
+            (_DATA->_height - _DATA->_buffers->input[I].height)/2 + y_offset,// GLint yoffset,
+            _DATA->_buffers->input[I].width,					// GLsizei width,
+            _DATA->_buffers->input[I].height,					// GLsizei height,
+            GL_BGRA_EXT,									// GLenum format,
+            GL_UNSIGNED_BYTE,								// GLenum type,
+            ((unsigned char*)buffer_ptr)					// const GLvoid *pixels
+            +
+            _DATA->_buffers->input[I].offset
+        );
+    }
+    else if (0 != buffer_id)
+    {
+        /* using pbuffers */
 
-			/* load */
-			glTexSubImage2D
-			(
-				GL_TEXTURE_2D,									// GLenum target,
-				0,												// GLint level,
-				(_DATA->_width - _DATA->_buffers->input.width)/2,	// GLint xoffset,
-				(_DATA->_height - _DATA->_buffers->input.height)/2 + y_offset,// GLint yoffset,
-				_DATA->_buffers->input.width,					// GLsizei width,
-				_DATA->_buffers->input.height,					// GLsizei height,
-				GL_BGRA_EXT,									// GLenum format,
-				GL_UNSIGNED_BYTE,								// GLenum type,
-				BUFFER_OFFSET(_DATA->_buffers->input.offset)	// const GLvoid *pixels
-			);
+        /* bind buffer */
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, buffer_id);
 
-			/* unbind ? */
-			glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-		}
-		else
-		{
-			/* something wrong ??? */
-		};
+        /* load */
+        glTexSubImage2D
+        (
+            GL_TEXTURE_2D,                                  // GLenum target,
+            0,                                              // GLint level,
+            (_DATA->_width - _DATA->_buffers->input[I].width)/2, // GLint xoffset,
+            (_DATA->_height - _DATA->_buffers->input[I].height)/2 + y_offset,// GLint yoffset,
+            _DATA->_buffers->input[I].width,                   // GLsizei width,
+            _DATA->_buffers->input[I].height,                  // GLsizei height,
+            GL_BGRA_EXT,                                    // GLenum format,
+            GL_UNSIGNED_BYTE,                               // GLenum type,
+            BUFFER_OFFSET(_DATA->_buffers->input[I].offset)    // const GLvoid *pixels
+        );
 
-		/* audio add to mixer */
-		if
-		(
-			(0 == session->field)		/* first field */
-			&&							/* and */
-			(!(_DATA->l_audio_mute))	/* not muted */
-		)
-			vzOutputAddMixerLine
-			(
-				_DATA->f_audio_level,
-				_DATA->_buffers->input.audio[_DATA->_buffers->pos_render][_DATA->l_input - 1]
-			);
+        /* unbind ? */
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+    }
+    else
+    {
+        /* something wrong ??? */
+    };
 
-	};
+    /* audio add to mixer */
+    if
+    (
+        (0 == session->field)       /* first field */
+        &&                          /* and */
+        (!(_DATA->l_audio_mute))    /* not muted */
+    )
+        vzOutputAddMixerLine
+        (
+            _DATA->f_audio_level,
+            _DATA->_buffers->input[I].audio[_DATA->_buffers->pos_render]
+        );
 
-	// release mutex
-	ReleaseMutex(_DATA->_lock_update);
+    // release mutex
+    ReleaseMutex(_DATA->_lock_update);
 };
 
 PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
 {
 };
 
-PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
+PLUGIN_EXPORT void render(void* data, vzRenderSession* session)
 {
-	// check if texture initialized
-	if
-	(
-		(_DATA->_texture_initialized)
-		&&
-		(_DATA->_buffers)										/* buffers objects defined */
-		&&														/* and */
-		(_DATA->_buffers->input.channels)						/* input chennels present */
-	)
-	{
-		/* detect if field count is twiced in IO driver or we should scale */
+    int I;
+    vzPluginData* ctx = (vzPluginData*)data;
+
+    // check if texture initialized
+    if
+    (!(
+        (_DATA->_texture_initialized)
+        &&
+        (_DATA->_buffers)                                       /* buffers objects defined */
+        &&                                                      /* and */
+        (_DATA->_buffers->input_channels)                       /* input chennels present */
+    ))
+        return;
+
+    I = _DATA->l_input - 1;
+
+        /* detect if field count is twiced in IO driver or we should scale */
 		long k =
 		(
-			(_DATA->_buffers->input.field_mode)
+			(_DATA->_buffers->input[I].field_mode)
 			&&
-			(!(_DATA->_buffers->input.twice_fields))
+			(!(_DATA->_buffers->input[I].twice_fields))
 		)?2:1;
 
 		/* mode depend rendering */
@@ -504,7 +516,7 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			(
 				/* dimentsions */
 				_DATA->_width, _DATA->_height*k,
-				_DATA->_buffers->input.width, _DATA->_buffers->input.height*k,
+				_DATA->_buffers->input[I].width, _DATA->_buffers->input[I].height * k,
 
 				/* source coordinates */
 				_DATA->f_x1, _DATA->f_y1,
@@ -592,19 +604,19 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 			/* fix co_Y */
 			co_Y += _DATA->f_offset_y*session->field;
 
-			// translate coordinates accoring to base image
-			center_vector
-			(
-				_DATA->L_center, 
-				_DATA->_buffers->input.width, 
-				_DATA->_buffers->input.height*k,
-				co_X, co_Y
-			);
+            // translate coordinates accoring to base image
+            center_vector
+            (
+                _DATA->L_center,
+                _DATA->_buffers->input[I].width,
+                _DATA->_buffers->input[I].height*k,
+                co_X, co_Y
+            );
 
 
-			// translate coordinate according to real image
-			co_Y -= k*(_DATA->_height - _DATA->_buffers->input.height)/2;
-			co_X -= (_DATA->_width - _DATA->_buffers->input.width)/2;
+            // translate coordinate according to real image
+            co_Y -= k*(_DATA->_height - _DATA->_buffers->input[I].height)/2;
+            co_X -= (_DATA->_width - _DATA->_buffers->input[I].width)/2;
 
 
 			// begin drawing
@@ -648,7 +660,6 @@ PLUGIN_EXPORT void render(void* data,vzRenderSession* session)
 
 			glDisable(GL_TEXTURE_2D);
 		};
-	};
 };
 
 PLUGIN_EXPORT void notify(void* data, char* param_name)
