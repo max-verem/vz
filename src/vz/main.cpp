@@ -1196,15 +1196,22 @@ int main(int argc, char** argv)
         output_module_name = vzConfigParam(config, "main", "output");
         if(output_module_name)
         {
-            logger_printf(0, "Loading output module '%s'...", output_module_name);
-            output_module = vzOutputNew(config,output_module_name,&tv);
-            if (!(vzOutputReady(output_module)))
+            if(wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc))
             {
-                logger_printf(1, "Failed to load '%s'", output_module_name);
-                vzOutputFree(output_module);
+                logger_printf(0, "Loading output module '%s'...", output_module_name);
+                output_module = vzOutputNew(config,output_module_name,&tv);
+                if (!(vzOutputReady(output_module)))
+                {
+                    logger_printf(1, "Failed to load '%s'", output_module_name);
+                    vzOutputFree(output_module);
+                }
+                else
+                    logger_printf(0, "Module '%s' loaded", output_module_name);
+
+                wglMakeCurrent(NULL, NULL);
             }
             else
-                logger_printf(0, "Module '%s' loaded", output_module_name);
+                logger_printf(0, "Failed to switch OpenGL context for output module initalization");
         };
 
 		/* create gl lock */
@@ -1359,6 +1366,17 @@ int main(int argc, char** argv)
             logger_printf(1, "main: CMD_layer_unload(%d) finished", idx);
         };
 
+        /* cleanup output module*/
+        if(output_module)
+        {
+            logger_printf(1, "main: waiting for vzOutputFree(output_module)...");
+            wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
+            vzOutputFree(output_module);
+            wglMakeCurrent(NULL, NULL);
+            logger_printf(1, "main: vzOutputFree(output_module) finished...");
+            output_module = NULL;
+        };
+
 		logger_printf(1, "main: waiting for vzMainFreeFunctionsList(functions)...");
         wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
 		vzMainFreeFunctionsList(functions);
@@ -1373,15 +1391,6 @@ int main(int argc, char** argv)
 		/* close mutexes */
         CloseHandle(layers_lock);
 		CloseHandle(vz_window_desc.lock);
-	};
-
-	/* cleanup */
-	if(output_module_name)
-	{
-		logger_printf(1, "main: waiting for vzOutputFree(output_module)...");
-		vzOutputFree(output_module);
-		logger_printf(1, "main: vzOutputFree(output_module) finished...");
-		output_module = NULL;
 	};
 
 	logger_printf(1, "main: Bye!");
