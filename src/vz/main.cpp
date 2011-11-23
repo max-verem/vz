@@ -77,6 +77,7 @@ ChangeLog:
 #include <process.h>
 #include <time.h>
 #include <direct.h>
+#include <errno.h>
 #include "vzVersion.h"
 #include "vzGlExt.h"
 
@@ -119,7 +120,7 @@ char* config_file = "vz.conf";
 void* config = NULL; // config loaded
 
 void* functions = NULL; // list of loaded function
-void* output_module = NULL; // output module
+void* output_context = NULL; // output module
 char start_path[1024];
 char* application;
 char screenshot_file[1024];
@@ -169,14 +170,52 @@ static void timestamp_screenshot()
 	Sync rendering & frame counting
 ---------------------------------------------------------- */
 
-static struct
+typedef struct
 {
-	HINSTANCE instance;
-	HDC hdc;
-	HWND wnd;
-	HGLRC glrc;
-	HANDLE lock;
-} vz_window_desc;
+    HINSTANCE instance;
+    HDC hdc;
+    HWND wnd;
+    HGLRC glrc;
+    HANDLE lock;
+} vz_window_t;
+
+static vz_window_t vz_window_desc;
+
+static int vz_window_lockgl(vz_window_t* w)
+{
+    if(WaitForSingleObject(w->lock, INFINITE))
+    {
+        logger_printf(1, "vz_window_lockgl: WaitForSingleObject failed");
+        return -EFAULT;
+    };
+
+    if(!wglMakeCurrent(w->hdc, w->glrc))
+    {
+        logger_printf(1, "vz_window_lockgl: wglMakeCurrent failed");
+        return -EFAULT;
+    };
+
+    return 0;
+};
+
+static int vz_window_unlockgl(vz_window_t* w)
+{
+    int r = 0;
+
+    if(!wglMakeCurrent(NULL, NULL))
+    {
+        r = -EFAULT;
+        logger_printf(1, "vz_window_unlockgl: wglMakeCurrent failed");
+    };
+
+    if(!ReleaseMutex(w->lock))
+    {
+        r = -EFAULT;
+        logger_printf(1, "vz_window_lockgl: ReleaseMutex failed");
+    };
+
+    return r;
+};
 
 static HANDLE global_frame_event;
 static unsigned long global_frame_no = 0;
@@ -311,6 +350,7 @@ int CMD_layer_load(char* filename, long idx)
     return r;
 };
 
+#if 0
 /*----------------------------------------------------------
 	sync srcs
 ----------------------------------------------------------*/
@@ -346,6 +386,7 @@ static void frames_counter()
 	// rise evennt
 	PulseEvent(global_frame_event);
 };
+#endif
 
 /*----------------------------------------------------------
 	render loop
@@ -524,18 +565,9 @@ static void vz_scene_render(void)
 	// scene redrawed
 	skip_draw = 1;
 
-	/* check if we need to draw frame */
-	if
-	(
-		(NULL == output_module)
-		||
-		(
-			(NULL != output_module)
-			&&
-			(vzOuputRenderSlots(output_module) > 0)
-		)
-	)
-		force_render = 1;
+    /* check if we need to draw frame */
+    if(vzOutputRenderSlots(output_context) > 0)
+        force_render = 1;
 
 	while(force_render && !f_exit)
 	{
@@ -548,9 +580,8 @@ static void vz_scene_render(void)
 		// save time of draw start
 		long draw_start_time = timeGetTime();
 
-		// output module tricks
-		if(output_module)
-			vzOuputPreRender(output_module);
+        // output module tricks
+        vzOutputPreRender(output_context);
 
 		rendered_frames++;
 
@@ -568,8 +599,7 @@ static void vz_scene_render(void)
 		// flush all 
 		glFlush();
 
-		if(output_module)
-			vzOuputPostRender(output_module);
+        vzOutputPostRender(output_context);
 
 		// save time of draw start
 		long draw_stop_time = timeGetTime();
@@ -577,19 +607,15 @@ static void vz_scene_render(void)
 
 		ReleaseMutex(layers_lock);
 
-		/* check if we need to draw more frames */
-		if
-		(
-			(NULL != output_module)
-			&&
-			(vzOuputRenderSlots(output_module) > 0)
-		)
-			force_render = 1;
+        /* check if we need to draw more frames */
+        if(vzOutputRenderSlots(output_context) > 0)
+            force_render = 1;
 
+#if 0 // FIX ME
 		/* check if we need to terminate this loop */
 		if(force_rendered > VZOUTPUT_MAX_BUFS)
 			force_rendered = 0;
-
+#endif
 		fbo.index = 1 - fbo.index;
 		glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) );
 		glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) );
@@ -1103,7 +1129,7 @@ static void vz_window_event_loop()
 
 int main(int argc, char** argv)
 {
-    char *output_module_name;
+    char *output_context_name;
 
 #ifdef _DEBUG
     _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
@@ -1189,64 +1215,35 @@ int main(int argc, char** argv)
 	/* add font path */
 	vzTTFontAddFontPath(vzConfigParam(config,"main","font_path"));
 
+    /* create output */
+    output_context_name = vzConfigParam(config, "main", "output");
+    logger_printf(0, "Loading output modules '%s'...", output_context_name);
+    vzOutputNew(&output_context, config, output_context_name, &tv);
+
 	/* create output window */
 	if(0 == vz_create_window())
 	{
-        // init output module
-        output_module_name = vzConfigParam(config, "main", "output");
-        if(output_module_name)
-        {
-            if(wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc))
-            {
-                logger_printf(0, "Loading output module '%s'...", output_module_name);
-                output_module = vzOutputNew(config,output_module_name,&tv);
-                if (!(vzOutputReady(output_module)))
-                {
-                    logger_printf(1, "Failed to load '%s'", output_module_name);
-                    vzOutputFree(output_module);
-                }
-                else
-                    logger_printf(0, "Module '%s' loaded", output_module_name);
+        HANDLE sync_render_handle;
 
-                wglMakeCurrent(NULL, NULL);
-            }
-            else
-                logger_printf(0, "Failed to switch OpenGL context for output module initalization");
-        };
+        /* create gl lock */
+        vz_window_desc.lock = CreateMutex(NULL,FALSE,NULL);
 
-		/* create gl lock */
-		vz_window_desc.lock = CreateMutex(NULL,FALSE,NULL);
-
-		// syncs
-		global_frame_event = CreateEvent(NULL, TRUE, FALSE, NULL);
-		ResetEvent(global_frame_event);
+        /* init layers lock */
         layers_lock = CreateMutex(NULL,FALSE,NULL);
 
-		// init functions
-        wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
-		functions = vzMainNewFunctionsList(config);
-        wglMakeCurrent(NULL, NULL);
+        // syncs
+        global_frame_event = CreateEvent(NULL, TRUE, FALSE, NULL);
+        ResetEvent(global_frame_event);
 
-		// try to create sync thread in output module
-		int output_module_sync = 0;
-		if(output_module)
-			output_module_sync = vzOutputSync(output_module, frames_counter);
+        // init output
+        vz_window_lockgl(&vz_window_desc);
+        vzOutputInit(output_context, global_frame_event, &global_frame_no);
+        vz_window_unlockgl(&vz_window_desc);
 
-		// check if flag. if its not OK - start internal
-		if(output_module_sync == 0)
-		{
-			internal_sync_generator_handle = CreateThread
-			(
-				NULL,
-				1024,
-				internal_sync_generator,
-				frames_counter, // params
-				0,
-				NULL
-			);
-
-			SetThreadPriority(internal_sync_generator_handle , THREAD_PRIORITY_HIGHEST);
-		};
+        // init functions
+        vz_window_lockgl(&vz_window_desc);
+        functions = vzMainNewFunctionsList(config);
+        vz_window_unlockgl(&vz_window_desc);
 
 		/* sync render */
 		{
@@ -1296,10 +1293,20 @@ int main(int argc, char** argv)
 		HANDLE serserver_handle = CreateThread(0, 0, serserver, config, 0, &thread);
 		SetThreadPriority(serserver_handle , THREAD_PRIORITY_LOWEST);
 
+        // run output
+        vz_window_lockgl(&vz_window_desc);
+        vzOutputRun(output_context);
+        vz_window_unlockgl(&vz_window_desc);
+
 		/* event loop */
 		vz_window_event_loop();
 		f_exit = 1;
 		logger_printf(1, "main: vz_window_event_loop finished");
+
+        // stop output
+        vz_window_lockgl(&vz_window_desc);
+        vzOutputStop(output_context);
+        vz_window_unlockgl(&vz_window_desc);
 
 		/* stop udpserver server */
 		if(INVALID_HANDLE_VALUE != udpserver_handle)
@@ -1349,15 +1356,6 @@ int main(int argc, char** argv)
 		logger_printf(1, "main: WaitForSingleObject(sync_render_handle) finished");
 		CloseHandle(sync_render_handle);
 
-		/* stop internal sync generator */
-		if(INVALID_HANDLE_VALUE != internal_sync_generator_handle)
-		{
-			logger_printf(1, "main: waiting for internal_sync_generator_handle...");
-			WaitForSingleObject(internal_sync_generator_handle, INFINITE);
-			logger_printf(1, "main: WaitForSingleObject(internal_sync_generator_handle) finished");
-			CloseHandle(internal_sync_generator_handle);
-		};
-
         /* unload layers */
         for(int idx = 0; idx < VZ_MAX_LAYERS; idx++)
         {
@@ -1366,22 +1364,18 @@ int main(int argc, char** argv)
             logger_printf(1, "main: CMD_layer_unload(%d) finished", idx);
         };
 
-        /* cleanup output module*/
-        if(output_module)
-        {
-            logger_printf(1, "main: waiting for vzOutputFree(output_module)...");
-            wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
-            vzOutputFree(output_module);
-            wglMakeCurrent(NULL, NULL);
-            logger_printf(1, "main: vzOutputFree(output_module) finished...");
-            output_module = NULL;
-        };
-
 		logger_printf(1, "main: waiting for vzMainFreeFunctionsList(functions)...");
         wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);
 		vzMainFreeFunctionsList(functions);
         wglMakeCurrent(NULL, NULL);
 		logger_printf(1, "main: vzMainFreeFunctionsList(functions) finished");
+
+        // release output
+        vz_window_lockgl(&vz_window_desc);
+        logger_printf(1, "main: waiting for vzOutputRelease(output_context)...");
+        vzOutputRelease(output_context);
+        logger_printf(1, "main: vzOutputRelease(output_context) finished...");
+        vz_window_unlockgl(&vz_window_desc);
 
 		/* destroy window */
 		logger_printf(1, "main: waiting for vz_destroy_window()...");
@@ -1392,6 +1386,11 @@ int main(int argc, char** argv)
         CloseHandle(layers_lock);
 		CloseHandle(vz_window_desc.lock);
 	};
+
+    // release output
+    logger_printf(1, "main: waiting for vzOutputRelease(output_context)...");
+    vzOutputFree(&output_context);
+    logger_printf(1, "main: vzOutputRelease(output_context) finished...");
 
 	logger_printf(1, "main: Bye!");
 	logger_release();

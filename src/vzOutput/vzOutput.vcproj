@@ -446,7 +446,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\vz\vzOutputInternal.h"
+				RelativePath="..\vz\vzOutputBuffers.h"
+				>
+			</File>
+			<File
+				RelativePath="..\vz\vzOutputContext.h"
+				>
+			</File>
+			<File
+				RelativePath="..\vz\vzOutputModule.h"
 				>
 			</File>
 		</Filter>

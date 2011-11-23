@@ -138,7 +138,7 @@ INCLUDE_DIR	= -I. -I../vz $(INCLUDES) $(SDK_INC) -I$(OBJS_DIR)
 LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
-TARGET = decklink bluefish nullvideo
+TARGET = nullvideo
 
 #!IF  "$(CFG)" == "Debug32" || "$(CFG)" == "Release32"
 #TARGET		= $(TARGET) streamalpha
