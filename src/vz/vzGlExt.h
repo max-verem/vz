@@ -246,4 +246,10 @@ VZGLEXT_API GLenum vzGlExtEnumLookup(char* name);
             __FILE__, __LINE__);                                    \
 }
 
+#ifdef _DEBUG
+#define glErrorLogD(OPER) glErrorLog(OPER)
+#else
+#define glErrorLogD(OPER) OPER
+#endif
+
 #endif /* VZGLEXT_H */
