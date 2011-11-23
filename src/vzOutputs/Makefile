@@ -140,9 +140,9 @@ LINKER		= /incremental:no $(LINKER_FLAGS)
 # created modules
 TARGET = decklink bluefish nullvideo
 
-!IF  "$(CFG)" == "Debug32" || "$(CFG)" == "Release32"
-TARGET		= $(TARGET) streamalpha
-!ENDIF
+#!IF  "$(CFG)" == "Debug32" || "$(CFG)" == "Release32"
+#TARGET		= $(TARGET) streamalpha
+#!ENDIF
 
 all: "$(OBJS_DIR)" "$(INSTALL_DIR)" $(TARGET)
 
