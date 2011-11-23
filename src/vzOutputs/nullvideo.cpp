@@ -350,7 +350,7 @@ unsigned long WINAPI output_loop(void* obj)
         for(c = 0; c < _buffers_info->input_channels; c++)
         {
             /* different methods for fields and frame mode */
-            if(_buffers_info->input[i].field_mode)
+            if(_buffers_info->input[c].field_mode)
 			{
 				/* field mode */
 				long l = _tv->TV_FRAME_WIDTH*4;
@@ -365,7 +365,7 @@ unsigned long WINAPI output_loop(void* obj)
 					int d = 
 						((i&1)?2:0)
 						|
-						((_buffers_info->input[i].twice_fields)?1:0);
+						((_buffers_info->input[c].twice_fields)?1:0);
 
 					switch(d)
 					{
@@ -417,15 +417,15 @@ unsigned long WINAPI output_loop(void* obj)
 				};
 			}
 			else
-			{
-				/* frame mode */
-				memcpy
-				(
-					_buffers_info->input[c].data[buf_idx][0],
-					tps[channels_tp[c]],
-					_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT*4
-				);
-			};
+            {
+                /* frame mode */
+                memcpy
+                (
+                    _buffers_info->input[c].data[buf_idx][0],
+                    tps[channels_tp[c]],
+                    _buffers_info->input[c].size
+                );
+            };
 		};
 
 
