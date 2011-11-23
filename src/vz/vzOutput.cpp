@@ -309,6 +309,10 @@ VZOUTPUT_API int vzOutputRelease(void* obj)
         glErrorLog(glDeleteBuffers(1, &ctx->output.buffers[b].num));
     };
 
+    /* free input queue locks */
+    for(i = 0; i < ctx->inputs_count; i++)
+        CloseHandle(ctx->inputs_data[i].lock);
+
     return 0;
 };
 
@@ -548,6 +552,106 @@ VZOUTPUT_API int vzOutputRenderSlots(void* obj)
     return r;
 };
 
+/** create input queue */
+VZOUTPUT_API int vzOutputInputAdd(void* obj)
+{
+    int i;
+    vzOutputContext_t* ctx;
+
+    ctx = (vzOutputContext_t*)obj;
+    if(!ctx) return -EINVAL;
+
+    if(ctx->inputs_count == MAX_INPUTS)
+        return -ENOMEM;
+
+    ctx->inputs_data[ctx->inputs_count].lock = CreateMutex(NULL, FALSE, NULL);
+    i = ctx->inputs_count;
+    logger_printf(0, "vzOutput: input #%d added", i);
+    ctx->inputs_count++;
+
+    return i;
+};
+
+/** push image into queue, older image will be set into img / IMAGE SOURCER */
+VZOUTPUT_API int vzOutputInputPush(void* obj, int idx, void** img)
+{
+    void* tmp;
+    vzOutputContext_t* ctx;
+
+    ctx = (vzOutputContext_t*)obj;
+    if(!ctx) return -EINVAL;
+
+    if(idx < 0 || idx >= ctx->inputs_count)
+        return -ENOENT;
+
+    WaitForSingleObject(ctx->inputs_data[idx].lock, INFINITE);
+
+    if(ctx->inputs_data[idx].back)
+    {
+        tmp = ctx->inputs_data[idx].back;
+        ctx->inputs_data[idx].back = ctx->inputs_data[idx].front;
+        ctx->inputs_data[idx].front = *img;
+    }
+    else
+    {
+        tmp = ctx->inputs_data[idx].front;
+        ctx->inputs_data[idx].front = *img;
+    };
+    *img = tmp;
+
+    ReleaseMutex(ctx->inputs_data[idx].lock);
+
+    return 0;
+};
+
+/** IMAGE DESTINATOR */
+VZOUTPUT_API int vzOutputInputPull(void* obj, int idx, void** img)
+{
+    vzOutputContext_t* ctx;
+
+    ctx = (vzOutputContext_t*)obj;
+    if(!ctx) return -EINVAL;
+
+    if(idx < 0 || idx >= ctx->inputs_count)
+        return -ENOENT;
+
+    WaitForSingleObject(ctx->inputs_data[idx].lock, INFINITE);
+
+    *img = ctx->inputs_data[idx].front;
+    ctx->inputs_data[idx].front = ctx->inputs_data[idx].back;
+    ctx->inputs_data[idx].back = NULL;
+
+    ReleaseMutex(ctx->inputs_data[idx].lock);
+
+    return 0;
+};
+
+VZOUTPUT_API int vzOutputInputPullBack(void* obj, int idx, void** img)
+{
+    vzOutputContext_t* ctx;
+
+    ctx = (vzOutputContext_t*)obj;
+    if(!ctx) return -EINVAL;
+
+    if(idx < 0 || idx >= ctx->inputs_count)
+        return -ENOENT;
+
+    WaitForSingleObject(ctx->inputs_data[idx].lock, INFINITE);
+
+    if(ctx->inputs_data[idx].back)
+    {
+        logger_printf(1, "vzOutput: vzOutputInputPullBack(%d) OVERRUN!", idx);
+    }
+    else
+    {
+        ctx->inputs_data[idx].back = ctx->inputs_data[idx].front;
+        ctx->inputs_data[idx].front = *img;
+    };
+
+    ReleaseMutex(ctx->inputs_data[idx].lock);
+
+    return 0;
+};
 
 /*
     could be usefull for further reading:

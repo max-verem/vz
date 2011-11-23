@@ -42,6 +42,14 @@ static void *tps[TP_COUNT] = { tp_bars_surface, tp_grid_surface, tp_lines_surfac
 
 #define MAX_INPUTS 4
 
+typedef struct nullvideo_input_context_desc
+{
+    int index;
+    int pattern;
+    void* parent;
+    vzImage img[3];
+} nullvideo_input_context_t;
+
 typedef struct nullvideo_runtime_context_desc
 {
     int f_exit;
@@ -55,6 +63,8 @@ typedef struct nullvideo_runtime_context_desc
         unsigned long* cnt;
     } sync;
     struct hr_sleep_data timer_data;
+
+    nullvideo_input_context_t inputs[MAX_INPUTS];
 } nullvideo_runtime_context_t;
 
 static nullvideo_runtime_context_t ctx;
@@ -137,9 +147,49 @@ unsigned long WINAPI nullvideo_thread_output(void* obj)
     return 0;
 };
 
+unsigned long WINAPI nullvideo_thread_input(void* obj)
+{
+    int i;
+    vzImage* img;
+    nullvideo_input_context_t* inp = (nullvideo_input_context_t*)obj;
+    nullvideo_runtime_context_t* ctx = (nullvideo_runtime_context_t*)inp->parent;
+
+    /* setup framebuffers */
+    for(i = 0; i < 3; i++)
+    {
+        inp->img[i].priv = (void*)i;
+        inp->img[i].bpp = 4;
+        inp->img[i].pix_fmt = VZIMAGE_PIXFMT_BGRA;
+        inp->img[i].surface = tps[inp->pattern];
+        inp->img[i].width = inp->img[i].base_width = tp_bars_width;
+        inp->img[i].height = inp->img[i].base_height = tp_bars_height;
+        inp->img[i].line_size = inp->img[i].width * inp->img[i].bpp;
+    };
+
+    /* push first frames */
+    img = &inp->img[0];
+    vzOutputInputPush(ctx->output_context, inp->index, (void**)&img);
+    img = &inp->img[1];
+    vzOutputInputPush(ctx->output_context, inp->index, (void**)&img);
+    img = &inp->img[2];
+
+    while(!ctx->f_exit)
+    {
+        /* wait for internal sync */
+        WaitForSingleObject(ctx->sync.src, INFINITE);
+
+        /* just push a frame */
+        vzOutputInputPush(ctx->output_context, inp->index, (void**)&img);
+    };
+
+    return 0;
+};
+
 
 static int nullvideo_run()
 {
+    int i;
+
     /* reset exit flag */
     ctx.f_exit = 0;
 
@@ -166,6 +216,49 @@ static int nullvideo_run()
             1024,
             nullvideo_thread_output,
             &ctx,
+            0,
+            NULL
+        );
+    };
+
+    for(i = 0; i < MAX_INPUTS; i++)
+    {
+        int j;
+        void* c;
+        char name[32];
+
+        /* check if parameter specified */
+        sprintf(name, "ENABLE_INPUT_%d", i + 1);
+        c = vzConfigParam(ctx.config, THIS_MODULE, name);
+        if(!c) continue;
+
+        /* check if index in range */
+        j = atol((char*)c);
+        if(j < 0 || j >= TP_COUNT)
+        {
+            logger_printf(1, THIS_MODULE_PREF "pattern value %d of parameter %s out of range",
+                j, name);
+            continue;
+        };
+
+        ctx.inputs[i].pattern = j;
+
+        j = vzOutputInputAdd(ctx.output_context);
+        if(j < 0)
+        {
+            logger_printf(1, THIS_MODULE_PREF "vzOutputInputAdd failed with %d", j);
+            continue;
+        };
+
+        ctx.inputs[i].parent = &ctx;
+        ctx.inputs[i].index = j;
+
+        ctx.th[2 + i] = CreateThread
+        (
+            NULL,
+            1024,
+            nullvideo_thread_input,
+            &ctx.inputs[i],
             0,
             NULL
         );

@@ -66,4 +66,12 @@ VZOUTPUT_API int vzOutputOutRel(void* obj, vzImage* img);
 /** */
 VZOUTPUT_API int vzOutputRenderSlots(void* obj);
 
+/** create input queue */
+VZOUTPUT_API int vzOutputInputAdd(void* obj);
+/** push image into queue, older image will be set into img / IMAGE SOURCER */
+VZOUTPUT_API int vzOutputInputPush(void* obj, int idx, void** img);
+/** IMAGE DESTINATOR */
+VZOUTPUT_API int vzOutputInputPull(void* obj, int idx, void** img);
+VZOUTPUT_API int vzOutputInputPullBack(void* obj, int idx, void** img);
+
 #endif

@@ -62,6 +62,9 @@ typedef struct vzImageDesc
 
     /** sys_id */
     long long sys_id;
+
+    /** private data */
+    void* priv;
 } vzImage;
 
 #define VZIMAGE_PIXFMT_BGR      1

@@ -2,6 +2,7 @@
 #define vzOutputContext_h
 
 #define MAX_MODULES 4
+#define MAX_INPUTS  16
 
 #include "vzOutputModule.h"
 #include "vzOutputBuffers.h"
@@ -31,6 +32,15 @@ typedef struct vzOutputContext_desc
 
     /* output buffers */
     vzOutputBuffers_t output;
+
+    /** inputs */
+    int inputs_count;
+    struct
+    {
+        HANDLE lock;
+        void* front;
+        void* back;
+    } inputs_data[MAX_INPUTS];
 
 }vzOutputContext_t;
 
