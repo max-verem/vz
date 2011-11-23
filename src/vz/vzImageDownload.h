@@ -49,6 +49,9 @@ static int vzImageDownload(char* filename_url, char* filename_local)
     long http_responce = 0;
     char errorBuffer[CURL_ERROR_SIZE];
 
+    /* reset local filename */
+    filename_local[0] = 0;
+
     /* check if protocol given is http or ftp */
     if(!proto && !_strnicmp(filename_url, "http://", 7)) proto = 1;
     if(!proto && !_strnicmp(filename_url, "ftp://", 6)) proto = 2;
