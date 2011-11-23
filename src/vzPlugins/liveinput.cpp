@@ -341,7 +341,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             glErrorLog(glDeleteTextures(1, &(_DATA->_texture)););
 
         /* generate new texture */
-        glGenTextures(1, &_DATA->_texture);
+        glErrorLog(glGenTextures(1, &_DATA->_texture));
 
         /* set flags */
         _DATA->_width = POT(_DATA->_buffers->input[I].width);
@@ -353,8 +353,8 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
         memset(fake_frame,0,4*_DATA->_width*_DATA->_height);
 
         /* create texture (init texture memory) */
-        glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
-        glTexImage2D
+        glErrorLog(glBindTexture(GL_TEXTURE_2D, _DATA->_texture));
+        glErrorLog(glTexImage2D
         (
             GL_TEXTURE_2D,          // GLenum target,
             0,                      // GLint level,
@@ -365,9 +365,9 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             GL_BGRA_EXT,            // GLenum format,
             GL_UNSIGNED_BYTE,       // GLenum type,
             fake_frame              // const GLvoid *pixels
-        );
-        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+        ));
+        glErrorLog(glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR));
+        glErrorLog(glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR));
 
         /* free memory of fake image */
         free(fake_frame);
@@ -385,7 +385,6 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
     y_offset = (_DATA->_buffers->input[I].twice_fields)?0:(session->field*_DATA->l_offset_y); 
 
     /* load new texture , if it ready*/
-    glBindTexture(GL_TEXTURE_2D, _DATA->_texture);  /* bind to buffer */
     if
     (
         (0 == buffer_id)
@@ -406,6 +405,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
     )
     {
         /* classic method - loading buffer */
+        glErrorLog(glBindTexture(GL_TEXTURE_2D, _DATA->_texture));  /* bind to buffer */
 
         /* load */
         glTexSubImage2D
