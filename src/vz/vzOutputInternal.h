@@ -95,9 +95,6 @@ class VZOUTPUT_API vzOutput
 	// config
 	void* _config;
 
-	// offscreen buffer usage flag
-	long _use_offscreen_buffer;
-
 	/* buffers data */
 	struct vzOutputBuffers _buffers;
 

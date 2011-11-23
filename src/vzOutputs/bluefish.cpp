@@ -214,6 +214,7 @@ static unsigned long WINAPI hanc_decode(void* p)
 {
 	struct io_in_desc* desc = (struct io_in_desc*)p;
 
+#if 0
 	/* audio deals */
 	if(audio_input_embed)
 	{
@@ -231,6 +232,7 @@ static unsigned long WINAPI hanc_decode(void* p)
 			AUDIO_CHANNEL_16BIT						/* BLUE_UINT32 sample_type */
 		);
 	};
+#endif
 	
 	return 0;
 };
@@ -318,6 +320,7 @@ static unsigned long WINAPI demux_fields(void* p, int input_idx)
 static unsigned long WINAPI demux_fields_1(void* p) { return demux_fields(p, 0); };
 static unsigned long WINAPI demux_fields_2(void* p) { return demux_fields(p, 1); };
 
+#if 0
 /* composite audio */
 #define MAX_AUDIO_SAMPLE_SIZE 4
 #define MAX_AUDIO_FRAMES_STORE 14
@@ -456,6 +459,7 @@ static unsigned long WINAPI io_out_a(void* p)
 
 	return 0;
 }
+#endif
 
 static unsigned long WINAPI io_out(void* p)
 {
@@ -814,6 +818,7 @@ static unsigned long WINAPI main_io_loop(void* p)
         //&output_buffer, &input_buffers, &output_a_buffer, &input_a_buffers);
 
 		dump_line;
+#if 0
 
 		/* start output thread */
 		out_main.audio = buffers->output.audio;
@@ -824,7 +829,6 @@ static unsigned long WINAPI main_io_loop(void* p)
 		io_ops[8] = CreateThread(0, 0, io_out_a,  &out_main , 0, &io_ops_id[8]);
 		dump_line;
 
-#if 0
 		/* start audio output */
 		if
 		(
@@ -851,7 +855,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 		{
 			in1.id = 1;
 			in1.buffers = buffers->input[0].data[buf_idx];
-			in1.audio = buffers->input[0].audio[buf_idx];
+//			in1.audio = buffers->input[0].audio[buf_idx];
 			io_ops[1] = CreateThread(0, 0, io_in,  &in1 , 0, &io_ops_id[1]);
 			io_ops[4] = CreateThread(0, 0, demux_fields_1,  &in1 , 0, &io_ops_id[4]);
 			io_ops[6] = CreateThread(0, 0, hanc_decode,  &in1 , 0, &io_ops_id[6]);
@@ -860,7 +864,7 @@ static unsigned long WINAPI main_io_loop(void* p)
 			{
 				in2.id = 2;
 				in2.buffers = buffers->input[1].data[buf_idx];
-				in2.audio = buffers->input[1].audio[buf_idx];
+//				in2.audio = buffers->input[1].audio[buf_idx];
 				io_ops[2] = CreateThread(0, 0, io_in,  &in2 , 0, &io_ops_id[2]);
 				io_ops[5] = CreateThread(0, 0, demux_fields_2,  &in2 , 0, &io_ops_id[5]);
 				io_ops[7] = CreateThread(0, 0, hanc_decode,  &in2 , 0, &io_ops_id[7]);
@@ -1472,20 +1476,23 @@ VZOUTPUTS_EXPORT void vzOutput_GetBuffersInfo(struct vzOutputBuffers* b)
 	b->output.size = 4*_tv->TV_FRAME_WIDTH*_tv->TV_FRAME_HEIGHT;
 	b->output.gold = buffers_golden;
 
+#if 0
 	b->output.audio_buf_size = 
 		2 /* 16 bits */ * 
 		2 /* 2 channels */ * 
 		VZOUTPUT_AUDIO_SAMPLES;
+#endif
 
     /* inputs count conf */
     b->input_channels = inputs_count;
     for(i = 0; i < inputs_count; i++)
     {
+#if 0
         b->input[i].audio_buf_size =
             2 /* 16 bits */ *
             2 /* 2 channels */ *
             VZOUTPUT_AUDIO_SAMPLES;
-
+#endif
         b->input[i].field_mode = CONFIG_O(O_SOFT_FIELD_MODE)?1:0;
         if(b->input[i].field_mode)
             b->input[i].twice_fields = CONFIG_O(O_SOFT_TWICE_FIELDS)?1:0;
@@ -1551,7 +1558,7 @@ BOOL APIENTRY DllMain
 			/* clean vars */
 			memset(input_mapped_buffers, 0, sizeof(input_mapped_buffers));
 			memset(input_hanc_buffers, 0, sizeof(input_hanc_buffers));
-			memset(&ca, 0, sizeof(ca));
+//			memset(&ca, 0, sizeof(ca));
 
 			/* init HANC buffers */
 			for(i = 0; i < MAX_INPUTS; i++)

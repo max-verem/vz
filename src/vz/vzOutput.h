@@ -58,14 +58,6 @@ typedef void (*frames_counter_proc)();
 
 #define VZOUTPUT_MAX_BUFS 4
 #define VZOUTPUT_MAX_CHANNELS 4
-#define VZOUTPUT_AUDIO_SAMPLES 1920
-
-struct vzOutputMixerBuffers
-{
-	void** buffers;
-	float* levels;
-	int count;
-};
 
 struct vzOutputBuffers
 {
@@ -90,7 +82,6 @@ struct vzOutputBuffers
 	struct
 	{
 		void* data[VZOUTPUT_MAX_BUFS];
-		void* audio[VZOUTPUT_MAX_BUFS];
 		unsigned int nums[VZOUTPUT_MAX_BUFS];
 
 		long gold;
@@ -106,7 +97,6 @@ struct vzOutputBuffers
 		int twice_fields;
 
         void* data[VZOUTPUT_MAX_BUFS][2];
-        void* audio[VZOUTPUT_MAX_BUFS];
         unsigned int nums[VZOUTPUT_MAX_BUFS][2];
 		long audio_buf_size;
 
@@ -118,9 +108,6 @@ struct vzOutputBuffers
 		long height;
     } input[VZOUTPUT_MAX_CHANNELS];
     int input_channels;
-
-	struct vzOutputMixerBuffers mix_queue[2];
-	int mix_current;
 };
 
 
@@ -134,6 +121,5 @@ VZOUTPUT_API void vzOuputPostRender(void* obj);
 VZOUTPUT_API void vzOuputPreRender(void* obj);
 VZOUTPUT_API int vzOuputRenderSlots(void* obj);
 VZOUTPUT_API struct vzOutputBuffers* vzOutputIOBuffers(void);
-VZOUTPUT_API void vzOutputAddMixerLine(float level, void* buffer);
 
 #endif

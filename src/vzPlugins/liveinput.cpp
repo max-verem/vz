@@ -452,6 +452,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
         /* something wrong ??? */
     };
 
+#if 0
     /* audio add to mixer */
     if
     (
@@ -464,7 +465,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             _DATA->f_audio_level,
             _DATA->_buffers->input[I].audio[_DATA->_buffers->pos_render]
         );
-
+#endif
     // release mutex
     ReleaseMutex(_DATA->_lock_update);
 };

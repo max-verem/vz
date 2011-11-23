@@ -155,40 +155,6 @@ VZOUTPUT_API int vzOuputRenderSlots(void* obj)
 	return ((vzOutput*)obj)->render_slots();
 };
 
-VZOUTPUT_API void vzOutputAddMixerLine(float level, void* buffer)
-{
-	/* check if buffers defined */
-	if(!(_global_buffers_info)) return;
-
-	/* find current active mix buffer */
-	struct vzOutputMixerBuffers* m = 
-		&_global_buffers_info->mix_queue[_global_buffers_info->mix_current];
-
-	/* we store in queue #0 */
-
-	/* realloc space for arrays */
-	m->buffers = (void**)realloc(m->buffers, (m->count + 1)*sizeof(void*));
-	m->levels = (float*)realloc(m->levels, (m->count + 1)*sizeof(void*));
-
-	/* allocate mem for new buffer */
-	m->buffers[m->count] = malloc(_global_buffers_info->output.audio_buf_size);
-
-	/* copy mem */
-	memcpy
-	(
-		m->buffers[m->count],
-		buffer,
-		_global_buffers_info->output.audio_buf_size
-	);
-
-	/* copy level */
-	m->levels[m->count] = level;
-
-	/* increment counter */
-	m->count++;
-};
-
-
 /// --------------------------------------------------
 
 int vzOutput::render_slots()
@@ -215,8 +181,6 @@ int vzOutput::render_slots()
 
 void vzOutput::lock_io_bufs(int* buf_idx)
 {
-    int i, j;
-
 	/* lock buffers head */
 	WaitForSingleObject(_buffers.lock, INFINITE);
 
@@ -258,97 +222,22 @@ void vzOutput::lock_io_bufs(int* buf_idx)
 
     /* setup pointer to mapped buffer */
     *buf_idx = _buffers.pos_driver;
-
-#ifdef DUMP_DRV_IO_LOCKS
-	fprintf(stderr, "lock_io_bufs: id=%d\n",_buffers.id[ _buffers.pos_driver ]);
-#endif /* DUMP_DRV_IO_LOCKS */
-
-    /* check if we need to map buffers */
-    if(_use_offscreen_buffer)
-    {
-        /* map input buffers */
-        for(i = 0; i < _buffers.input_channels; i++)
-            for(j = 0; j <= _buffers.input[i].field_mode; j++)
-            {
-                glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB,
-                    _buffers.input[i].nums[_buffers.pos_driver][j]);
-                _buffers.input[i].data[_buffers.pos_driver][j] =
-                    glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
-            };
-
-        /* unbind ? */
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-    };
-
-#ifdef DUMP_DRV_IO_LOCKS
-	if(_buffers_pos_render == _buffers.pos_render)
-		fprintf(stderr, "lock_io_bufs: '_buffers.pos_render=%d' duplicated\n", _buffers.pos_render);
-	if(_buffers_pos_driver == _buffers.pos_driver)
-		fprintf(stderr, "lock_io_bufs: '_buffers.pos_driver=%d' duplicated\n", _buffers.pos_driver);
-	_buffers_pos_render = _buffers.pos_render;
-	_buffers_pos_driver = _buffers.pos_driver;
-	fprintf(stderr, "lock_io_bufs: %-10d r=%d d=%d [", timeGetTime(), _buffers.pos_render, _buffers.pos_driver);
-	for(i = 0; i<VZOUTPUT_MAX_BUFS ; i++)
-		fprintf(stderr, "/ %-6d /", _buffers.id[i]);
-	fprintf(stderr, "]\n");
-#endif /* DUMP_DRV_IO_LOCKS */
-
 };
 
 
 void vzOutput::unlock_io_bufs()
 {
-	int i, j;
+    /* unlock buffer */
+    ReleaseMutex(_buffers.locks[ _buffers.pos_driver ]);
 
-	/* check if we need to unmap buffers */
-	if(_use_offscreen_buffer)
-    {
-        /* unmap input buffers */
-        for(i = 0; i < _buffers.input_channels; i++)
-            for(j = 0; j <= _buffers.input[i].field_mode; j++)
-            {
-                glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB,
-                    _buffers.input[i].nums[_buffers.pos_driver][j]);
-                glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-            };
-        /* unbind ? */
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-    };
+    /* lock buffers head */
+    WaitForSingleObject(_buffers.lock, INFINITE);
 
-	/* unlock buffer */
-	ReleaseMutex(_buffers.locks[ _buffers.pos_driver ]);
+    /* set jump flag */
+    _buffers.pos_driver_jump = 1;
 
-	/* lock buffers head */
-	WaitForSingleObject(_buffers.lock, INFINITE);
-
-	/* try to jump */
-#ifdef QQ
-	/* check if next buffer is loaded */
-	if(((_buffers.pos_driver + 1) % VZOUTPUT_MAX_BUFS) != _buffers.pos_render)
-	{
-		/* reset buffer frame number */
-		_buffers.id[ _buffers.pos_driver ] = 0;
-
-		/* increment position */
-		_buffers.pos_driver = (_buffers.pos_driver + 1) % VZOUTPUT_MAX_BUFS;
-
-		/* reset jump flag */
-		_buffers.pos_driver_jump = 0;
-
-		/* check drop count */
-		if(_buffers.pos_driver_dropped)
-		{
-			printf("vzOutput: dropped %d frames[driver]\n", _buffers.pos_driver_dropped);
-			_buffers.pos_driver_dropped = 0;
-		};
-	}
-	else
-#endif /* QQ */
-		/* set jump flag */
-		_buffers.pos_driver_jump = 1;
-
-	/* unlock buffers head */
-	ReleaseMutex(_buffers.lock);
+    /* unlock buffers head */
+    ReleaseMutex(_buffers.lock);
 };
 
 #ifdef FAKE_TONE
@@ -357,8 +246,6 @@ void vzOutput::unlock_io_bufs()
 
 void vzOutput::pre_render()
 {
-	int i, j;
-
 	/* lock buffers head */
 	WaitForSingleObject(_buffers.lock, INFINITE);
 
@@ -397,142 +284,25 @@ void vzOutput::pre_render()
 	/* unlock buffers head */
 	ReleaseMutex(_buffers.lock);
 
-	// two method for copying data
-	if(_use_offscreen_buffer)
-	{
-		/* bind to buffer */
-		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _buffers.output.nums[_buffers.pos_render]);
-		glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
-		_buffers.output.data[_buffers.pos_render] = NULL;
+        /* bind to buffer */
+        glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,
+            _buffers.output.nums[_buffers.pos_render]));
+        glErrorLogD(glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB));
+        _buffers.output.data[_buffers.pos_render] = NULL;
 
-		// start asynchroniosly  read from buffer
-		glReadPixels
-		(
-			0,
-			0,
-			_tv->TV_FRAME_WIDTH,
-			_tv->TV_FRAME_HEIGHT,
-			GL_BGRA_EXT,
-			GL_UNSIGNED_BYTE,
-			BUFFER_OFFSET( _buffers.output.offset )
-		);
+        // start asynchroniosly read from buffer
+        glErrorLogD(glReadPixels
+        (
+            0,
+            0,
+            _tv->TV_FRAME_WIDTH,
+            _tv->TV_FRAME_HEIGHT,
+            GL_BGRA_EXT,
+            GL_UNSIGNED_BYTE,
+            BUFFER_OFFSET(_buffers.output.offset)
+        ));
 
-		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
-	}
-	else
-	{
-		// classic method
-	
-		// read pixels into initialized buffer
-		glReadPixels
-		(
-			0,
-			0,
-			_tv->TV_FRAME_WIDTH,
-			_tv->TV_FRAME_HEIGHT,
-			GL_BGRA_EXT,
-			GL_UNSIGNED_BYTE,
-			((unsigned char*)_buffers.output.data[_buffers.pos_render])
-			+
-			_buffers.output.offset
-		);
-
-		/* deal with indexes */
-		post_render_aux();
-	};
-
-	/* MIX DOWN AUDIO */
-
-	/* find current active mix buffer */
-	struct vzOutputMixerBuffers* m = 
-		&_buffers.mix_queue[1 - _buffers.mix_current];
-	/* for one channel */
-	if
-	(
-		(1 == m->count)
-		&&
-		(0.0 == m->levels[0])
-	)
-	{
-		memcpy
-		(
-			_buffers.output.audio[_buffers.pos_render],
-			m->buffers[0],
-			_buffers.output.audio_buf_size
-		);
-	}
-	else
-	{
-		/* cleanup output buf */
-		memset
-		(
-			_buffers.output.audio[_buffers.pos_render],
-			0,
-			_buffers.output.audio_buf_size
-		);
-
-		/* calc max and amps settings */
-		double Lmax = 0.0, Rs, Ls[32];
-		for(j = 0; j< m->count ; j++)
-			Lmax += (Ls[j] = expl(m->levels[j] * Ak));
-		/* limit */
-		if(Lmax < 1.0) Lmax = 1.0;
-		/* mix down */
-		for(i = 0, Rs = 0.0; i< (_buffers.output.audio_buf_size/2) ; i++)
-		{	
-			/* calc mixed sample */
-			for(j = 0, Rs = 0.0; j< m->count ; j++)
-				Rs += ((double)(((signed short*)m->buffers[j])[i])) * Ls[j];
-			/* normalize */
-			Rs /= Lmax;
-			/* save */
-			((signed short*)_buffers.output.audio[_buffers.pos_render])[i] =(signed short)Rs;
-		};
-	}
-	/* free buffer */
-	for(j = 0; j< m->count ; j++)
-		free(m->buffers[j]);
-	m->count = 0;
-
-#ifdef FAKE_TONE
-	/* init */
-	if(NULL == tone_buffer)
-	{
-		tone_buffer = (unsigned short*)malloc(1920*2*sizeof(unsigned short));
-
-		/* generate */
-		for(int p = 0; p < 1920; p++)
-		{
-			double r = 6030.0*sinf( p * (1.0/48000.0) * 2.0 * 3.1415 * 1000.0);
-			tone_buffer[2*p + 1] = 
-				tone_buffer[2*p + 0] = 
-					(unsigned short)r;
-		};
-	};
-
-	/* copy */
-	memcpy
-	(
-		_buffers.output.audio[_buffers.pos_render],
-		tone_buffer,
-		_buffers.output.audio_buf_size
-	);
-
-#endif /* FAKE_TONE */
-
-#ifdef FAKE_MIX
-	/* fake copy */
-	memcpy
-	(
-		_buffers.output.audio[_buffers.pos_render],
-		_buffers.input.audio[_buffers.pos_render][1],
-		_buffers.output.audio_buf_size
-	);
-#endif /* FAKE_MIX */
-
-	// restore read buffer
-//	glReadBuffer(read_buffer);
-//	glDrawBuffer(draw_buffer);
+        glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
 };
 
 
@@ -571,9 +341,6 @@ void vzOutput::post_render_aux()
 
 void vzOutput::post_render()
 {
-	// two method for copying data
-	if(_use_offscreen_buffer)
-	{
 		/* wait async transfer */
 		glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, _buffers.output.nums[_buffers.pos_render]);
 		_buffers.output.data[_buffers.pos_render] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
@@ -581,10 +348,6 @@ void vzOutput::post_render()
 
 		/* deal with indexes */
 		post_render_aux();
-	};
-
-	/* switch mixer lines */
-	_buffers.mix_current = 1 - _buffers.mix_current;
 };
 
 
@@ -598,13 +361,8 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 	// assign config
 	_config = config;
 
-	// load option
-	_use_offscreen_buffer = vzConfigParam(config,"vzOutput","use_offscreen_buffer")?1:0;
-
-	/* check if appropriate exts is loaded */
-	if(_use_offscreen_buffer)
-		if(!(glGenBuffers)) 
-			_use_offscreen_buffer = 0;
+    /* clear buffers into struct */
+    memset(&_buffers, 0, sizeof(struct vzOutputBuffers));
 
 	// prepare filename
 	char filename[1024];
@@ -679,44 +437,10 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 					_buffers.locks[b] = CreateMutex(NULL,FALSE,NULL);
 				GetBuffersInfo(&_buffers);
 
-				/* audio buffers */
-				for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
-				{
-					/* deal with output audio buffers */
-					_buffers.output.audio[b] = VirtualAlloc
-					(
-						NULL, 
-						_buffers.output.audio_buf_size,
-						MEM_COMMIT, 
-						PAGE_READWRITE
-					);
-					VirtualLock(_buffers.output.data[b], _buffers.output.audio_buf_size);
-
-					/* deal with input audio buffers */
-					for(i = 0; i<_buffers.input_channels; i++)
-					{
-                        _buffers.input[i].audio[b] = VirtualAlloc
-                        (
-                            NULL,
-                            _buffers.input[i].audio_buf_size,
-                            MEM_COMMIT,
-                            PAGE_READWRITE
-                        );
-						VirtualLock(_buffers.input[i].audio[b], _buffers.input[i].audio_buf_size);
-					};
-				};
-
-				/* mixer buffers */
-				_buffers.mix_queue[0].buffers = (void**) malloc(0);
-				_buffers.mix_queue[1].buffers = (void**) malloc(0);
-				_buffers.mix_queue[0].levels = (float*) malloc(0);
-				_buffers.mix_queue[1].levels = (float*) malloc(0);
-
 				// create framebuffers
-				if(_use_offscreen_buffer)
-				{
-					// generate VZOUTPUT_MAX_BUFS offscreen buffers
-					glGenBuffers(VZOUTPUT_MAX_BUFS, _buffers.output.nums);
+
+                    // generate VZOUTPUT_MAX_BUFS offscreen buffers
+                    glErrorLog(glGenBuffers(VZOUTPUT_MAX_BUFS, _buffers.output.nums));
 
 					// init and request mem addrs of buffers
 					for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
@@ -728,41 +452,11 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
 						// REQUEST BUFFER PTR - MAP AND SAVE PTR
 						_buffers.output.data[b] = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY);
 
-						// UNMAP
-						glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
+//						// UNMAP
+//						glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB);
 
-                        /* deal with input buffers */
-                        for(i = 0; i < _buffers.input_channels; i++)
-                        {
-                            for(j = 0; j <= _buffers.input[i].field_mode; j++)
-                            {
-                                glGenBuffers(1,
-                                    &_buffers.input[i].nums[b][j]);
-                                glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB,
-                                    _buffers.input[i].nums[b][j]);
-                                glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB,
-                                    _buffers.input[i].gold, NULL, GL_STREAM_DRAW);
-                            };
-                        };
-
-						// unbind ?
+//						// unbind ?
 						glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0);
-					};
-
-				}
-				else
-				{
-					/* allocate mem */
-					for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
-					{
-						_buffers.output.data[b] = VirtualAlloc
-						(
-							NULL, 
-							_buffers.output.gold,
-							MEM_COMMIT, 
-							PAGE_READWRITE
-						);
-						VirtualLock(_buffers.output.data[b], _buffers.output.gold);
 
                         /* deal with input buffers */
                         for(i = 0; i < _buffers.input_channels; i++)
@@ -781,7 +475,6 @@ vzOutput::vzOutput(void* config, char* name, void* tv)
                             };
                         };
 					};
-				};
 
 				/* Man/Remap or other ops */
 				AssignBuffers(&_buffers);
@@ -831,59 +524,12 @@ vzOutput::~vzOutput()
 		for(b = 0; b < VZOUTPUT_MAX_BUFS; b++)
 			CloseHandle(_buffers.locks[b]);
 
-		/* free audio buffers */
-		for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
-		{
-			/* deal with output audio buffers */
-			if(_buffers.output.audio[b])
-			{
-				VirtualUnlock(_buffers.output.audio[b], _buffers.output.audio_buf_size);
-				VirtualFree(_buffers.output.audio[b], _buffers.output.audio_buf_size, MEM_RELEASE);
-			};
-
-            /* deal with input audio buffers */
-            for(i = 0; i < _buffers.input_channels; i++)
-            {
-                if(_buffers.output.audio[b])
-                {
-                    VirtualUnlock(_buffers.input[i].audio[b],
-                        _buffers.input[i].audio_buf_size);
-                    VirtualFree(_buffers.input[i].audio[b],
-                        _buffers.input[i].audio_buf_size, MEM_RELEASE);
-                };
-            };
-		};
-
-		/* free mixer buffers */
-		for(b = 0; b < 2; b++)
-		{
-			free(_buffers.mix_queue[b].levels);
-			for(i = 0; i< _buffers.mix_queue[b].count; i++)
-				free(_buffers.mix_queue[b].buffers[i]);
-			free(_buffers.mix_queue[b].buffers);
-		};
-
 		// free framebuffer
-		if(_use_offscreen_buffer)
-		{
 			glDeleteBuffers(VZOUTPUT_MAX_BUFS, _buffers.output.nums);
 
-            /* deal with input buffers */
-            for(i = 0; i < _buffers.input_channels; i++)
-                for(j = 0; j <= _buffers.input[i].field_mode; j++)
-                    for(b = 0; b < VZOUTPUT_MAX_BUFS; b++)
-                        glDeleteBuffers(1, _buffers.input[i].nums[b]);
-		}
-		else
-		{
 			/* release mem */
 			for(b=0; b<VZOUTPUT_MAX_BUFS; b++)
 			{
-				if(_buffers.output.data[b])
-				{
-					VirtualUnlock(_buffers.output.data[b], _buffers.output.gold);
-					VirtualFree(_buffers.output.data[b], _buffers.output.gold, MEM_RELEASE);
-				};
 
                 /* deal with input buffers */
                 for(i = 0; i < _buffers.input_channels; i++)
@@ -896,7 +542,6 @@ vzOutput::~vzOutput()
                                 _buffers.input[i].gold, MEM_RELEASE);
                         };
 			};
-		};
 	};
 };
 
