@@ -157,9 +157,6 @@ static int decklink_ScheduleNextFrame(decklink_runtime_context_t* ctx, int is_pr
     vzImage img;
     IDeckLinkMutableVideoFrame* frame;
 
-    *ctx->output.sync_cnt = 1 + *ctx->output.sync_cnt;
-    PulseEvent(ctx->output.sync_event);
-
     /* request frame */
     vzOutputOutGet(ctx->output_context, &img);
 
@@ -199,6 +196,11 @@ static int decklink_ScheduleNextFrame(decklink_runtime_context_t* ctx, int is_pr
     vzOutputOutRel(ctx->output_context, &img);
 
     ctx->output.cnt++;
+
+    /* notify main */
+    *ctx->output.sync_cnt = 1 + *ctx->output.sync_cnt;
+    PulseEvent(ctx->output.sync_event);
+
 
     return 0;
 };

@@ -131,10 +131,6 @@ unsigned long WINAPI nullvideo_thread_output(void* obj)
         /* wait for internal sync */
         WaitForSingleObject(ctx->sync.src, INFINITE);
 
-        /* notify main */
-        *ctx->sync.cnt = *ctx->sync.cnt + 1;
-        PulseEvent(ctx->sync.dst);
-
         /* request frame */
         vzOutputOutGet(ctx->output_context, &img);
 
@@ -142,6 +138,10 @@ unsigned long WINAPI nullvideo_thread_output(void* obj)
 
         /* release frame back */
         vzOutputOutRel(ctx->output_context, &img);
+
+        /* notify main */
+        *ctx->sync.cnt = *ctx->sync.cnt + 1;
+        PulseEvent(ctx->sync.dst);
     };
 
     return 0;
