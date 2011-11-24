@@ -21,6 +21,7 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 #define _CRT_SECURE_NO_WARNINGS
+//#define DEBUG_TIMINGS
 
 #include <stdio.h>
 #include <string.h>
@@ -321,6 +322,10 @@ VZOUTPUT_API int vzOutputPostRender(void* obj)
 {
     vzOutputContext_t* ctx;
 
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputPostRender enter");
+#endif
+
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
 
@@ -341,6 +346,10 @@ VZOUTPUT_API int vzOutputPostRender(void* obj)
     /* unlock buffers head */
     ReleaseMutex(ctx->output.lock);
 
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputPostRender exit");
+#endif
+
     return 0;
 };
 
@@ -348,6 +357,10 @@ VZOUTPUT_API int vzOutputPostRender(void* obj)
 VZOUTPUT_API int vzOutputPreRender(void* obj)
 {
     vzOutputContext_t* ctx;
+
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputPreRender enter");
+#endif
 
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
@@ -361,9 +374,6 @@ VZOUTPUT_API int vzOutputPreRender(void* obj)
         /* check if next buffer is loaded */
         if(((ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_driver)
         {
-            /* reset buffer frame number */
-            ctx->output.buffers[ctx->output.pos_driver].id = 1;
-
             /* increment position */
             ctx->output.pos_render = (ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS;
 
@@ -414,6 +424,10 @@ VZOUTPUT_API int vzOutputPreRender(void* obj)
 
     glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
 
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputPreRender exit");
+#endif
+
     return 0;
 };
 
@@ -452,6 +466,10 @@ VZOUTPUT_API int vzOutputOutGet(void* obj, vzImage* img)
 {
     vzOutputContext_t* ctx;
 
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputOutGet enter");
+#endif
+
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
 
@@ -464,6 +482,9 @@ VZOUTPUT_API int vzOutputOutGet(void* obj, vzImage* img)
         /* check if next buffer is loaded */
         if(((ctx->output.pos_driver + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_render)
         {
+            /* reset buffer frame number */
+            ctx->output.buffers[ctx->output.pos_driver].id = 0;
+
             /* increment position */
             ctx->output.pos_driver = (ctx->output.pos_driver + 1) % VZOUTPUT_MAX_BUFS;
 
@@ -500,6 +521,10 @@ VZOUTPUT_API int vzOutputOutGet(void* obj, vzImage* img)
     img->surface = ctx->output.buffers[ctx->output.pos_driver].data;
     img->line_size = img->width * img->bpp;
 
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputOutGet exit");
+#endif
+
     return 0;
 };
 
@@ -507,6 +532,10 @@ VZOUTPUT_API int vzOutputOutGet(void* obj, vzImage* img)
 VZOUTPUT_API int vzOutputOutRel(void* obj, vzImage* img)
 {
     vzOutputContext_t* ctx;
+
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputOutRel enter");
+#endif
 
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
@@ -523,6 +552,10 @@ VZOUTPUT_API int vzOutputOutRel(void* obj, vzImage* img)
     /* unlock buffers head */
     ReleaseMutex(ctx->output.lock);
 
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputOutRel exit");
+#endif
+
     return 0;
 };
 
@@ -530,6 +563,10 @@ VZOUTPUT_API int vzOutputRenderSlots(void* obj)
 {
     int r = 0;
     vzOutputContext_t* ctx;
+
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputRenderSlots enter");
+#endif
 
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
@@ -548,6 +585,10 @@ VZOUTPUT_API int vzOutputRenderSlots(void* obj)
 
     /* unlock buffers head */
     ReleaseMutex(ctx->output.lock);
+
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, "vzOutput: vzOutputRenderSlots exit %d", r);
+#endif
 
     return r;
 };
@@ -651,6 +692,18 @@ VZOUTPUT_API int vzOutputInputPullBack(void* obj, int idx, void** img)
     ReleaseMutex(ctx->inputs_data[idx].lock);
 
     return 0;
+};
+
+static vzOutputContext_t* global_ctx = NULL;
+
+VZOUTPUT_API void* vzOutputGlobalContextGet()
+{
+    return global_ctx;
+};
+
+VZOUTPUT_API void* vzOutputGlobalContextSet(void* obj)
+{
+    return (global_ctx = (vzOutputContext_t*)obj);
 };
 
 /*

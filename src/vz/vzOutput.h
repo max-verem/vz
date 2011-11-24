@@ -44,6 +44,8 @@ VZOUTPUT_API int vzOutputFree(void** obj);
 /**  */
 VZOUTPUT_API int vzOutputInit(void* obj, HANDLE sync_event, unsigned long* sync_cnt);
 VZOUTPUT_API int vzOutputRelease(void* obj);
+VZOUTPUT_API void* vzOutputGlobalContextGet();
+VZOUTPUT_API void* vzOutputGlobalContextSet(void* obj);
 
 /** prepare OpenGL buffers download */
 VZOUTPUT_API int vzOutputPostRender(void* obj);
