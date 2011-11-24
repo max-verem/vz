@@ -289,6 +289,9 @@ static int vzImagePixFmt2Bpp(int pix_fmt)
         case VZIMAGE_PIXFMT_GRAY:
             bpp = 1;
             break;
+        case VZIMAGE_PIXFMT_UYVY:
+            bpp = 2;
+            break;
     };
 
     return bpp;
