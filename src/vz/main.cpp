@@ -391,31 +391,31 @@ static void frames_counter()
 /*----------------------------------------------------------
 	render loop
 ----------------------------------------------------------*/
-static void vz_scene_render(void);
+static int vz_scene_render(int rendered_limit);
 static void vz_scene_display(void);
 static unsigned long WINAPI sync_render(void* data)
 {
-	while(0 == f_exit)
-	{
-		if(WAIT_OBJECT_0 == WaitForSingleObject(global_frame_event, INFINITE))
-//		WaitForSingleObject(global_frame_event, /* INFINITE */ 1000);
-		{
-			/* render picture */
-			if(not_first_at)
-			{
-				// reset flag of forcing redraw
-				skip_draw = 0;
+    DWORD d;
+    while(0 == f_exit)
+    {
+        d = WaitForSingleObject(global_frame_event, INFINITE);
+        if(d) continue;
 
-				// notify about redisplay
-				vz_scene_render();
-			};
+        /* render picture */
+        if(not_first_at)
+        {
+            // reset flag of forcing redraw
+            skip_draw = 0;
 
-			/* notify to redraw bg or direct render screen */
-			vz_scene_display();
-		};
-	};
+            // notify about redisplay
+            vz_scene_render(4);
+        };
 
-	return 0;
+        /* notify to redraw bg or direct render screen */
+        vz_scene_display();
+    };
+
+    return 0;
 };
 
 /*----------------------------------------------------------
@@ -539,54 +539,41 @@ static long render_time = 0;
 static long rendered_frames = 0;
 static long last_title_update = 0;
 
-static void vz_scene_render(void)
+static int vz_scene_render(int rendered_limit)
 {
-	int force_render = 0, force_rendered = 0;
+    int idx, cnt, r, rendered_local = 0;
 
-	/* check if extensions loaded */
-	if(!(glExtInitDone)) 
-		return;
+    /* check if extensions loaded */
+    if(!(glExtInitDone)) 
+        return -ENOMEM;
 
-	// check if redraw should processed
-	// by internal needs
-	if (skip_draw)
-		return;
+    // check if redraw should processed
+    // by internal needs
+    if (skip_draw)
+        return 0;
+    skip_draw = 1;
 
-	WaitForSingleObject(vz_window_desc.lock, INFINITE);
-	if(0 == wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc))
-	{
-		DWORD err = GetLastError();
-		wglMakeCurrent(NULL, NULL);
-		ReleaseMutex(vz_window_desc.lock);
-		return;
-	};
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb);
+    r = vz_window_lockgl(&vz_window_desc);
+    if(r) return r;
 
-	// scene redrawed
-	skip_draw = 1;
+    /* bind buffer */
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb);
 
     /* check if we need to draw frame */
-    if(vzOutputRenderSlots(output_context) > 0)
-        force_render = 1;
+    while(vzOutputRenderSlots(output_context) > 0 && !f_exit
+        && rendered_local < rendered_limit)
+    {
+        rendered_local++;
+        rendered_frames++;
 
-	while(force_render && !f_exit)
-	{
-        int idx, cnt;
-
-		/* reset force render flag */
-		force_render = 0;
-		force_rendered++;
-
-		// save time of draw start
-		long draw_start_time = timeGetTime();
+        // save time of draw start
+        long draw_start_time = timeGetTime();
 
         // output module tricks
         vzOutputPreRender(output_context);
 
-		rendered_frames++;
-
-		// lock scene
-		WaitForSingleObject(layers_lock,INFINITE);
+        // lock scene
+        WaitForSingleObject(layers_lock,INFINITE);
 
         /* draw layers */
         void* render_starter = NULL;
@@ -596,34 +583,29 @@ static void vz_scene_render(void)
         else
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// flush all 
-		glFlush();
+        // flush all 
+        glFlush();
 
         vzOutputPostRender(output_context);
 
-		// save time of draw start
-		long draw_stop_time = timeGetTime();
-		render_time = draw_stop_time - draw_start_time;
+        // save time of draw start
+        long draw_stop_time = timeGetTime();
+        render_time = draw_stop_time - draw_start_time;
 
-		ReleaseMutex(layers_lock);
+        // unlock scene
+        ReleaseMutex(layers_lock);
 
-        /* check if we need to draw more frames */
-        if(vzOutputRenderSlots(output_context) > 0)
-            force_render = 1;
+        fbo.index = 1 - fbo.index;
+        glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) );
+        glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) );
+    };
 
-#if 0 // FIX ME
-		/* check if we need to terminate this loop */
-		if(force_rendered > VZOUTPUT_MAX_BUFS)
-			force_rendered = 0;
-#endif
-		fbo.index = 1 - fbo.index;
-		glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) );
-		glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) );
-	};
+    /* unbind conext */
+    vz_window_unlockgl(&vz_window_desc);
 
-	/* unbind conext */
-	wglMakeCurrent(NULL, NULL);
-	ReleaseMutex(vz_window_desc.lock);
+//    logger_printf(1, "vz_scene_render: %d", rendered_local);
+
+    return rendered_local;
 };
 
 static void vz_scene_display(void)
@@ -1219,6 +1201,7 @@ int main(int argc, char** argv)
     output_context_name = vzConfigParam(config, "main", "output");
     logger_printf(0, "Loading output modules '%s'...", output_context_name);
     vzOutputNew(&output_context, config, output_context_name, &tv);
+    vzOutputGlobalContextSet(output_context);
 
 	/* create output window */
 	if(0 == vz_create_window())
@@ -1347,11 +1330,11 @@ int main(int argc, char** argv)
 		logger_printf(1, "main: waiting for serserver_handle...");
 		WaitForSingleObject(serserver_handle, INFINITE);
 		logger_printf(1, "main: WaitForSingleObject(serserver_handle) finished");
-
 		CloseHandle(serserver_handle);
 
 		/* stop sync render thread */
 		logger_printf(1, "main: waiting for sync_render_handle...");
+        PulseEvent(global_frame_event); CloseHandle(global_frame_event);
 		WaitForSingleObject(sync_render_handle, INFINITE);
 		logger_printf(1, "main: WaitForSingleObject(sync_render_handle) finished");
 		CloseHandle(sync_render_handle);

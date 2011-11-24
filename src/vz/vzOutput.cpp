@@ -425,7 +425,8 @@ VZOUTPUT_API int vzOutputPreRender(void* obj)
     glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
 
 #ifdef DEBUG_TIMINGS
-    logger_printf(1, "vzOutput: vzOutputPreRender exit");
+    logger_printf(1, "vzOutput: vzOutputPreRender exit %d",
+        ctx->output.pos_render);
 #endif
 
     return 0;
@@ -522,7 +523,8 @@ VZOUTPUT_API int vzOutputOutGet(void* obj, vzImage* img)
     img->line_size = img->width * img->bpp;
 
 #ifdef DEBUG_TIMINGS
-    logger_printf(1, "vzOutput: vzOutputOutGet exit");
+    logger_printf(1, "vzOutput: vzOutputOutGet exit %d",
+        ctx->output.pos_driver);
 #endif
 
     return 0;
