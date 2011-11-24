@@ -126,6 +126,9 @@ typedef struct decklink_runtime_context_desc
         IDeckLinkInput* io;
         decklink_input_class* cb;
         BMDDisplayMode mode;
+        int pos;
+        vzImage *buf;
+        vzImage bufs[4];
     } inputs[MAX_INPUTS];
     int inputs_count;
 
@@ -149,6 +152,27 @@ static int decklink_VideoInputFrameArrived
     IDeckLinkAudioInputPacket* pAudio
 )
 {
+    if(!ctx->inputs[idx].buf)
+        ctx->inputs[idx].buf = &ctx->inputs[idx].bufs[ctx->inputs[idx].pos++];
+
+    pArrivedFrame->AddRef();
+
+    ctx->inputs[idx].buf->width = ctx->inputs[idx].buf->base_width =
+        pArrivedFrame->GetWidth();
+    ctx->inputs[idx].buf->height = ctx->inputs[idx].buf->base_height =
+        pArrivedFrame->GetHeight();
+    ctx->inputs[idx].buf->bpp = 4;
+    ctx->inputs[idx].buf->pix_fmt = VZIMAGE_PIXFMT_BGRA;
+    pArrivedFrame->GetBytes(&ctx->inputs[idx].buf->surface);
+    ctx->inputs[idx].buf->line_size = pArrivedFrame->GetRowBytes();
+    ctx->inputs[idx].buf->priv = pArrivedFrame;
+
+    vzOutputInputPush(ctx->output_context, ctx->inputs[idx].idx,
+        (void**)&ctx->inputs[idx].buf);
+
+    if(ctx->inputs[idx].buf)
+        ((IDeckLinkVideoInputFrame*)ctx->inputs[idx].buf->priv)->Release();
+
     return 0;
 };
 
@@ -553,7 +577,7 @@ static int decklink_run()
         ctx.inputs[i].cb = new decklink_input_class(&ctx, i);
         ctx.inputs[i].io->SetCallback(ctx.inputs[i].cb);
         ctx.inputs[i].io->EnableVideoInput(ctx.inputs[i].mode,
-            bmdFormat8BitYUV, bmdVideoInputFlagDefault);
+            bmdFormat8BitBGRA, bmdVideoInputFlagDefault);
 
         ctx.inputs[i].io->StartStreams();
     };
