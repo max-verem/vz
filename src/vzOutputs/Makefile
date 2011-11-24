@@ -138,7 +138,7 @@ INCLUDE_DIR	= -I. -I../vz $(INCLUDES) $(SDK_INC) -I$(OBJS_DIR)
 LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
-TARGET = nullvideo
+TARGET = decklink nullvideo
 
 #!IF  "$(CFG)" == "Debug32" || "$(CFG)" == "Release32"
 #TARGET		= $(TARGET) streamalpha
@@ -193,7 +193,7 @@ bluefish_sdk: "$(BLUEFISH_LIB)" "$(BLUEFISH_INC)"
 
 
 # check decklink sdk
-decklink: decklink_sdk decklink.cpp vzdssrc.h decklink.dll
+decklink: decklink_sdk decklink.cpp decklink.dll
 
 decklink_sdk: "$(BASECLASSES_LIB)" "$(BASECLASSES_INC)"
 
