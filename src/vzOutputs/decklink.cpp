@@ -548,6 +548,7 @@ static int decklink_setup(HANDLE* sync_event, unsigned long** sync_cnt)
 static int decklink_run()
 {
     int i;
+    HRESULT hr;
 
     /* run output */
     if(ctx.output.sync_event)
@@ -606,11 +607,27 @@ static int decklink_run()
 
         /* setup callbacks */
         ctx.inputs[i].cb = new decklink_input_class(&ctx, i);
-        ctx.inputs[i].io->SetCallback(ctx.inputs[i].cb);
-        ctx.inputs[i].io->EnableVideoInput(ctx.inputs[i].mode,
-            bmdFormat8BitBGRA, bmdVideoInputEnableFormatDetection /*bmdVideoInputFlagDefault*/);
+        hr = ctx.inputs[i].io->SetCallback(ctx.inputs[i].cb);
+        if(S_OK != hr)
+        {
+            logger_printf(1, THIS_MODULE_PREF "SetCallback failed");
+            continue;
+        };
 
-        ctx.inputs[i].io->StartStreams();
+        hr = ctx.inputs[i].io->EnableVideoInput(ctx.inputs[i].mode,
+            bmdFormat8BitYUV, /* bmdVideoInputEnableFormatDetection */ bmdVideoInputFlagDefault);
+        if(S_OK != hr)
+        {
+            logger_printf(1, THIS_MODULE_PREF "EnableVideoInput failed");
+            continue;
+        };
+
+        hr = ctx.inputs[i].io->StartStreams();
+        if(S_OK != hr)
+        {
+            logger_printf(1, THIS_MODULE_PREF "StartStreams failed");
+            continue;
+        };
 
         logger_printf(0, THIS_MODULE_PREF "ENABLE_INPUT_%d will be mapped to liveinput %d",
             i, ctx.inputs[i].idx);
