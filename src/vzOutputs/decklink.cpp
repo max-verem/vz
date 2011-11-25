@@ -287,7 +287,9 @@ static int decklink_ScheduledFrameCompleted
     // step forward frames counter if underrun
     if(bmdOutputFrameDisplayedLate == result)
     {
+#ifdef _DEBUG
         logger_printf(1, THIS_MODULE_PREF "ScheduledFrameCompleted: bmdOutputFrameDisplayedLate");
+#endif
         ctx->output.cnt++;
     };
 
