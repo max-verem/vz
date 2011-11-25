@@ -234,12 +234,13 @@ static int nullvideo_run()
 
         /* check if index in range */
         j = atol((char*)c);
-        if(j < 0 || j >= TP_COUNT)
+        if(j < 0)
         {
             logger_printf(1, THIS_MODULE_PREF "pattern value %d of parameter %s out of range",
                 j, name);
             continue;
         };
+        j = j % TP_COUNT;
 
         ctx.inputs[i].pattern = j;
 
