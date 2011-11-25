@@ -216,7 +216,7 @@ static int decklink_ScheduleNextFrame(decklink_runtime_context_t* ctx, int is_pr
     /* create frame */
     if(S_OK != ctx->output.io->CreateVideoFrame(
         img.width, img.height, img.line_size,
-        bmdFormat8BitARGB, bmdFrameFlagDefault, &frame))
+        bmdFormat8BitBGRA, bmdFrameFlagFlipVertical, &frame))
     {
         logger_printf(1, THIS_MODULE_PREF "CreateVideoFrame(%d, %d, %d) failed",
             img.width, img.height, img.line_size);
