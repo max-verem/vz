@@ -173,9 +173,6 @@ static int vz_window_unlockgl(vz_window_t* w)
 
 static HANDLE global_frame_event;
 static unsigned long global_frame_no = 0;
-//static unsigned long stop_global_frames_counter = 0;
-static long skip_draw = 0;
-static long not_first_at = 0;
 
 #define ENSURE_OPENGL_CONTEXT(BLOCK)                                \
 {                                                                   \
@@ -312,24 +309,22 @@ static void vz_scene_display(void);
 static unsigned long WINAPI sync_render(void* data)
 {
     DWORD d;
-    while(0 == f_exit)
+
+    do
     {
-        d = WaitForSingleObject(global_frame_event, INFINITE);
-        if(d) continue;
-
-        /* render picture */
-        if(not_first_at)
-        {
-            // reset flag of forcing redraw
-            skip_draw = 0;
-
-            // notify about redisplay
-            vz_scene_render(4);
-        };
+        /* render frames */
+        vz_scene_render(4);
 
         /* notify to redraw bg or direct render screen */
         vz_scene_display();
-    };
+
+        /* wait for sync */
+        d = WaitForSingleObject(global_frame_event, INFINITE);
+
+        /* break loop on error */
+        if(d) break;
+    }
+    while(!f_exit);
 
     return 0;
 };
@@ -462,12 +457,6 @@ static int vz_scene_render(int rendered_limit)
     /* check if extensions loaded */
     if(!(glExtInitDone)) 
         return -ENOMEM;
-
-    // check if redraw should processed
-    // by internal needs
-    if (skip_draw)
-        return 0;
-    skip_draw = 1;
 
     r = vz_window_lockgl(&vz_window_desc);
     if(r) return r;
@@ -676,9 +665,6 @@ static void vz_scene_display(void)
 	// and swap buffers
 	glFlush();
 	SwapBuffers(vz_window_desc.hdc);
-
-	// mark flag about first frame
-	not_first_at = 1;
 
 	/* unbind conext */
 	wglMakeCurrent(NULL, NULL);
