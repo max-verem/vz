@@ -96,6 +96,9 @@ BOOL APIENTRY DllMain
     return TRUE;
 }
 
+#define PBO_SLICES  4
+#define _pbo_empty_size (2048 * 2048 * 4) /* 1920x1080 should fit */
+static unsigned int _pbo_empty_buf;
 
 // declare name and version of plugin
 DEFINE_PLUGIN_INFO("liveinput");
@@ -142,6 +145,10 @@ typedef struct
     long _base_height;
 	float* _ft_vertices;
 	float* _ft_texels;
+    unsigned int _pbo[PBO_SLICES];
+    unsigned int _pbo_size;
+    unsigned int _pbo_slice_size;
+    unsigned int _pbo_slice_height;
 } vzPluginData;
 
 // default value of structore
@@ -247,6 +254,32 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
 	{NULL,NULL,0}
 };
 
+PLUGIN_EXPORT int load(void* config)
+{
+    int r;
+    void* p;
+
+    /* init empty PBO object */
+    glGenBuffers(1, &_pbo_empty_buf);
+    r = glGetError();
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_buf);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_size, 0, GL_STREAM_DRAW);
+    p = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
+    memset(p, 0, _pbo_empty_size);
+    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
+    return 0;
+};
+
+PLUGIN_EXPORT int unload(void* config)
+{
+    /* check for global empty pbo */
+    glDeleteBuffers(1, &_pbo_empty_buf);
+
+    return 0;
+};
+
 PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 {
 	// init memmory for structure
@@ -277,6 +310,10 @@ PLUGIN_EXPORT int release(void* data)
     if(ctx->_texture_initialized)
         glErrorLog(glDeleteTextures(1, &ctx->_texture););
 
+    /* delete buffers from non opengl context */
+    if(ctx->_pbo_size)
+        glErrorLog(glDeleteBuffers(PBO_SLICES, ctx->_pbo););
+
     // unlock
     ReleaseMutex(_DATA->_lock_update);
 
@@ -306,7 +343,7 @@ PLUGIN_EXPORT void destructor(void* data)
 
 PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 {
-    int r;
+    int r, b;
     vzImage* img;
     vzPluginData* ctx = (vzPluginData*)data;
 
@@ -330,6 +367,30 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
         return;
     };
 
+    /* recreare PBO if needs */
+    if(ctx->_pbo_size != img->line_size * img->height)
+    {
+        /* delete buffer if needed */
+        if(ctx->_pbo_size)
+            glDeleteBuffers(PBO_SLICES, ctx->_pbo);
+
+        /* update frame size */
+        ctx->_pbo_size = img->line_size * img->height;
+        ctx->_pbo_slice_height = (img->height + PBO_SLICES - 1) / PBO_SLICES;
+        ctx->_pbo_slice_size = ctx->_pbo_slice_height * img->line_size;
+
+        /* generate new buffers */
+        glGenBuffers(PBO_SLICES, ctx->_pbo);
+
+        /* setup buffers size */
+        for(b = 0; b < PBO_SLICES; b++)
+        {
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[b]);
+            glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_slice_size, 0, GL_STREAM_DRAW);
+        };
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+    };
+
     /* recreate texture */
     if(!ctx->_texture_initialized ||
         ctx->_base_width != img->width ||
@@ -349,29 +410,24 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
         ctx->_height = POT(img->height);
         ctx->_texture_initialized = 1;
 
-        /* generate fake surface */
-        void* fake_frame = malloc(4 * _DATA->_width * _DATA->_height);
-        memset(fake_frame, 0, 4 * _DATA->_width * _DATA->_height);
-
         /* create texture (init texture memory) */
+        glErrorLogD(glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_buf));
         glErrorLog(glBindTexture(GL_TEXTURE_2D, _DATA->_texture));
         glErrorLog(glTexImage2D
         (
             GL_TEXTURE_2D,          // GLenum target,
             0,                      // GLint level,
-            4,                      // GLint components,
+            GL_RGBA8,               // GLint components,
             _DATA->_width,          // GLsizei width, 
             _DATA->_height,         // GLsizei height, 
             0,                      // GLint border,
             GL_BGRA_EXT,            // GLenum format,
             GL_UNSIGNED_BYTE,       // GLenum type,
-            fake_frame              // const GLvoid *pixels
+            NULL                    // const GLvoid *pixels
         ));
         glErrorLog(glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR));
         glErrorLog(glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR));
-
-        /* free memory of fake image */
-        free(fake_frame);
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
     };
 
     /* load texture */
@@ -379,6 +435,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
     {
         ctx->last_sys_id = img->sys_id;
 
+#if 0
         glErrorLog(glBindTexture(GL_TEXTURE_2D, _DATA->_texture));  /* bind to buffer */
 
         /* load */
@@ -394,6 +451,42 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             GL_UNSIGNED_BYTE,                               // GLenum type,
             (unsigned char*)img->surface                    // const GLvoid *pixels
         );
+#else
+        /* draw buffers */
+        for(b = 0; b < PBO_SLICES; b++)
+        {
+            void* pbo_ptr;
+
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[b]);
+            pbo_ptr = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
+            if(pbo_ptr)
+            {
+                void* src_slice_ptr = (unsigned char*)img->surface + b * img->line_size;
+                unsigned int src_slice_size =
+                    VZ_MIN(ctx->_pbo_size - b * ctx->_pbo_slice_size, ctx->_pbo_slice_size);
+
+                memcpy(pbo_ptr, src_slice_ptr, src_slice_size);
+
+                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
+            };
+
+            glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+            glTexSubImage2D
+            (
+                GL_TEXTURE_2D,                                  // GLenum target,
+                0,                                              // GLint level,
+                (_DATA->_width - img->width)/2,                 // GLint xoffset,
+                (_DATA->_height - img->height)/2                // GLint yoffset,
+                    + b * ctx->_pbo_slice_height,
+                img->width,                                     // GLsizei width,
+                ctx->_pbo_slice_height,                         // GLsizei height,
+                vzImagePixFmt2OGL(img->pix_fmt),                // GLenum format,
+                GL_UNSIGNED_BYTE,                               // GLenum type,
+                NULL
+            );
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+        };
+#endif
     };
 
     r = vzOutputInputPullBack(ctx->_output_context, ctx->l_input - 1, (void**)&img);
