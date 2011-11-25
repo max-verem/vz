@@ -346,13 +346,15 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
     // Enumerate all cards in this system
     while(S_OK == deckLinkIterator->Next(&deckLink) && c < MAX_BOARDS)
     {
+        char* m;
         BSTR deviceNameBSTR;
 
         /* get name */
         deckLink->GetModelName(&deviceNameBSTR);
-        logger_printf(0, THIS_MODULE_PREF "board[%d]: %s", c,
-            _com_util::ConvertBSTRToString(deviceNameBSTR));
+        m = _com_util::ConvertBSTRToString(deviceNameBSTR);
+        logger_printf(0, THIS_MODULE_PREF "board[%d]: %s", c, m);
         SysFreeString(deviceNameBSTR);
+        delete[] m;
 
         /* save into list */
         deckLinks[c] = deckLink; c++;
