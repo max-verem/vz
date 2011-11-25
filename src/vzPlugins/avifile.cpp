@@ -622,14 +622,6 @@ ex1:
 #define MAX(a,b) VZ_MAX(a,b)
 #endif
 
-#ifndef VZ_MIN
-#define VZ_MIN(a,b) (((a)>(b))?(b):(a))
-#endif
-
-#ifndef VZ_MAX
-#define VZ_MAX(a,b) (((a)>(b))?(a):(b))
-#endif
-
 static int tmplcmp(char* a, char* b)
 {
     for(;*a && *b; a++, b++)

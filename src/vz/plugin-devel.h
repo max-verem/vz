@@ -86,4 +86,12 @@ PLUGIN_EXPORT vzPluginInfo info =											\
 	_plugin_notes															\
 }
 
+#ifndef VZ_MIN
+#define VZ_MIN(a,b) (((a)>(b))?(b):(a))
+#endif
+
+#ifndef VZ_MAX
+#define VZ_MAX(a,b) (((a)>(b))?(a):(b))
+#endif
+
 #endif
