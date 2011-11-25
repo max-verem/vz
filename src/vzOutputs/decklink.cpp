@@ -142,6 +142,35 @@ static int decklink_VideoInputFormatChanged
     BMDDetectedVideoInputFormatFlags detectedSignalFlags
 )
 {
+    switch(notificationEvents)
+    {
+        case bmdVideoInputDisplayModeChanged:
+            logger_printf(0, THIS_MODULE_PREF "input[%d]: InputDisplayModeChanged", idx);
+            break;
+        case bmdVideoInputFieldDominanceChanged:
+            logger_printf(0, THIS_MODULE_PREF "input[%d]: FieldDominanceChanged", idx);
+            break;
+        case bmdVideoInputColorspaceChanged:
+            logger_printf(0, THIS_MODULE_PREF "input[%d]: ColorspaceChange", idx);
+            break;
+        default:
+            logger_printf(0, THIS_MODULE_PREF "input[%d]: <format changed>", idx);
+            break;
+    };
+
+    switch(detectedSignalFlags)
+    {
+        case bmdDetectedVideoInputYCbCr422:
+            logger_printf(0, THIS_MODULE_PREF "input[%d]: VideoInputYCbCr422", idx);
+            break;
+        case bmdDetectedVideoInputRGB444:
+            logger_printf(0, THIS_MODULE_PREF "input[%d]: VideoInputRGB444", idx);
+            break;
+        default:
+            logger_printf(0, THIS_MODULE_PREF "input[%d]: <signal changed>", idx);
+            break;
+    };
+
     return 0;
 };
 
@@ -577,7 +606,7 @@ static int decklink_run()
         ctx.inputs[i].cb = new decklink_input_class(&ctx, i);
         ctx.inputs[i].io->SetCallback(ctx.inputs[i].cb);
         ctx.inputs[i].io->EnableVideoInput(ctx.inputs[i].mode,
-            bmdFormat8BitBGRA, bmdVideoInputFlagDefault);
+            bmdFormat8BitBGRA, bmdVideoInputEnableFormatDetection /*bmdVideoInputFlagDefault*/);
 
         ctx.inputs[i].io->StartStreams();
 
