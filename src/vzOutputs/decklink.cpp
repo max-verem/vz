@@ -117,6 +117,7 @@ typedef struct decklink_runtime_context_desc
         BMDDisplayMode mode;
         BMDTimeValue dur;
         BMDTimeScale ts;
+        IDeckLinkMutableVideoFrame* blank_frame;
     } output;
 
     struct
@@ -205,7 +206,22 @@ static int decklink_VideoInputFrameArrived
     return 0;
 };
 
-static int decklink_ScheduleNextFrame(decklink_runtime_context_t* ctx, int is_preroll)
+static int decklink_ScheduleNextFrame2(decklink_runtime_context_t* ctx)
+{
+    /* send frame */
+    ctx->output.io->ScheduleVideoFrame
+    (
+        ctx->output.blank_frame,
+        ctx->output.cnt * ctx->output.dur,
+        ctx->output.dur, ctx->output.ts
+    );
+
+    ctx->output.cnt++;
+
+    return 0;
+};
+
+static int decklink_ScheduleNextFrame(decklink_runtime_context_t* ctx)
 {
     vzImage img;
     IDeckLinkMutableVideoFrame* frame;
@@ -254,7 +270,6 @@ static int decklink_ScheduleNextFrame(decklink_runtime_context_t* ctx, int is_pr
     *ctx->output.sync_cnt = 1 + *ctx->output.sync_cnt;
     PulseEvent(ctx->output.sync_event);
 
-
     return 0;
 };
 
@@ -273,7 +288,7 @@ static int decklink_ScheduledFrameCompleted
     if(bmdOutputFrameDisplayedLate == result)
     {
         logger_printf(1, THIS_MODULE_PREF "ScheduledFrameCompleted: bmdOutputFrameDisplayedLate");
-//        ctx->output.cnt++;
+        ctx->output.cnt++;
     };
 
     if(bmdOutputFrameDropped == result)
@@ -283,7 +298,7 @@ static int decklink_ScheduledFrameCompleted
     };
 
     // schedule next frame
-    decklink_ScheduleNextFrame(ctx, false);
+    decklink_ScheduleNextFrame(ctx);
 
     return 0;
 };
@@ -403,6 +418,13 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
                     ctx.output.board->QueryInterface(IID_IDeckLinkKeyer,
                         (void**)&ctx.output.keyer);
 
+                    /* create blank frame */
+                    ctx.output.io->CreateVideoFrame(
+                        ctx.tv->TV_FRAME_WIDTH,
+                        ctx.tv->TV_FRAME_HEIGHT,
+                        ctx.tv->TV_FRAME_WIDTH * 4,
+                        bmdFormat8BitBGRA, bmdFrameFlagFlipVertical,
+                        &ctx.output.blank_frame);
                 };
             };
         };
@@ -498,6 +520,7 @@ static int decklink_release(void* obj, void* config, vzTVSpec* tv)
     SAFE_RELEASE(ctx.output.io);
     SAFE_RELEASE(ctx.output.board);
     SAFE_RELEASE(ctx.output.keyer);
+    SAFE_RELEASE(ctx.output.blank_frame);
     if(ctx.output.cb) delete ctx.output.cb;
 
     for(i = 0; i < ctx.inputs_count; i++)
@@ -587,7 +610,7 @@ static int decklink_run()
 
         /* send a preroll frames */
         for(i = 0; i < PREROLL; i++)
-            decklink_ScheduleNextFrame(&ctx, 1);
+            decklink_ScheduleNextFrame2(&ctx);
 
         /* start sheduled playback */
         ctx.output.io->StartScheduledPlayback( 0, ctx.output.ts, 1.0 );
