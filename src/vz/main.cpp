@@ -2,9 +2,9 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2009 Maksym Veremeyenko.
+    Copyright (C) 2011 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2009.
+    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2011.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,52 +19,6 @@
     You should have received a copy of the GNU General Public License
     along with ViZualizator; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-ChangeLog:
-	2009-01-24:
-		*sceneload and screeshot define function moved tp main.cpp
-		*winsock initialization moved to main.c
-
-    2008-09-24:
-        *VGA screen scale support
-		*logger use for message outputs
-
-	2008-09-23:
-		*vzTVSpec rework
-
-	2007-03-11:
-		*Program version controled from "vzVersion.h"
-
-	2007-03-10:
-		*FBO support leak detect
-		*more gracefull cleanup
-
-	2007-03-06:
-		*GLUT goodbye!
-
-	2007-02-24:
-		*FBO using.
-
-	2006-12-04:
-		*screenshot dumping feature reintroducing.
-
-	2006-11-26:
-		*Hard sync scheme.
-		*OpenGL extension scheme load changes.
-
-	2006-11-20:
-		*try to enable multisamping 
-
-	2005-06-24:
-		*Added feature 'use_offscreen_buffer' that use GL extension
-		"GL_EXT_pixel_buffer_object" for creating offscreen buffers. 
-		Dramaticaly decreased kernel load time in configuration
-		FX5300+'use_offscreen_buffer'!!! FX5500(AGP)+'use_offscreen_buffer'
-		has no effect.
-
-    2005-06-08: Code cleanup
-
-
 */
 #define _CRT_SECURE_NO_WARNINGS
 
@@ -349,44 +303,6 @@ int CMD_layer_load(char* filename, long idx)
 
     return r;
 };
-
-#if 0
-/*----------------------------------------------------------
-	sync srcs
-----------------------------------------------------------*/
-
-static HANDLE sync_render_handle = INVALID_HANDLE_VALUE;
-static HANDLE internal_sync_generator_handle = INVALID_HANDLE_VALUE;
-
-static unsigned long WINAPI internal_sync_generator(void* fc_proc_addr)
-{
-	frames_counter_proc fc = (frames_counter_proc)fc_proc_addr;
-	
-	// endless loop
-	while(0 == f_exit)
-	{
-		// sleep
-		Sleep((1000 * tv.TV_FRAME_PS_DEN) / tv.TV_FRAME_PS_NOM);
-
-		// call frame counter
-		if (fc) fc();
-	};
-
-	return 0;
-};
-
-static void frames_counter()
-{
-	// reset event
-	ResetEvent(global_frame_event);
-
-	// increment frame counter
-	global_frame_no++;
-
-	// rise evennt
-	PulseEvent(global_frame_event);
-};
-#endif
 
 /*----------------------------------------------------------
 	render loop
