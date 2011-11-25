@@ -580,6 +580,9 @@ static int decklink_run()
             bmdFormat8BitBGRA, bmdVideoInputFlagDefault);
 
         ctx.inputs[i].io->StartStreams();
+
+        logger_printf(0, THIS_MODULE_PREF "ENABLE_INPUT_%d will be mapped to liveinput %d",
+            i, ctx.inputs[i].idx);
     };
 
     return 0;

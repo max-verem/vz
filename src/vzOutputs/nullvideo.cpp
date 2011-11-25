@@ -250,6 +250,8 @@ static int nullvideo_run()
             continue;
         };
 
+        logger_printf(0, THIS_MODULE_PREF "ENABLE_INPUT_%d will be mapped to liveinput %d", i, j);
+
         ctx.inputs[i].parent = &ctx;
         ctx.inputs[i].index = j;
 
