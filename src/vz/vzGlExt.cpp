@@ -55,25 +55,34 @@ BOOL APIENTRY DllMain
 }
 
 // strings for automated loading
-#define GL_REG_EXT(EXT_NAME, FUNC_NAME) {EXT_NAME, #FUNC_NAME, &FUNC_NAME}
-#define GL_REG_EXT_FBO(FUNC_NAME) GL_REG_EXT("GL_EXT_framebuffer_object", FUNC_NAME)
-#define GL_REG_EXT_PBO(FUNC_NAME) GL_REG_EXT("GL_EXT_pixel_buffer_object", FUNC_NAME)
-#define GL_REG_EXT_SHADER(FUNC_NAME) GL_REG_EXT("GL_ARB_shader_objects", FUNC_NAME)
-static void* _gl_extensions_list[][3] = 
+#define GL_REG_EXT(EXT_NAME1, EXT_NAME2, FUNC_NAME) \
+    {EXT_NAME1, EXT_NAME2, #FUNC_NAME, &FUNC_NAME}
+
+#define GL_REG_EXT_FBO(FUNC_NAME)                   \
+    GL_REG_EXT("GL_EXT_framebuffer_object", "GL_ARB_framebuffer_object", FUNC_NAME)
+
+#define GL_REG_EXT_PBO(FUNC_NAME)                   \
+    GL_REG_EXT("GL_EXT_pixel_buffer_object", "GL_ARB_pixel_buffer_object", FUNC_NAME)
+
+#define GL_REG_EXT_SHADER(FUNC_NAME)                \
+    GL_REG_EXT("GL_ARB_shader_objects", NULL, FUNC_NAME)
+
+static void* _gl_extensions_list[][4] = 
 {
 	/*
 		http://oss.sgi.com/projects/ogl-sample/registry/EXT/blend_func_separate.txt
 	*/
-	{"GL_EXT_blend_func_separate","glBlendFuncSeparateEXT",&glBlendFuncSeparateEXT},
+	{"GL_EXT_blend_func_separate", NULL, "glBlendFuncSeparateEXT", &glBlendFuncSeparateEXT},
 
     /*
         http://oss.sgi.com/projects/ogl-sample/registry/EXT/blend_equation_separate.txt
     */
-    {"GL_EXT_blend_equation_separate", "glBlendEquationSeparateEXT", &glBlendEquationSeparateEXT},
+    {"GL_EXT_blend_equation_separate", NULL, "glBlendEquationSeparateEXT", &glBlendEquationSeparateEXT},
 
 	/* 
 		pixel buffer extensions:
 		http://oss.sgi.com/projects/ogl-sample/registry/EXT/pixel_buffer_object.txt
+        http://oss.sgi.com/projects/ogl-sample/registry/ARB/pixel_buffer_object.txt
 	*/
 	GL_REG_EXT_PBO(glBindBuffer),
 	GL_REG_EXT_PBO(glUnmapBuffer),
@@ -85,6 +94,7 @@ static void* _gl_extensions_list[][3] =
 	/*
 		framebuffer buffer extensions:
 		http://oss.sgi.com/projects/ogl-sample/registry/EXT/framebuffer_object.txt
+        http://www.opengl.org/registry/specs/ARB/framebuffer_object.txt
 	*/
 	GL_REG_EXT_FBO(glIsRenderbufferEXT),
 	GL_REG_EXT_FBO(glBindRenderbufferEXT),
@@ -133,8 +143,8 @@ static void* _gl_extensions_list[][3] =
     GL_REG_EXT_SHADER(glUniform3i),
     GL_REG_EXT_SHADER(glUniform4i),
 
-    {"ARB_multitexture", "glActiveTexture", &glActiveTexture},
-    {"ARB_multitexture", "glClientActiveTexture", &glClientActiveTexture},
+    {"ARB_multitexture", NULL, "glActiveTexture", &glActiveTexture},
+    {"ARB_multitexture", NULL, "glClientActiveTexture", &glClientActiveTexture},
 
 	/* stop list */
 	{NULL,NULL,NULL}
@@ -202,7 +212,6 @@ VZGLEXT_API int  glExtInitDone = 0;;
 VZGLEXT_API int vzGlExtInit()
 {
     int r = 0;
-	char* msg;
 	char* gl_extensions = (char*)glGetString(GL_EXTENSIONS);
 
     // check if string not null
@@ -220,14 +229,28 @@ VZGLEXT_API int vzGlExtInit()
     /* enum extensions */
     for(int i = 0; _gl_extensions_list[i][0]; i++)
     {
-        if(strstr(gl_extensions,(char*)_gl_extensions_list[i][0]))
+        char *ext = NULL, *msg = "not supported";
+
+        /* probe first */
+        if(!ext && _gl_extensions_list[i][0])
+            if(strstr(gl_extensions, (char*)_gl_extensions_list[i][0]))
+                ext = (char*)_gl_extensions_list[i][0];
+
+        /* probe second */
+        if(!ext && _gl_extensions_list[i][1])
+            if(strstr(gl_extensions, (char*)_gl_extensions_list[i][1]))
+                ext = (char*)_gl_extensions_list[i][1];
+
+        /* check further */
+        if(ext)
         {
-            void* f = wglGetProcAddress((char*)_gl_extensions_list[i][1]);
+            void* f = wglGetProcAddress((char*)_gl_extensions_list[i][2]);
 
             if(f)
             {
                 msg = "OK:";
-                *((void**)_gl_extensions_list[i][2]) = f;
+                if(!(*((void**)_gl_extensions_list[i][3])))
+                    *((void**)_gl_extensions_list[i][3]) = f;
             }
             else
             {
@@ -236,12 +259,9 @@ VZGLEXT_API int vzGlExtInit()
             };
         }
         else
-        {
             r++;
-            msg = "not supported";
-        };
 
-        logger_printf(0, "vzGlExt: '%s': %s",(char*)_gl_extensions_list[i][1], msg);
+        logger_printf(0, "vzGlExt: '%s': %s",(char*)_gl_extensions_list[i][2], msg);
     };
 
     glExtInitDone = 1;
