@@ -1159,7 +1159,6 @@ int main(int argc, char** argv)
             0,
             NULL
         );
-        SetThreadPriority(sync_render_handle , THREAD_PRIORITY_HIGHEST);
 
 		// start (tcp|udp)server
 		unsigned long thread;
