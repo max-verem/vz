@@ -1138,31 +1138,28 @@ int main(int argc, char** argv)
         functions = vzMainNewFunctionsList(config);
         vz_window_unlockgl(&vz_window_desc);
 
-		/* sync render */
-		{
-			sync_render_handle = CreateThread
-			(
-				NULL,
-				1024,
-				sync_render,
-				NULL, // params
-				0,
-				NULL
-			);
-
-			SetThreadPriority(sync_render_handle , THREAD_PRIORITY_HIGHEST);
-		};
-
         /* change working directory */
         if(vzConfigParam(config, "main", "change_root"))
             _chdir(vzConfigParam(config, "main", "change_root"));
 
-		// check if we need automaticaly load scene
+        // check if we need automaticaly load scene
         if(startup_scene_file)
         {
             CMD_layer_load(startup_scene_file, 0);
             startup_scene_file = NULL;
         };
+
+        /* sync render */
+        sync_render_handle = CreateThread
+        (
+            NULL,
+            1024,
+            sync_render,
+            NULL, // params
+            0,
+            NULL
+        );
+        SetThreadPriority(sync_render_handle , THREAD_PRIORITY_HIGHEST);
 
 		// start (tcp|udp)server
 		unsigned long thread;
