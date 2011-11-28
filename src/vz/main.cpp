@@ -174,6 +174,7 @@ static int vz_window_unlockgl(vz_window_t* w)
 static HANDLE global_frame_event;
 static unsigned long global_frame_no = 0;
 
+#ifdef _DEBUG
 #define ENSURE_OPENGL_CONTEXT(BLOCK)                                \
 {                                                                   \
     BOOL b = TRUE;                                                  \
@@ -193,6 +194,9 @@ static unsigned long global_frame_no = 0;
         wglMakeCurrent(NULL, NULL);                                 \
     ReleaseMutex(vz_window_desc.lock);                              \
 }
+#else
+#define ENSURE_OPENGL_CONTEXT(BLOCK) BLOCK
+#endif
 
 /* ---------------------------------------------------------
     scene load/unload
