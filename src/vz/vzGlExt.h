@@ -202,6 +202,32 @@ http://oss.sgi.com/projects/ogl-sample/ABI/glext.h
 
 #define GL_UNKNOWN_ATTR                         0xFFFF
 
+#ifndef GL_VERTEX_SHADER
+/* Shaders */
+#define GL_FRAGMENT_SHADER                      0x8B30
+#define GL_VERTEX_SHADER                        0x8B31
+#define GL_MAX_VERTEX_ATTRIBS                   0x8869
+#define GL_MAX_VERTEX_UNIFORM_VECTORS           0x8DFB
+#define GL_MAX_VARYING_VECTORS                  0x8DFC
+#define GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS     0x8B4D
+#define GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS       0x8B4C
+#define GL_MAX_TEXTURE_IMAGE_UNITS              0x8872
+#define GL_MAX_FRAGMENT_UNIFORM_VECTORS         0x8DFD
+#define GL_SHADER_TYPE                          0x8B4F
+#define GL_DELETE_STATUS                        0x8B80
+#define GL_LINK_STATUS                          0x8B82
+#define GL_VALIDATE_STATUS                      0x8B83
+#define GL_ATTACHED_SHADERS                     0x8B85
+#define GL_ACTIVE_UNIFORMS                      0x8B86
+#define GL_ACTIVE_UNIFORM_MAX_LENGTH            0x8B87
+#define GL_ACTIVE_ATTRIBUTES                    0x8B89
+#define GL_ACTIVE_ATTRIBUTE_MAX_LENGTH          0x8B8A
+#define GL_SHADING_LANGUAGE_VERSION             0x8B8C
+#define GL_CURRENT_PROGRAM                      0x8B8D
+#endif /* GL_VERTEX_SHADER */
+
+typedef char GLchar;
+
 /* extensions functions types */
 extern VZGLEXT_API void (WINAPI *glBlendFuncSeparateEXT)(GLenum sfactorRGB,GLenum dfactorRGB,GLenum sfactorAlpha,GLenum dfactorAlpha);
 extern VZGLEXT_API void (WINAPI *glBlendEquationSeparateEXT)(GLenum modeRGB, GLenum modeAlpha);
@@ -228,6 +254,36 @@ extern VZGLEXT_API void (WINAPI *glFramebufferTexture3DEXT)(GLenum target, GLenu
 extern VZGLEXT_API void (WINAPI *glFramebufferRenderbufferEXT)(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
 extern VZGLEXT_API void (WINAPI *glGetFramebufferAttachmentParameterivEXT)(GLenum target, GLenum attachment, GLenum pname, int *params);
 extern VZGLEXT_API void (WINAPI *glGenerateMipmapEXT)(GLenum target);
+extern VZGLEXT_API void (WINAPI *glShaderSource)(GLuint shader, GLsizei count, const GLchar **string, const GLint * length);
+extern VZGLEXT_API GLuint (WINAPI *glCreateShader)(GLenum type);
+extern VZGLEXT_API void (WINAPI *glCompileShader)(GLuint shader);
+extern VZGLEXT_API void (WINAPI *glUseProgram)(GLuint program);
+extern VZGLEXT_API void (WINAPI *glAttachShader)(GLuint program, GLuint shader);
+extern VZGLEXT_API void (WINAPI *glDetachShader)(GLuint program, GLuint shader);
+extern VZGLEXT_API void (WINAPI *glLinkProgram)(GLuint program);
+extern VZGLEXT_API void (WINAPI *glGetShaderiv)(GLuint shader, GLenum pname, GLint * params);
+extern VZGLEXT_API void (WINAPI *glGetShaderInfoLog)(GLuint shader, GLsizei maxLength, GLsizei * length, GLchar * infoLog);
+extern VZGLEXT_API GLboolean (WINAPI *glIsShader)(GLuint shader);
+extern VZGLEXT_API void (WINAPI *glDeleteShader)(GLuint shader);
+extern VZGLEXT_API void (WINAPI *glGetAttachedShaders)(GLuint program, GLsizei maxCount, GLsizei * count, GLuint * shaders);
+extern VZGLEXT_API void (WINAPI *glGetProgramiv)(GLuint program, GLenum pname, GLint * params);
+extern VZGLEXT_API void (WINAPI *glGetProgramInfoLog)(GLuint program, GLsizei maxLength, GLsizei * length, GLchar * infoLog);
+extern VZGLEXT_API void (WINAPI *glGetActiveAttrib)(GLuint program, GLuint index, GLsizei bufSize, GLsizei * length, GLint * size, GLenum * type, GLchar * name);
+extern VZGLEXT_API void (WINAPI *glGetActiveUniform)(GLuint program, GLuint index, GLsizei bufSize, GLsizei * length, GLint * size, GLenum * type, GLchar * name);
+extern VZGLEXT_API GLint (WINAPI *glGetAttribLocation)(GLuint program, const GLchar * name);
+extern VZGLEXT_API void (WINAPI *glGetUniformfv)(GLuint program, GLint location, GLfloat * params);
+extern VZGLEXT_API void (WINAPI *glGetUniformiv)(GLuint program, GLint location, GLint * params);
+extern VZGLEXT_API GLint (WINAPI *glGetUniformLocation)(GLuint program,  const GLchar * name);
+extern VZGLEXT_API void (WINAPI *glUniform1f)(GLint location, GLfloat v0);
+extern VZGLEXT_API void (WINAPI *glUniform2f)(GLint location, GLfloat v0, GLfloat v1);
+extern VZGLEXT_API void (WINAPI *glUniform3f)(GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
+extern VZGLEXT_API void (WINAPI *glUniform4f)(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+extern VZGLEXT_API void (WINAPI *glUniform1i)(GLint location, GLint v0);
+extern VZGLEXT_API void (WINAPI *glUniform2i)(GLint location, GLint v0, GLint v1);
+extern VZGLEXT_API void (WINAPI *glUniform3i)(GLint location, GLint v0, GLint v1, GLint v2);
+extern VZGLEXT_API void (WINAPI *glUniform4i)(GLint location, GLint v0, GLint v1, GLint v2, GLint v3);
+extern VZGLEXT_API void (WINAPI *glActiveTexture)(GLenum texture);
+extern VZGLEXT_API void (WINAPI *glClientActiveTexture)(GLenum texture);
 extern VZGLEXT_API int  glExtInitDone;
 
 /* init function */

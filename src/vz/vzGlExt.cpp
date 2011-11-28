@@ -58,6 +58,7 @@ BOOL APIENTRY DllMain
 #define GL_REG_EXT(EXT_NAME, FUNC_NAME) {EXT_NAME, #FUNC_NAME, &FUNC_NAME}
 #define GL_REG_EXT_FBO(FUNC_NAME) GL_REG_EXT("GL_EXT_framebuffer_object", FUNC_NAME)
 #define GL_REG_EXT_PBO(FUNC_NAME) GL_REG_EXT("GL_EXT_pixel_buffer_object", FUNC_NAME)
+#define GL_REG_EXT_SHADER(FUNC_NAME) GL_REG_EXT("GL_ARB_shader_objects", FUNC_NAME)
 static void* _gl_extensions_list[][3] = 
 {
 	/*
@@ -103,6 +104,38 @@ static void* _gl_extensions_list[][3] =
 	GL_REG_EXT_FBO(glGetFramebufferAttachmentParameterivEXT),
 	GL_REG_EXT_FBO(glGenerateMipmapEXT),
 
+    GL_REG_EXT_SHADER(glShaderSource),
+    GL_REG_EXT_SHADER(glCreateShader),
+    GL_REG_EXT_SHADER(glCompileShader),
+    GL_REG_EXT_SHADER(glUseProgram),
+    GL_REG_EXT_SHADER(glAttachShader),
+    GL_REG_EXT_SHADER(glDetachShader),
+    GL_REG_EXT_SHADER(glLinkProgram),
+    GL_REG_EXT_SHADER(glGetShaderiv),
+    GL_REG_EXT_SHADER(glGetShaderInfoLog),
+    GL_REG_EXT_SHADER(glIsShader),
+    GL_REG_EXT_SHADER(glDeleteShader),
+    GL_REG_EXT_SHADER(glGetAttachedShaders),
+    GL_REG_EXT_SHADER(glGetProgramiv),
+    GL_REG_EXT_SHADER(glGetProgramInfoLog),
+    GL_REG_EXT_SHADER(glGetActiveAttrib),
+    GL_REG_EXT_SHADER(glGetActiveUniform),
+    GL_REG_EXT_SHADER(glGetAttribLocation),
+    GL_REG_EXT_SHADER(glGetUniformfv),
+    GL_REG_EXT_SHADER(glGetUniformiv),
+    GL_REG_EXT_SHADER(glGetUniformLocation),
+    GL_REG_EXT_SHADER(glUniform1f),
+    GL_REG_EXT_SHADER(glUniform2f),
+    GL_REG_EXT_SHADER(glUniform3f),
+    GL_REG_EXT_SHADER(glUniform4f),
+    GL_REG_EXT_SHADER(glUniform1i),
+    GL_REG_EXT_SHADER(glUniform2i),
+    GL_REG_EXT_SHADER(glUniform3i),
+    GL_REG_EXT_SHADER(glUniform4i),
+
+    {"ARB_multitexture", "glActiveTexture", &glActiveTexture},
+    {"ARB_multitexture", "glClientActiveTexture", &glClientActiveTexture},
+
 	/* stop list */
 	{NULL,NULL,NULL}
 };
@@ -133,7 +166,36 @@ VZGLEXT_API void (WINAPI *glFramebufferTexture3DEXT)(GLenum target, GLenum attac
 VZGLEXT_API void (WINAPI *glFramebufferRenderbufferEXT)(GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer) = NULL;
 VZGLEXT_API void (WINAPI *glGetFramebufferAttachmentParameterivEXT)(GLenum target, GLenum attachment, GLenum pname, int *params) = NULL;
 VZGLEXT_API void (WINAPI *glGenerateMipmapEXT)(GLenum target) = NULL;
-
+VZGLEXT_API void (WINAPI *glShaderSource)(GLuint shader, GLsizei count, const GLchar ** string, const GLint * length) = NULL;
+VZGLEXT_API GLuint (WINAPI *glCreateShader)(GLenum type) = NULL;
+VZGLEXT_API void (WINAPI *glCompileShader)(GLuint shader) = NULL;
+VZGLEXT_API void (WINAPI *glUseProgram)(GLuint program) = NULL;
+VZGLEXT_API void (WINAPI *glAttachShader)(GLuint program, GLuint shader) = NULL;
+VZGLEXT_API void (WINAPI *glDetachShader)(GLuint program, GLuint shader) = NULL;
+VZGLEXT_API void (WINAPI *glLinkProgram)(GLuint program) = NULL;
+VZGLEXT_API void (WINAPI *glGetShaderiv)(GLuint shader, GLenum pname, GLint * params) = NULL;
+VZGLEXT_API void (WINAPI *glGetShaderInfoLog)(GLuint shader, GLsizei maxLength, GLsizei * length, GLchar * infoLog) = NULL;
+VZGLEXT_API GLboolean (WINAPI *glIsShader)(GLuint shader) = NULL;
+VZGLEXT_API void (WINAPI *glDeleteShader)(GLuint shader) = NULL;
+VZGLEXT_API void (WINAPI *glGetAttachedShaders)(GLuint program, GLsizei maxCount, GLsizei * count, GLuint * shaders) = NULL;
+VZGLEXT_API void (WINAPI *glGetProgramiv)(GLuint program, GLenum pname, GLint * params) = NULL;
+VZGLEXT_API void (WINAPI *glGetProgramInfoLog)(GLuint program, GLsizei maxLength, GLsizei * length, GLchar * infoLog) = NULL;
+VZGLEXT_API void (WINAPI *glGetActiveAttrib)(GLuint program, GLuint index, GLsizei bufSize, GLsizei * length, GLint * size, GLenum * type, GLchar * name) = NULL;
+VZGLEXT_API void (WINAPI *glGetActiveUniform)(GLuint program, GLuint index, GLsizei bufSize, GLsizei * length, GLint * size, GLenum * type, GLchar * name) = NULL;
+VZGLEXT_API GLint (WINAPI *glGetAttribLocation)(GLuint program, const GLchar * name) = NULL;
+VZGLEXT_API void (WINAPI *glGetUniformfv)(GLuint program, GLint location, GLfloat * params) = NULL;
+VZGLEXT_API void (WINAPI *glGetUniformiv)(GLuint program, GLint location, GLint * params) = NULL;
+VZGLEXT_API GLint (WINAPI *glGetUniformLocation)(GLuint program,  const GLchar * name) = NULL;
+VZGLEXT_API void (WINAPI *glUniform1f)(GLint location, GLfloat v0) = NULL;
+VZGLEXT_API void (WINAPI *glUniform2f)(GLint location, GLfloat v0, GLfloat v1) = NULL;
+VZGLEXT_API void (WINAPI *glUniform3f)(GLint location, GLfloat v0, GLfloat v1, GLfloat v2) = NULL;
+VZGLEXT_API void (WINAPI *glUniform4f)(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) = NULL;
+VZGLEXT_API void (WINAPI *glUniform1i)(GLint location, GLint v0) = NULL;
+VZGLEXT_API void (WINAPI *glUniform2i)(GLint location, GLint v0, GLint v1) = NULL;
+VZGLEXT_API void (WINAPI *glUniform3i)(GLint location, GLint v0, GLint v1, GLint v2) = NULL;
+VZGLEXT_API void (WINAPI *glUniform4i)(GLint location, GLint v0, GLint v1, GLint v2, GLint v3) = NULL;
+VZGLEXT_API void (WINAPI *glActiveTexture)(GLenum texture);
+VZGLEXT_API void (WINAPI *glClientActiveTexture)(GLenum texture);
 VZGLEXT_API int  glExtInitDone = 0;;
 
 // function
