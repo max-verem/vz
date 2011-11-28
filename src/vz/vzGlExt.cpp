@@ -199,38 +199,54 @@ VZGLEXT_API void (WINAPI *glClientActiveTexture)(GLenum texture);
 VZGLEXT_API int  glExtInitDone = 0;;
 
 // function
-VZGLEXT_API void vzGlExtInit()
+VZGLEXT_API int vzGlExtInit()
 {
+    int r = 0;
 	char* msg;
 	char* gl_extensions = (char*)glGetString(GL_EXTENSIONS);
 
-	// check if string not null
-	if(!(gl_extensions))
-	{
-		logger_printf(1, "vzGlExt: 'glGetString' Failed!");
-		return;
-	}
-	else
-		logger_printf(0, "vzGlExt: OpenGL extensions supported: %s", gl_extensions);
+    // check if string not null
+    if(!gl_extensions)
+    {
+        logger_printf(1, "vzGlExt: 'glGetString' Failed!");
+        return -1;
+    }
+    else
+        logger_printf(0, "vzGlExt: OpenGL extensions supported: %s", gl_extensions);
 
 	// notify about loading extensions
 	logger_printf(0, "vzGlExt: Loading extensions...");
 
-	/* enum extensions */
-	for(int i=0;_gl_extensions_list[i][0];i++)
-	{
-		if(strstr(gl_extensions,(char*)_gl_extensions_list[i][0]))
-		{
-			*((unsigned long*)_gl_extensions_list[i][2]) = (unsigned long)wglGetProcAddress((char*)_gl_extensions_list[i][1]);
-			msg = (_gl_extensions_list[i][2])?"OK":"FAILED";
-		}
-		else
-			msg = "not supported";
-		
-		logger_printf(0, "vzGlExt: '%s': %s",(char*)_gl_extensions_list[i][1], msg);
-	};
+    /* enum extensions */
+    for(int i = 0; _gl_extensions_list[i][0]; i++)
+    {
+        if(strstr(gl_extensions,(char*)_gl_extensions_list[i][0]))
+        {
+            void* f = wglGetProcAddress((char*)_gl_extensions_list[i][1]);
 
-	glExtInitDone = 1;
+            if(f)
+            {
+                msg = "OK:";
+                *((void**)_gl_extensions_list[i][2]) = f;
+            }
+            else
+            {
+                msg = "FAILED";
+                r++;
+            };
+        }
+        else
+        {
+            r++;
+            msg = "not supported";
+        };
+
+        logger_printf(0, "vzGlExt: '%s': %s",(char*)_gl_extensions_list[i][1], msg);
+    };
+
+    glExtInitDone = 1;
+
+    return r;
 };
 
 VZGLEXT_API GLenum vzGlExtEnumLookup(char* name)

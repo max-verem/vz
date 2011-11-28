@@ -287,7 +287,7 @@ extern VZGLEXT_API void (WINAPI *glClientActiveTexture)(GLenum texture);
 extern VZGLEXT_API int  glExtInitDone;
 
 /* init function */
-VZGLEXT_API void vzGlExtInit();
+VZGLEXT_API int vzGlExtInit();
 VZGLEXT_API GLenum vzGlExtEnumLookup(char* name);
 
 #define glErrorLog(OPER)                                            \

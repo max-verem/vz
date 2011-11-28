@@ -954,8 +954,13 @@ static int vz_create_window()
 		return -7;
     };
 
-	/* load opengl Extensions */
-	vzGlExtInit();
+    /* load opengl Extensions */
+    if(vzGlExtInit())
+    {
+        vz_destroy_window();
+        logger_printf(1, "ERROR: not all OpenGL extensions supported");
+        return -7;
+    };
 
 	/* init FBO */
 	if (0 != init_fbo())
