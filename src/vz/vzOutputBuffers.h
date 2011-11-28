@@ -25,7 +25,6 @@ typedef struct vzOutputBuffers_desc
         int id;
         void* data;
         unsigned int num;
-        HANDLE lock;
     } buffers[VZOUTPUT_MAX_BUFS];
 
     long gold;

@@ -236,9 +236,6 @@ VZOUTPUT_API int vzOutputInit(void* obj, HANDLE sync_event, unsigned long* sync_
     ctx->output.lock = CreateMutex(NULL, FALSE, NULL);
     for(b = 0; b < VZOUTPUT_MAX_BUFS; b++)
     {
-        /* create a buffer lock */
-        ctx->output.buffers[b].lock = CreateMutex(NULL, FALSE, NULL);
-
         /* generate offscreen buffer */
         glErrorLog(glGenBuffers(1, &ctx->output.buffers[b].num));
 
@@ -303,12 +300,8 @@ VZOUTPUT_API int vzOutputRelease(void* obj)
     /* free buffers */
     CloseHandle(ctx->output.lock);
     for(b = 0; b < VZOUTPUT_MAX_BUFS; b++)
-    {
-        CloseHandle(ctx->output.buffers[b].lock);
-
         // free framebuffer
         glErrorLog(glDeleteBuffers(1, &ctx->output.buffers[b].num));
-    };
 
     /* free input queue locks */
     for(i = 0; i < ctx->inputs_count; i++)
@@ -336,15 +329,8 @@ VZOUTPUT_API int vzOutputPostRender(void* obj)
         glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
     glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
 
-    /* unlock buffer */
-    ReleaseMutex(ctx->output.buffers[ctx->output.pos_render].lock);
-
-    /* lock buffers head */
-    WaitForSingleObject(ctx->output.lock, INFINITE);
     /* set jump flag */
     ctx->output.pos_render_jump = 1;
-    /* unlock buffers head */
-    ReleaseMutex(ctx->output.lock);
 
 #ifdef DEBUG_TIMINGS
     logger_printf(1, "vzOutput: vzOutputPostRender exit");
@@ -397,9 +383,6 @@ VZOUTPUT_API int vzOutputPreRender(void* obj)
 
     /* set buffer frame number */
     ctx->output.buffers[ctx->output.pos_render].id = 1;
-
-    /* lock buffer */
-    WaitForSingleObject(ctx->output.buffers[ctx->output.pos_render].lock, INFINITE);
 
     /* unlock buffers head */
     ReleaseMutex(ctx->output.lock);
@@ -507,9 +490,6 @@ VZOUTPUT_API int vzOutputOutGet(void* obj, vzImage* img)
         ctx->output.pos_driver_jump = 0;
     };
 
-    /* lock buffer */
-    WaitForSingleObject(ctx->output.buffers[ctx->output.pos_driver].lock, INFINITE);
-
     /* unlock buffers head */
     ReleaseMutex(ctx->output.lock);
 
@@ -542,17 +522,8 @@ VZOUTPUT_API int vzOutputOutRel(void* obj, vzImage* img)
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
 
-    /* unlock buffer */
-    ReleaseMutex(ctx->output.buffers[ctx->output.pos_driver].lock);
-
-    /* lock buffers head */
-    WaitForSingleObject(ctx->output.lock, INFINITE);
-
     /* set jump flag */
     ctx->output.pos_driver_jump = 1;
-
-    /* unlock buffers head */
-    ReleaseMutex(ctx->output.lock);
 
 #ifdef DEBUG_TIMINGS
     logger_printf(1, "vzOutput: vzOutputOutRel exit");
