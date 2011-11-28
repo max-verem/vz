@@ -373,20 +373,19 @@ static int init_fbo()
 	fbo.color_tex_width = POT(tv.TV_FRAME_WIDTH);
 	fbo.color_tex_height = POT(tv.TV_FRAME_HEIGHT);
 
-	/* generate framebuffer */
-	glGenFramebuffersEXT(1, &fbo.fb);
-
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb);
+    /* generate framebuffer */
+    glErrorLog(glGenFramebuffersEXT(1, &fbo.fb););
+    glErrorLog(glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb););
 
 	// initialize color texture
 	for(int i = 0; i<2; i++)
 	{
 
-		glGenTextures(1, &fbo.color_tex[i]);
-		glBindTexture(GL_TEXTURE_2D, fbo.color_tex[i]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D
+        glErrorLog(glGenTextures(1, &fbo.color_tex[i]););
+        glErrorLog(glBindTexture(GL_TEXTURE_2D, fbo.color_tex[i]););
+        glErrorLog(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR););
+        glErrorLog(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR););
+        glErrorLog(glTexImage2D
 		(
 			GL_TEXTURE_2D, 
 			0, 
@@ -395,32 +394,32 @@ static int init_fbo()
 			0, 
 			GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
 			NULL
-		);
+        ););
 
-		glFramebufferTexture2DEXT
+        glErrorLog(glFramebufferTexture2DEXT
 		(
 			GL_FRAMEBUFFER_EXT, 
 			GL_COLOR_ATTACHMENT0_EXT + i, 
 			GL_TEXTURE_2D, 
 			fbo.color_tex[i], 
 			0
-		);
+        ););
 	};
 
-	glGenRenderbuffersEXT(1, &fbo.stencil_depth_rb);
-	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
-	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, fbo.color_tex_width, fbo.color_tex_height);
-	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,  GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
-	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb);
+    glErrorLog(glGenRenderbuffersEXT(1, &fbo.stencil_depth_rb););
+    glErrorLog(glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb););
+    glErrorLog(glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, fbo.color_tex_width, fbo.color_tex_height););
+    glErrorLog(glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,  GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb););
+    glErrorLog(glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo.stencil_depth_rb););
 
-	/* create background texture */
-	glGenTextures(1, &fbo.bg_tex);
-	glBindTexture(GL_TEXTURE_2D, fbo.bg_tex);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexImage2D
+    /* create background texture */
+    glErrorLog(glGenTextures(1, &fbo.bg_tex););
+    glErrorLog(glBindTexture(GL_TEXTURE_2D, fbo.bg_tex););
+    glErrorLog(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR););
+    glErrorLog(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR););
+    glErrorLog(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT););
+    glErrorLog(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT););
+    glErrorLog(glTexImage2D
 	(
 		GL_TEXTURE_2D, 
 		0, 
@@ -429,14 +428,14 @@ static int init_fbo()
 		0, 
 		GL_BGRA_EXT, GL_UNSIGNED_BYTE, 
 		fb_bg_text_data
-	);
+    ););
 
 
-	glBindTexture(GL_TEXTURE_2D, 0);
+    glErrorLog(glBindTexture(GL_TEXTURE_2D, 0););
 
 	fbo.index = 0;
-	glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) );
-	glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) );
+    glErrorLog(glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) ););
+    glErrorLog(glReadBuffer(GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) ););
 
 	return 0;
 };
@@ -462,7 +461,7 @@ static int vz_scene_render(int rendered_limit)
     if(r) return r;
 
     /* bind buffer */
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb);
+    glErrorLog(glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo.fb););
 
     /* check if we need to draw frame */
     while(vzOutputRenderSlots(output_context) > 0 && !f_exit
@@ -501,8 +500,8 @@ static int vz_scene_render(int rendered_limit)
         ReleaseMutex(layers_lock);
 
         fbo.index = 1 - fbo.index;
-        glDrawBuffer (GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index) );
-        glReadBuffer (GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index) );
+        glErrorLog(glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index)););
+        glErrorLog(glReadBuffer(GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index)););
     };
 
     /* unbind conext */
