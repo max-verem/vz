@@ -322,6 +322,9 @@ static unsigned long WINAPI sync_render(void* data)
         /* notify to redraw bg or direct render screen */
         vz_scene_display();
 
+        /* one more check before waiting */
+        if(f_exit) break;
+
         /* wait for sync */
         d = WaitForSingleObject(global_frame_event, INFINITE);
 
@@ -973,6 +976,13 @@ static int vz_create_window()
 		return -7;
     };
 
+    /* init shaders */
+    if (vzGlExtShader())
+    {
+        vz_destroy_window();
+        logger_printf(1, "ERROR: shaders initialization failed");
+        return -7;
+    };
 
 	/* clear */
 	glClearColor (0.0, 0.0, 0.0, 0.0);
@@ -1240,7 +1250,7 @@ int main(int argc, char** argv)
 
 		/* stop sync render thread */
 		logger_printf(1, "main: waiting for sync_render_handle...");
-        PulseEvent(global_frame_event); CloseHandle(global_frame_event);
+        SetEvent(global_frame_event); CloseHandle(global_frame_event);
 		WaitForSingleObject(sync_render_handle, INFINITE);
 		logger_printf(1, "main: WaitForSingleObject(sync_render_handle) finished");
 		CloseHandle(sync_render_handle);
