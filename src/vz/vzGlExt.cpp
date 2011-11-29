@@ -321,9 +321,13 @@ VZGLEXT_API GLenum vzGlExtEnumLookup(char* name)
 
 #if 0
 const char* frag_src =
-"   uniform sampler2DRect src;\n"
 "   void main(void) {\n"
-"       gl_FragColor = gl_TexCoord[0]; //vec4 (0.0, 1.0, 0.0, 1.0); \n"
+"       gl_FragColor = gl_Color; \n"
+"   }\n";
+
+const char* vert_src =
+"   void main(void) {\n"
+"       gl_Position = ftransform(); \n"
 "   }\n";
 
 static GLuint compile_shader(char* name, const char* src, GLuint type)
@@ -352,15 +356,20 @@ VZGLEXT_API int vzGlExtShader()
 {
     int r, l;
     char buf[1024];
-    GLuint frag_shader, prog;
+    GLuint frag_shader, vert_shader, prog;
 
     frag_shader = compile_shader("frag_src", frag_src, GL_FRAGMENT_SHADER);
     if(!frag_shader)
         return -1;
 
+    vert_shader = compile_shader("vert_src", vert_src, GL_VERTEX_SHADER);
+    if(!vert_shader)
+        return -1;
+
     prog = glCreateProgram();
 
     glAttachShader(prog, frag_shader);
+    glAttachShader(prog, vert_shader);
 
     glLinkProgram(prog);
 
