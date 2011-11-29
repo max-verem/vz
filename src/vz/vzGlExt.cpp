@@ -117,6 +117,7 @@ static void* _gl_extensions_list[][4] =
     GL_REG_EXT_SHADER(glShaderSource),
     GL_REG_EXT_SHADER(glCreateShader),
     GL_REG_EXT_SHADER(glCompileShader),
+    GL_REG_EXT_SHADER(glCreateProgram),
     GL_REG_EXT_SHADER(glUseProgram),
     GL_REG_EXT_SHADER(glAttachShader),
     GL_REG_EXT_SHADER(glDetachShader),
@@ -179,6 +180,7 @@ VZGLEXT_API void (WINAPI *glGenerateMipmapEXT)(GLenum target) = NULL;
 VZGLEXT_API void (WINAPI *glShaderSource)(GLuint shader, GLsizei count, const GLchar ** string, const GLint * length) = NULL;
 VZGLEXT_API GLuint (WINAPI *glCreateShader)(GLenum type) = NULL;
 VZGLEXT_API void (WINAPI *glCompileShader)(GLuint shader) = NULL;
+VZGLEXT_API GLuint (WINAPI *glCreateProgram)(void) = NULL;
 VZGLEXT_API void (WINAPI *glUseProgram)(GLuint program) = NULL;
 VZGLEXT_API void (WINAPI *glAttachShader)(GLuint program, GLuint shader) = NULL;
 VZGLEXT_API void (WINAPI *glDetachShader)(GLuint program, GLuint shader) = NULL;
@@ -316,3 +318,68 @@ VZGLEXT_API GLenum vzGlExtEnumLookup(char* name)
 
     return GL_UNKNOWN_ATTR;
 };
+
+#if 0
+const char* frag_src =
+"   uniform sampler2DRect src;\n"
+"   void main(void) {\n"
+"       gl_FragColor = gl_TexCoord[0]; //vec4 (0.0, 1.0, 0.0, 1.0); \n"
+"   }\n";
+
+static GLuint compile_shader(char* name, const char* src, GLuint type)
+{
+    int r, l;
+    char buf[1024];
+    GLuint shader;
+
+    shader = glCreateShader(type);
+    glShaderSource(shader, 1, &src, NULL);
+    glCompileShader(shader);
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &r);
+
+    glGetShaderInfoLog(shader, sizeof(buf), &l, buf);
+    if(!l) l = 1; buf[l - 1] = 0;
+    logger_printf(1, "shader [%s] compile notes: %s", name, buf);
+
+    /* return if it success */
+    if(r) return shader;
+
+    glDeleteShader(shader);
+    return 0;
+};
+
+VZGLEXT_API int vzGlExtShader()
+{
+    int r, l;
+    char buf[1024];
+    GLuint frag_shader, prog;
+
+    frag_shader = compile_shader("frag_src", frag_src, GL_FRAGMENT_SHADER);
+    if(!frag_shader)
+        return -1;
+
+    prog = glCreateProgram();
+
+    glAttachShader(prog, frag_shader);
+
+    glLinkProgram(prog);
+
+    glGetProgramiv(prog, GL_LINK_STATUS, &r);
+
+    glGetProgramInfoLog(prog, sizeof(buf), &l, buf);
+    if(!l) l = 1; buf[l - 1] = 0;
+    logger_printf(1, "shader program link notes: %s", buf);
+
+    if(r)
+    {
+        glUseProgram(prog);
+        return 0;
+    };
+
+    return -1;
+};
+#else
+VZGLEXT_API int vzGlExtShader() { return 1; };
+#endif
+
+

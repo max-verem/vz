@@ -215,6 +215,7 @@ http://oss.sgi.com/projects/ogl-sample/ABI/glext.h
 #define GL_MAX_FRAGMENT_UNIFORM_VECTORS         0x8DFD
 #define GL_SHADER_TYPE                          0x8B4F
 #define GL_DELETE_STATUS                        0x8B80
+#define GL_COMPILE_STATUS                       0x8B81
 #define GL_LINK_STATUS                          0x8B82
 #define GL_VALIDATE_STATUS                      0x8B83
 #define GL_ATTACHED_SHADERS                     0x8B85
@@ -257,6 +258,7 @@ extern VZGLEXT_API void (WINAPI *glGenerateMipmapEXT)(GLenum target);
 extern VZGLEXT_API void (WINAPI *glShaderSource)(GLuint shader, GLsizei count, const GLchar **string, const GLint * length);
 extern VZGLEXT_API GLuint (WINAPI *glCreateShader)(GLenum type);
 extern VZGLEXT_API void (WINAPI *glCompileShader)(GLuint shader);
+extern VZGLEXT_API GLuint (WINAPI *glCreateProgram)(void);
 extern VZGLEXT_API void (WINAPI *glUseProgram)(GLuint program);
 extern VZGLEXT_API void (WINAPI *glAttachShader)(GLuint program, GLuint shader);
 extern VZGLEXT_API void (WINAPI *glDetachShader)(GLuint program, GLuint shader);
@@ -289,6 +291,7 @@ extern VZGLEXT_API int  glExtInitDone;
 /* init function */
 VZGLEXT_API int vzGlExtInit();
 VZGLEXT_API GLenum vzGlExtEnumLookup(char* name);
+VZGLEXT_API int vzGlExtShader();
 
 #define glErrorLog(OPER)                                            \
 {                                                                   \
