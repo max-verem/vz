@@ -150,4 +150,6 @@ VZIMAGE_API int vzImagePixFmt2OGL(int pix_fmt);
  */
 VZIMAGE_API int vzImagePixFmtConv(vzImage** img, int pix_fmt);
 
+VZIMAGE_API int vzImageConv_UYVY_to_BGRA(vzImage* src, vzImage* dst, int split_interlace);
+
 #endif

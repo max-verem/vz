@@ -36,6 +36,7 @@ ChangeLog:
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "vzImage.h"
 #include "vzGlExt.h"
@@ -632,3 +633,71 @@ VZIMAGE_API int vzImageExpandPOT(vzImage** pimg)
 
     return 0;
 };
+
+#if 0
+static void yuv2rgb(float Y, float Cb, float Cr, float *rgb)
+{
+    float t1 = 64.0f * 1.164f * (Y - 16.0f);
+    float t2 = 64.0f * 1.596f * (Cr - 128.0f);
+    float t3 = t1 + t2;
+    float t4 = t3 / 64.0f;
+
+    rgb[0] = 1.164f * (Y - 16.0f) + 1.596f * (Cr - 128.0f);
+    rgb[1] = 1.164f * (Y - 16.0f) - 0.813f * (Cr - 128.0f) - 0.391f * (Cb - 128.0f);
+    rgb[2] = 1.164f * (Y - 16.0f) + 2.018f * (Cb - 128.0f);
+};
+
+#define TPX(o) 0x20 + o, 0x40 + o, 0x70 + o, 0x90 + o
+    const static unsigned char yuv[] =
+    {
+        TPX(0), TPX(1), TPX(2), TPX(3), TPX(4), TPX(5), TPX(6), TPX(7),
+        TPX(8), TPX(9), TPX(10), TPX(11), TPX(12), TPX(13), TPX(14), TPX(15)
+    };
+    unsigned char rgb[1024];
+
+    float result1[3];
+    float result2[3];
+    yuv2rgb(yuv[1], yuv[0], yuv[2], result1);
+    yuv2rgb(yuv[3], yuv[0], yuv[2], result2);
+#endif
+
+#ifdef _M_X64
+extern "C" void conv_uyvy_bgra(void* src, void* dst, long long rows, long long cols /* pixel count */,
+    long long delta_src_pitch, long long delta_dst_pitch);
+#else
+void conv_uyvy_bgra(void* src, void* dst, int rows, int cols /* pixel count */,
+    int delta_src_pitch, int delta_dst_pitch)
+{
+    return 0;
+};
+#endif
+
+VZIMAGE_API int vzImageConv_UYVY_to_BGRA(vzImage* src, vzImage* dst, int split_interlace)
+{
+    /* both should be defined */
+    if(!src || !dst)
+        return -EINVAL;
+
+    /* and identical dimention */
+    if(src->pix_fmt != VZIMAGE_PIXFMT_UYVY ||
+        dst->pix_fmt != VZIMAGE_PIXFMT_BGRA ||
+        src->width != dst->width ||
+        src->height != dst->height)
+        return -EINVAL;
+
+    if(split_interlace)
+    {
+
+    }
+    else
+    {
+        conv_uyvy_bgra
+        (
+            src->surface, dst->surface, src->height, src->width,
+            src->line_size - 2 * src->width, dst->line_size - 4 * dst->width
+        );
+    };
+
+    return 0;
+};
+
