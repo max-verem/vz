@@ -105,8 +105,9 @@ typedef struct
 // internal datas
 	HANDLE _lock_update;	// update struct mutex
     void* _output_context;
-    int last_sys_id;
+    int _last_sys_id;
     unsigned int _textures[2];
+    unsigned int _textures_idx;
     unsigned int _textures_initialized;
     long _width;
     long _height;
@@ -157,6 +158,7 @@ vzPluginData default_value =
 	NULL,					// void* _output_context;
     -1,                      // int last_sys_id;
     {0, 0},                 // unsigned int _textures;
+    0,                      // unsigned int _textures_idx;
     0,                      // unsigned int _textures_initialized;
 	0,						// long _width;
 	0,						// long _height;
@@ -458,12 +460,13 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
     };
 
     /* load texture */
-    if(img->sys_id != ctx->last_sys_id)
+    if(img->sys_id != ctx->_last_sys_id)
     {
         int t, o;
         void *pbo_ptr, *src_ptr;
 
-        ctx->last_sys_id = img->sys_id;
+        ctx->_last_sys_id = img->sys_id;
+        ctx->_textures_idx = 0;
 
         /* load buffers */
 #ifdef SINGLE_PBO
@@ -591,7 +594,8 @@ PLUGIN_EXPORT void render(void* data, vzRenderSession* session)
         return;
 
     /* setup proper texture */
-    tex = ctx->_textures[session->field];
+    tex = ctx->_textures[ctx->_textures_idx];
+    if(!ctx->_textures_idx) ctx->_textures_idx++;
 
 		/* mode depend rendering */
 		if (FOURCC_TO_LONG('_','F','T','_') == _DATA->L_center)
