@@ -47,8 +47,9 @@ typedef struct
 	long field;
 	long fill;
 	long key;
-	long order; /* second bit specifies INTERLACED flag, first bit FIRST FIELD */
+	long order;
 	void* container;
+    long interlace; /* second bit specifies INTERLACED flag, first bit FIRST FIELD */
 } vzRenderSession;
 
 typedef struct

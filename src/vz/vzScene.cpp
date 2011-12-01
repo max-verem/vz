@@ -346,7 +346,6 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
 	};
 
 	// draw fields/frame
-    int order = _tv->TV_FRAME_INTERLACED << 1 | _tv->TV_FRAME_1ST;
 	for(int field = 0; field <= _tv->TV_FRAME_INTERLACED; field++)
 	{
 		// set directors for propper position
@@ -413,10 +412,10 @@ void vzScene::display(long frame, long renders_count, vzScene** renderers_list)
         {
             for(int l = 0; l < renders_count; l++)
                 if(renderers_list[renders_count - l - 1])
-                    renderers_list[renders_count - l - 1]->draw(frame, field, 1, 1, order);
+                    renderers_list[renders_count - l - 1]->draw(frame, field, 1, 1, 0);
         }
         else
-            draw(frame,field, 1, 1, order);
+            draw(frame,field, 1, 1, 0);
 
 		/* honor PAR - restore H scale */
 		glPopMatrix();
@@ -444,7 +443,9 @@ void vzScene::draw(long frame,long field,long fill,long key,long order)
 		field,
 		fill,
 		key,
-		order
+		order,
+        NULL,
+        _tv->TV_FRAME_INTERLACED << 1 | _tv->TV_FRAME_1ST
 	};
 	
 	if(_tree)
