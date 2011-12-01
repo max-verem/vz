@@ -388,7 +388,7 @@ VZGLEXT_API int vzGlExtShader()
     return -1;
 };
 #else
-VZGLEXT_API int vzGlExtShader() { return 1; };
+VZGLEXT_API int vzGlExtShader() { return 0; };
 #endif
 
 
