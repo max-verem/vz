@@ -461,7 +461,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             pbo_ptr = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
             if(pbo_ptr)
             {
-                void* src_slice_ptr = (unsigned char*)img->surface + b * img->line_size;
+                void* src_slice_ptr = (unsigned char*)img->surface + b * ctx->_pbo_slice_size;
                 unsigned int src_slice_size =
                     VZ_MIN(ctx->_pbo_size - b * ctx->_pbo_slice_size, ctx->_pbo_slice_size);
 
