@@ -131,6 +131,7 @@ typedef struct decklink_runtime_context_desc
         int pos;
         vzImage *buf;
         vzImage *bufs[MAX_INPUT_BUFS];
+        int interlaced;
     } inputs[MAX_INPUTS];
     int inputs_count;
 
@@ -195,14 +196,16 @@ static int decklink_VideoInputFrameArrived
     if(!ctx->inputs[idx].buf)
         ctx->inputs[idx].buf = ctx->inputs[idx].bufs[ctx->inputs[idx].pos++];
 
+    /* setup basic parameters */
     src.width = src.base_width = pArrivedFrame->GetWidth();
     src.height = src.base_height = pArrivedFrame->GetHeight();
     src.line_size = pArrivedFrame->GetRowBytes();
     pArrivedFrame->GetBytes(&src.surface);
     src.bpp = 2;
     src.pix_fmt = VZIMAGE_PIXFMT_UYVY;
+    src.interlaced = ctx->inputs[idx].interlaced;
 
-    i = vzImageConv_UYVY_to_BGRA(&src, ctx->inputs[idx].buf, 0);
+    i = vzImageConv_UYVY_to_BGRA(&src, ctx->inputs[idx].buf);
 
     vzOutputInputPush(ctx->output_context, ctx->inputs[idx].idx,
         (void**)&ctx->inputs[idx].buf);
@@ -508,6 +511,24 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
         ctx.inputs[ctx.inputs_count].board = deckLinks[i];
         deckLinks[i] = NULL;
         ctx.inputs_count++;
+
+        /* set interlaced */
+        switch(ctx.inputs[ctx.inputs_count].mode)
+        {
+            case bmdModeHD1080i50:
+            case bmdModePAL:
+                ctx.inputs[ctx.inputs_count].interlaced = VZIMAGE_INTERLACED_U;
+                break;
+
+            case bmdModeHD1080i5994:
+            case bmdModeHD1080i6000:
+            case bmdModeNTSC:
+            case bmdModeNTSC2398:
+                ctx.inputs[ctx.inputs_count].interlaced = VZIMAGE_INTERLACED_L;
+                break;
+            default:
+                ctx.inputs[ctx.inputs_count].interlaced = VZIMAGE_INTERLACED_NONE;
+        };
     };
 
     /* release unused boards intstances */
