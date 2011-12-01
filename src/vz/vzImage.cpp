@@ -672,7 +672,7 @@ void conv_uyvy_bgra(void* src, void* dst, int rows, int cols /* pixel count */,
 };
 #endif
 
-VZIMAGE_API int vzImageConv_UYVY_to_BGRA(vzImage* src, vzImage* dst, int split_interlace)
+VZIMAGE_API int vzImageConv_UYVY_to_BGRA(vzImage* src, vzImage* dst)
 {
     /* both should be defined */
     if(!src || !dst)
@@ -685,18 +685,13 @@ VZIMAGE_API int vzImageConv_UYVY_to_BGRA(vzImage* src, vzImage* dst, int split_i
         src->height != dst->height)
         return -EINVAL;
 
-    if(split_interlace)
-    {
+    conv_uyvy_bgra
+    (
+        src->surface, dst->surface, src->height, src->width,
+        src->line_size - 2 * src->width, dst->line_size - 4 * dst->width
+    );
 
-    }
-    else
-    {
-        conv_uyvy_bgra
-        (
-            src->surface, dst->surface, src->height, src->width,
-            src->line_size - 2 * src->width, dst->line_size - 4 * dst->width
-        );
-    };
+    dst->interlaced = src->interlaced;
 
     return 0;
 };
