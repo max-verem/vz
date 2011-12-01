@@ -2,9 +2,9 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2005 Maksym Veremeyenko.
+    Copyright (C) 2011 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2005.
+    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2011.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,10 +19,6 @@
     You should have received a copy of the GNU General Public License
     along with ViZualizator; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-Changelog:
-	2007-11-16: 
-		*Visual Studio 2005 migration.
 */
 
 #define _CRT_SECURE_NO_WARNINGS
@@ -92,35 +88,53 @@ int main(int argc, char** argv)
 		exit(-1);
 	};
 
-	/* start */
-	fprintf
-	(
-		f,
-		"static long %s_width = %d;\n"
-		"static long %s_height = %d;\n"
-		"static unsigned long %s_surface_temp[] =\n"
-		"{",
-		const_prefix, image->width,
-		const_prefix, image->height,
-		const_prefix
-	);
+    /* start */
+    fprintf
+    (
+        f,
+        "#ifndef %s_h\n"
+        "#define %s_h\n"
+        "static int _load_img_%s(vzImage* img)\n"
+        "{\n"
+        "    static const unsigned long surface[] =\n"
+        "    {\n",
+        const_prefix, const_prefix, const_prefix
+    );
 
-	for(int j = 0; j < (image->width*image->height); j++)
-	{
-		if(!(j % COLUMNS)) fprintf(f, "\n\t");
-		fprintf(f, " 0x%.8X", ((unsigned long*)image->surface)[j]);
-		if( (j + 1) != (image->width*image->height) ) fprintf(f, ",");
-	};
+    for(int j = 0; j < (image->width*image->height); j++)
+    {
+        if(!(j % COLUMNS)) fprintf(f, "\n        ");
+        fprintf(f, " 0x%.8X", ((unsigned long*)image->surface)[j]);
+        if( (j + 1) != (image->width*image->height) ) fprintf(f, ",");
+    };
 
-	/* stop */
-	fprintf
-	(
-		f,
-		"\n};\n"
-		"static void *%s_surface = %s_surface_temp;\n",
-		const_prefix, const_prefix
-	);
+    /* stop */
+    fprintf
+    (
+        f,
+        "\n"
+        "    };\n"
+        "\n"
+    );
 
+    fprintf(f, "    memset(img, 0, sizeof(vzImage));\n");
+    fprintf(f, "    img->width = %d;\n", image->width);
+    fprintf(f, "    img->height = %d;\n", image->height);
+    fprintf(f, "    img->base_width = %d;\n", image->base_width);
+    fprintf(f, "    img->base_height = %d;\n", image->base_height);
+    fprintf(f, "    img->line_size = %d;\n", image->line_size);
+    fprintf(f, "    img->bpp = %d;\n", image->bpp);
+    fprintf(f, "    img->pix_fmt = %d;\n", image->pix_fmt);
+    fprintf(f, "    img->surface = (void*)surface;\n");
+
+    fprintf
+    (
+        f,
+        "\n"
+        "    return 0;\n"
+        "};\n"
+        "#endif\n"
+    );
 
 	fclose(f);
 	vzImageRelease(&image);
