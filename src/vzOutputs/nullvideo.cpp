@@ -50,6 +50,7 @@ typedef struct nullvideo_input_context_desc
     int pattern;
     void* parent;
     vzImage img[3];
+    long long cnt;
 } nullvideo_input_context_t;
 
 typedef struct nullvideo_runtime_context_desc
@@ -160,8 +161,8 @@ unsigned long WINAPI nullvideo_thread_output(void* obj)
 
 unsigned long WINAPI nullvideo_thread_input(void* obj)
 {
-    int i;
-    vzImage* img;
+    int i = 0, c = 0;
+    vzImage* img = NULL;
     nullvideo_input_context_t* inp = (nullvideo_input_context_t*)obj;
     nullvideo_runtime_context_t* ctx = (nullvideo_runtime_context_t*)inp->parent;
 
@@ -169,17 +170,18 @@ unsigned long WINAPI nullvideo_thread_input(void* obj)
     for(i = 0; i < 3; i++)
         inp->img[i] = ctx->tp[inp->pattern];
 
-    /* push first frames */
-    img = &inp->img[0];
-    vzOutputInputPush(ctx->output_context, inp->index, (void**)&img);
-    img = &inp->img[1];
-    vzOutputInputPush(ctx->output_context, inp->index, (void**)&img);
-    img = &inp->img[2];
-
+    /* endless loop */
     while(!ctx->f_exit)
     {
         /* wait for internal sync */
         WaitForSingleObject(ctx->sync.src, INFINITE);
+
+        /* fetch new image */
+        if(!img)
+            img = &inp->img[c++];
+
+        /* inc counter */
+        img->sys_id = inp->cnt++;
 
         /* just push a frame */
         vzOutputInputPush(ctx->output_context, inp->index, (void**)&img);
