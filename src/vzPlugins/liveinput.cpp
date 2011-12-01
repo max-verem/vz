@@ -2,9 +2,9 @@
     ViZualizator
     (Real-Time TV graphics production system)
 
-    Copyright (C) 2005 Maksym Veremeyenko.
+    Copyright (C) 2011 Maksym Veremeyenko.
     This file is part of ViZualizator (Real-Time TV graphics production system).
-    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2005.
+    Contributed by Maksym Veremeyenko, verem@m1stereo.tv, 2011.
 
     ViZualizator is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,40 +19,6 @@
     You should have received a copy of the GNU General Public License
     along with ViZualizator; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-ChangeLog:
-	2006-12-16:
-		*audio mixing/support added.
-
-	2006-12-14:
-		*constructor updates, added two parameters 'scene' 'parent_container'
-
-	2006-12-12:
-		*texture updates depend on field mode, for frame mode we update texture
-		one time per two filed.
-
-	2006-12-11:
-		*'twice_fields' depends on field mode, fixed.
-
-	2006-12-06:
-		*one more trick with 'f_offset_y' 'l_offset_y' - no greater picture 
-		improvement.
-
-	2006-12-05:
-		*'Twice height' reincarnated (again) due to configurable behavior of
-		fields duplicator in IO driver.
-		*'y_offset' for future.
-
-	2006-12-04:
-		*Twice height removed. Field has the same size as frame. Duplicating
-		lines should be provided in IO driver.
-  
-	2006-12-03:
-		*Height twice in field mode.
-
-	2006-12-01:
-		*Draft version startup
-
 */
 
 static char* _plugin_description = 
