@@ -65,6 +65,9 @@ typedef struct vzImageDesc
 
     /** private data */
     void* priv;
+
+    /** interlaced flag: 0 - none, 1 - upper field first, 2 - lowe field first */
+    int interlaced;
 } vzImage;
 
 #define VZIMAGE_PIXFMT_BGR      1
@@ -76,6 +79,10 @@ typedef struct vzImageDesc
 #define VZIMAGE_PIXFMT_BGRX     7
 #define VZIMAGE_PIXFMT_XBGR     8
 #define VZIMAGE_PIXFMT_UYVY     9
+
+#define VZIMAGE_INTERLACED_NONE 0
+#define VZIMAGE_INTERLACED_U    1
+#define VZIMAGE_INTERLACED_L    2
 
 #define VZIMAGE_ALIGN_LINE      4
 
