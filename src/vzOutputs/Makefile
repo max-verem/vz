@@ -207,19 +207,34 @@ decklink_sdk: "$(BASECLASSES_LIB)" "$(BASECLASSES_INC)"
 # NULL output module - fake for testing....
 nullvideo: nullvideo.cpp nullvideo.dll
 
-nullvideo.cpp: nullvideo.tp_bars.h nullvideo.tp_grid.h nullvideo.tp_lines.h
+nullvideo.cpp: nullvideo.tp_bars.h nullvideo.tp_grid.h nullvideo.tp_lines.h nullvideo.tp_0249.h nullvideo.tp_PM5544.h nullvideo.tp_UEIT.h
 
-nullvideo.tp_bars.h: nullvideo.tp_bars.tga
+nullvideo.tp_bars.h: nullvideo.tp_bars.png
 	@echo Converting $**
 	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
-	@tga2h $** $(OBJS_DIR)$(**:.tga=.h) tp_bars
+	@tga2h $** $(OBJS_DIR)$(**:.png=.h) tp_bars
 
-nullvideo.tp_grid.h: nullvideo.tp_grid.tga
+nullvideo.tp_grid.h: nullvideo.tp_grid.png
 	@echo Converting $**
 	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
-	@tga2h $** $(OBJS_DIR)$(**:.tga=.h) tp_grid
+	@tga2h $** $(OBJS_DIR)$(**:.png=.h) tp_grid
 
-nullvideo.tp_lines.h: nullvideo.tp_lines.tga
+nullvideo.tp_lines.h: nullvideo.tp_lines.png
 	@echo Converting $**
 	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
-	@tga2h $** $(OBJS_DIR)$(**:.tga=.h) tp_lines
+	@tga2h $** $(OBJS_DIR)$(**:.png=.h) tp_lines
+
+nullvideo.tp_0249.h: nullvideo.tp_0249.png
+	@echo Converting $**
+	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
+	@tga2h $** $(OBJS_DIR)$(**:.png=.h) tp_0249
+
+nullvideo.tp_PM5544.h: nullvideo.tp_PM5544.png
+	@echo Converting $**
+	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
+	@tga2h $** $(OBJS_DIR)$(**:.png=.h) tp_PM5544
+
+nullvideo.tp_UEIT.h: nullvideo.tp_UEIT.png
+	@echo Converting $**
+	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
+	@tga2h $** $(OBJS_DIR)$(**:.png=.h) tp_UEIT

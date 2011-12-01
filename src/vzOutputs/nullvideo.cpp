@@ -34,11 +34,13 @@
 #include "hr_timer.h"
 
 /* test patters */
-#define TP_COUNT 3
+#define TP_COUNT 6
 #include "nullvideo.tp_bars.h"
 #include "nullvideo.tp_grid.h"
 #include "nullvideo.tp_lines.h"
-static void *tps[TP_COUNT] = { tp_bars_surface, tp_grid_surface, tp_lines_surface};
+#include "nullvideo.tp_0249.h"
+#include "nullvideo.tp_PM5544.h"
+#include "nullvideo.tp_UEIT.h"
 
 #define MAX_INPUTS 4
 
@@ -65,6 +67,7 @@ typedef struct nullvideo_runtime_context_desc
     struct hr_sleep_data timer_data;
 
     nullvideo_input_context_t inputs[MAX_INPUTS];
+    vzImage tp[TP_COUNT];
 } nullvideo_runtime_context_t;
 
 static nullvideo_runtime_context_t ctx;
@@ -80,6 +83,14 @@ static int nullvideo_init(void* obj, void* config, vzTVSpec* tv)
     ctx.output_context = obj;
     ctx.sync.src = CreateEvent(NULL, TRUE, FALSE, NULL);
     hr_sleep_init(&ctx.timer_data);
+
+    /* setup test patterns */
+    _load_img_tp_UEIT(&ctx.tp[0]);
+    _load_img_tp_PM5544(&ctx.tp[1]);
+    _load_img_tp_0249(&ctx.tp[2]);
+    _load_img_tp_bars(&ctx.tp[3]);
+    _load_img_tp_grid(&ctx.tp[4]);
+    _load_img_tp_lines(&ctx.tp[5]);
 
     return 0;
 };
@@ -156,15 +167,7 @@ unsigned long WINAPI nullvideo_thread_input(void* obj)
 
     /* setup framebuffers */
     for(i = 0; i < 3; i++)
-    {
-        inp->img[i].priv = (void*)i;
-        inp->img[i].bpp = 4;
-        inp->img[i].pix_fmt = VZIMAGE_PIXFMT_BGRA;
-        inp->img[i].surface = tps[inp->pattern];
-        inp->img[i].width = inp->img[i].base_width = tp_bars_width;
-        inp->img[i].height = inp->img[i].base_height = tp_bars_height;
-        inp->img[i].line_size = inp->img[i].width * inp->img[i].bpp;
-    };
+        inp->img[i] = ctx->tp[inp->pattern];
 
     /* push first frames */
     img = &inp->img[0];
