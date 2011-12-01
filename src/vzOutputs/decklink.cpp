@@ -94,6 +94,7 @@ static const char* bmd_modes_name[] =
 #define MAX_INPUTS  4
 #define MAX_BOARDS  8
 #define PREROLL     3
+#define MAX_INPUT_BUFS 4
 
 class decklink_input_class;
 class decklink_output_class;
@@ -129,7 +130,7 @@ typedef struct decklink_runtime_context_desc
         BMDDisplayMode mode;
         int pos;
         vzImage *buf;
-        vzImage bufs[4];
+        vzImage *bufs[MAX_INPUT_BUFS];
     } inputs[MAX_INPUTS];
     int inputs_count;
 
@@ -182,26 +183,29 @@ static int decklink_VideoInputFrameArrived
     IDeckLinkAudioInputPacket* pAudio
 )
 {
+    int i;
+    vzImage src;
+
+    /* init images on first call */
+    if(!ctx->inputs[idx].bufs[0])
+        for(i = 0; i < MAX_INPUT_BUFS; i++)
+            vzImageCreate(&ctx->inputs[idx].bufs[i],
+                pArrivedFrame->GetWidth(), pArrivedFrame->GetHeight());
+
     if(!ctx->inputs[idx].buf)
-        ctx->inputs[idx].buf = &ctx->inputs[idx].bufs[ctx->inputs[idx].pos++];
+        ctx->inputs[idx].buf = ctx->inputs[idx].bufs[ctx->inputs[idx].pos++];
 
-    pArrivedFrame->AddRef();
+    src.width = src.base_width = pArrivedFrame->GetWidth();
+    src.height = src.base_height = pArrivedFrame->GetHeight();
+    src.line_size = pArrivedFrame->GetRowBytes();
+    pArrivedFrame->GetBytes(&src.surface);
+    src.bpp = 2;
+    src.pix_fmt = VZIMAGE_PIXFMT_UYVY;
 
-    ctx->inputs[idx].buf->width = ctx->inputs[idx].buf->base_width =
-        pArrivedFrame->GetWidth();
-    ctx->inputs[idx].buf->height = ctx->inputs[idx].buf->base_height =
-        pArrivedFrame->GetHeight();
-    ctx->inputs[idx].buf->bpp = 4;
-    ctx->inputs[idx].buf->pix_fmt = VZIMAGE_PIXFMT_BGRA;
-    pArrivedFrame->GetBytes(&ctx->inputs[idx].buf->surface);
-    ctx->inputs[idx].buf->line_size = pArrivedFrame->GetRowBytes();
-    ctx->inputs[idx].buf->priv = pArrivedFrame;
+    i = vzImageConv_UYVY_to_BGRA(&src, ctx->inputs[idx].buf, 0);
 
     vzOutputInputPush(ctx->output_context, ctx->inputs[idx].idx,
         (void**)&ctx->inputs[idx].buf);
-
-    if(ctx->inputs[idx].buf)
-        ((IDeckLinkVideoInputFrame*)ctx->inputs[idx].buf->priv)->Release();
 
     return 0;
 };
@@ -517,7 +521,7 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
 
 static int decklink_release(void* obj, void* config, vzTVSpec* tv)
 {
-    int i;
+    int i, j;
 
     SAFE_RELEASE(ctx.output.io);
     SAFE_RELEASE(ctx.output.board);
@@ -530,6 +534,9 @@ static int decklink_release(void* obj, void* config, vzTVSpec* tv)
         SAFE_RELEASE(ctx.inputs[i].io);
         SAFE_RELEASE(ctx.inputs[i].board);
         if(ctx.inputs[i].cb) delete ctx.inputs[i].cb;
+        for(j = 0; j < MAX_INPUT_BUFS; j++)
+            if(ctx.inputs[i].bufs[j])
+                vzImageRelease(&ctx.inputs[i].bufs[j]);
     };
 
     return 0;
