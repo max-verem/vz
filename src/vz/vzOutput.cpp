@@ -381,9 +381,6 @@ VZOUTPUT_API int vzOutputPreRender(void* obj)
         ctx->output.pos_render_jump = 0;
     };
 
-    /* set buffer frame number */
-    ctx->output.buffers[ctx->output.pos_render].id = 1;
-
     /* unlock buffers head */
     ReleaseMutex(ctx->output.lock);
 
@@ -466,9 +463,6 @@ VZOUTPUT_API int vzOutputOutGet(void* obj, vzImage* img)
         /* check if next buffer is loaded */
         if(((ctx->output.pos_driver + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_render)
         {
-            /* reset buffer frame number */
-            ctx->output.buffers[ctx->output.pos_driver].id = 0;
-
             /* increment position */
             ctx->output.pos_driver = (ctx->output.pos_driver + 1) % VZOUTPUT_MAX_BUFS;
 
