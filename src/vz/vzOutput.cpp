@@ -322,11 +322,18 @@ VZOUTPUT_API int vzOutputPostRender(void* obj)
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
 
-    /* wait async transfer */
-    glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,
-        ctx->output.buffers[ctx->output.pos_render].num));
-    ctx->output.buffers[ctx->output.pos_render].data =
-        glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
+    // start asynchroniosly read from buffer
+    glErrorLogD(glReadPixels
+    (
+        0,
+        0,
+        ctx->tv->TV_FRAME_WIDTH,
+        ctx->tv->TV_FRAME_HEIGHT,
+        GL_BGRA_EXT,
+        GL_UNSIGNED_BYTE,
+        BUFFER_OFFSET(ctx->output.offset)
+    ));
+
     glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
 
     /* set jump flag */
@@ -360,6 +367,14 @@ VZOUTPUT_API int vzOutputPreRender(void* obj)
         /* check if next buffer is loaded */
         if(((ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_driver)
         {
+            /* wait async transfer */
+            glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,
+                ctx->output.buffers[ctx->output.pos_render].num));
+
+            /* wait async transfer */
+            ctx->output.buffers[ctx->output.pos_render].data =
+                glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
+
             /* increment position */
             ctx->output.pos_render = (ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS;
 
@@ -389,20 +404,6 @@ VZOUTPUT_API int vzOutputPreRender(void* obj)
         ctx->output.buffers[ctx->output.pos_render].num));
     glErrorLogD(glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB));
     ctx->output.buffers[ctx->output.pos_render].data = NULL;
-
-    // start asynchroniosly read from buffer
-    glErrorLogD(glReadPixels
-    (
-        0,
-        0,
-        ctx->tv->TV_FRAME_WIDTH,
-        ctx->tv->TV_FRAME_HEIGHT,
-        GL_BGRA_EXT,
-        GL_UNSIGNED_BYTE,
-        BUFFER_OFFSET(ctx->output.offset)
-    ));
-
-    glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
 
 #ifdef DEBUG_TIMINGS
     logger_printf(1, "vzOutput: vzOutputPreRender exit %d",
