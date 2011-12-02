@@ -668,7 +668,6 @@ extern "C" void conv_uyvy_bgra(void* src, void* dst, long long rows, long long c
 void conv_uyvy_bgra(void* src, void* dst, int rows, int cols /* pixel count */,
     int delta_src_pitch, int delta_dst_pitch)
 {
-    return 0;
 };
 #endif
 
