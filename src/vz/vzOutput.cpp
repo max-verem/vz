@@ -255,8 +255,8 @@ VZOUTPUT_API int vzOutputInit(void* obj, HANDLE sync_event, unsigned long* sync_
 
     /* setup output buffer ids */
     ctx->output.cnt_render = 0;
-    ctx->output.pos_driver = 0;
-    ctx->output.pos_render = 1;
+    ctx->output.pos_driver = VZOUTPUT_MAX_BUFS - 1;
+    ctx->output.pos_render = 0;
 
     /* setup modules */
     for(i = 0; i < ctx->count; i++)
@@ -547,13 +547,8 @@ VZOUTPUT_API int vzOutputRenderSlots(void* obj)
     /* lock buffers head */
     WaitForSingleObject(ctx->output.lock, INFINITE);
 
-    /* check current and next buffers */
-    if
-    (
-        !ctx->output.buffers[ctx->output.pos_render].id
-        ||
-        !ctx->output.buffers[(ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS].id
-    )
+    /* check next buffers */
+    if(((ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_driver)
         r = 1;
 
     /* unlock buffers head */
