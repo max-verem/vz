@@ -310,6 +310,93 @@ VZOUTPUT_API int vzOutputRelease(void* obj)
     return 0;
 };
 
+
+static int probe_pos_driver_jump(vzOutputContext_t* ctx, int force)
+{
+    /* lock buffers head */
+    WaitForSingleObject(ctx->output.lock, INFINITE);
+
+    /* check if we can use next buffer */
+    if(ctx->output.pos_driver_jump)
+    {
+        /* check if next buffer is loaded */
+        if(((ctx->output.pos_driver + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_render)
+        {
+            /* increment position */
+            ctx->output.pos_driver = (ctx->output.pos_driver + 1) % VZOUTPUT_MAX_BUFS;
+
+            /* check drop count */
+            if(ctx->output.pos_driver_dropped)
+            {
+                logger_printf(1, "vzOutput: dropped %d frames[driver]",
+                    ctx->output.pos_driver_dropped);
+                ctx->output.pos_driver_dropped = 0;
+            };
+
+            /* no need to jump */
+            ctx->output.pos_driver_jump = 0;
+        }
+        else
+        {
+            /* increment dropped framescounter */
+            if(force)
+                ctx->output.pos_driver_dropped++;
+        };
+
+        /* clear flag - no more chances */
+        if(force)
+            ctx->output.pos_driver_jump = 0;
+    };
+
+    /* unlock buffers head */
+    ReleaseMutex(ctx->output.lock);
+
+    return 0;
+};
+
+static int probe_pos_render_jump(vzOutputContext_t* ctx, int force)
+{
+    /* lock buffers head */
+    WaitForSingleObject(ctx->output.lock, INFINITE);
+
+    /* check if we can use next buffer */
+    if(ctx->output.pos_render_jump)
+    {
+        /* check if next buffer is loaded */
+        if(((ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_driver)
+        {
+            /* increment position */
+            ctx->output.pos_render = (ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS;
+
+            /* check drop count */
+            if(ctx->output.pos_render_dropped)
+            {
+                logger_printf(1, "vzOutput: dropped %d frames[render]",
+                    ctx->output.pos_render_dropped);
+                ctx->output.pos_render_dropped = 0;
+            };
+
+            /* no need to jump */
+            ctx->output.pos_render_jump = 0;
+        }
+        else
+        {
+            /* increment dropped framescounter */
+            if(force)
+                ctx->output.pos_render_dropped++;
+        };
+
+        /* clear flag - no more chances */
+        if(force)
+            ctx->output.pos_render_jump = 0;
+    };
+
+    /* unlock buffers head */
+    ReleaseMutex(ctx->output.lock);
+
+    return 0;
+};
+
 /** prepare OpenGL buffers download */
 VZOUTPUT_API int vzOutputPostRender(void* obj)
 {
@@ -322,22 +409,19 @@ VZOUTPUT_API int vzOutputPostRender(void* obj)
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
 
-    // start asynchroniosly read from buffer
-    glErrorLogD(glReadPixels
-    (
-        0,
-        0,
-        ctx->tv->TV_FRAME_WIDTH,
-        ctx->tv->TV_FRAME_HEIGHT,
-        GL_BGRA_EXT,
-        GL_UNSIGNED_BYTE,
-        BUFFER_OFFSET(ctx->output.offset)
-    ));
+    /* wait async transfer */
+    glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,
+        ctx->output.buffers[ctx->output.pos_render].num));
 
-    glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
+    /* wait async transfer */
+    ctx->output.buffers[ctx->output.pos_render].data =
+        glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
 
     /* set jump flag */
     ctx->output.pos_render_jump = 1;
+
+    /* probe jump to next buf */
+    probe_pos_render_jump(ctx, 0);
 
 #ifdef DEBUG_TIMINGS
     logger_printf(1, "vzOutput: vzOutputPostRender exit");
@@ -358,52 +442,31 @@ VZOUTPUT_API int vzOutputPreRender(void* obj)
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
 
-    /* lock buffers head */
-    WaitForSingleObject(ctx->output.lock, INFINITE);
-
-    /* check if we can use next buffer */
-    if(ctx->output.pos_render_jump)
-    {
-        /* check if next buffer is loaded */
-        if(((ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_driver)
-        {
-            /* wait async transfer */
-            glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,
-                ctx->output.buffers[ctx->output.pos_render].num));
-
-            /* wait async transfer */
-            ctx->output.buffers[ctx->output.pos_render].data =
-                glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
-
-            /* increment position */
-            ctx->output.pos_render = (ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS;
-
-            /* check drop count */
-            if(ctx->output.pos_render_dropped)
-            {
-                logger_printf(1, "vzOutput: dropped %d frames[render]",
-                    ctx->output.pos_render_dropped);
-                ctx->output.pos_render_dropped = 0;
-            };
-        }
-        else
-        {
-            /* increment dropped framescounter */
-            ctx->output.pos_render_dropped++;
-        };
-
-        /* clear flag - no more chances */
-        ctx->output.pos_render_jump = 0;
-    };
-
-    /* unlock buffers head */
-    ReleaseMutex(ctx->output.lock);
+    /* choose next render buffer in force mode */
+    probe_pos_render_jump(ctx, 1);
 
     /* bind to buffer */
     glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB,
         ctx->output.buffers[ctx->output.pos_render].num));
+
+    /* unmap it */
     glErrorLogD(glUnmapBuffer(GL_PIXEL_PACK_BUFFER_ARB));
     ctx->output.buffers[ctx->output.pos_render].data = NULL;
+
+    // start asynchroniosly read from buffer
+    glErrorLogD(glReadPixels
+    (
+        0,
+        0,
+        ctx->tv->TV_FRAME_WIDTH,
+        ctx->tv->TV_FRAME_HEIGHT,
+        GL_BGRA_EXT,
+        GL_UNSIGNED_BYTE,
+        BUFFER_OFFSET(ctx->output.offset)
+    ));
+
+    glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
+
 
 #ifdef DEBUG_TIMINGS
     logger_printf(1, "vzOutput: vzOutputPreRender exit %d",
@@ -455,38 +518,7 @@ VZOUTPUT_API int vzOutputOutGet(void* obj, vzImage* img)
     ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
 
-    /* lock buffers head */
-    WaitForSingleObject(ctx->output.lock, INFINITE);
-
-    /* check if we can use next buffer */
-    if(ctx->output.pos_driver_jump)
-    {
-        /* check if next buffer is loaded */
-        if(((ctx->output.pos_driver + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_render)
-        {
-            /* increment position */
-            ctx->output.pos_driver = (ctx->output.pos_driver + 1) % VZOUTPUT_MAX_BUFS;
-
-            /* check drop count */
-            if(ctx->output.pos_driver_dropped)
-            {
-                logger_printf(1, "vzOutput: dropped %d frames[driver]",
-                    ctx->output.pos_driver_dropped);
-                ctx->output.pos_driver_dropped = 0;
-            };
-        }
-        else
-        {
-            /* increment dropped framescounter */
-            ctx->output.pos_driver_dropped++;
-        };
-
-        /* clear flag - no more chances */
-        ctx->output.pos_driver_jump = 0;
-    };
-
-    /* unlock buffers head */
-    ReleaseMutex(ctx->output.lock);
+    probe_pos_driver_jump(ctx, 1);
 
     /* setup image */
     img->bpp = 4;
@@ -520,6 +552,8 @@ VZOUTPUT_API int vzOutputOutRel(void* obj, vzImage* img)
     /* set jump flag */
     ctx->output.pos_driver_jump = 1;
 
+    probe_pos_driver_jump(ctx, 0);
+
 #ifdef DEBUG_TIMINGS
     logger_printf(1, "vzOutput: vzOutputOutRel exit");
 #endif
@@ -543,7 +577,8 @@ VZOUTPUT_API int vzOutputRenderSlots(void* obj)
     WaitForSingleObject(ctx->output.lock, INFINITE);
 
     /* check next buffers */
-    if(((ctx->output.pos_render + 1) % VZOUTPUT_MAX_BUFS) != ctx->output.pos_driver)
+    if(((ctx->output.pos_render + ctx->output.pos_render_jump)
+        % VZOUTPUT_MAX_BUFS) != ctx->output.pos_driver)
         r = 1;
 
     /* unlock buffers head */
