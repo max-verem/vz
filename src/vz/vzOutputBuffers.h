@@ -22,7 +22,6 @@ typedef struct vzOutputBuffers_desc
 
     struct
     {
-        int id;
         void* data;
         unsigned int num;
     } buffers[VZOUTPUT_MAX_BUFS];
