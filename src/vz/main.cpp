@@ -51,6 +51,13 @@
 #pragma comment(lib, "winmm.lib")
 #pragma comment(lib, "ws2_32.lib") 
 
+//#define DEBUG_TIMINGS
+#ifdef DEBUG_TIMINGS
+#define OUTPUT_TIMINGS(PREF) logger_printf(1, "main: " PREF ": %s:%d", __FILE__, __LINE__);
+#else
+#define OUTPUT_TIMINGS(PREF)
+#endif
+
 /*
 ----------------------------------------------------------
 	Main Program Info
@@ -477,14 +484,16 @@ static int vz_scene_render(int rendered_limit)
         rendered_local++;
         rendered_frames++;
 
-        // save time of draw start
-        long draw_start_time = timeGetTime();
-
         // output module tricks
         vzOutputPreRender(output_context);
 
         // lock scene
         WaitForSingleObject(layers_lock,INFINITE);
+
+OUTPUT_TIMINGS("vz_scene_render");
+
+        // save time of draw start
+        long draw_start_time = timeGetTime();
 
         /* draw layers */
         void* render_starter = NULL;
@@ -494,14 +503,23 @@ static int vz_scene_render(int rendered_limit)
         else
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+OUTPUT_TIMINGS("vz_scene_render");
+
         // flush all 
         glFlush();
 
-        vzOutputPostRender(output_context);
-
         // save time of draw start
         long draw_stop_time = timeGetTime();
+
+OUTPUT_TIMINGS("vz_scene_render");
+
+        vzOutputPostRender(output_context);
+
         render_time = draw_stop_time - draw_start_time;
+#ifdef DEBUG_TIMINGS
+        if(render_time > 30)
+            logger_printf(1, "frames draws to slow: %d", render_time);
+#endif
 
         // unlock scene
         ReleaseMutex(layers_lock);
@@ -509,6 +527,7 @@ static int vz_scene_render(int rendered_limit)
         fbo.index = 1 - fbo.index;
         glErrorLog(glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index)););
         glErrorLog(glReadBuffer(GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index)););
+OUTPUT_TIMINGS("vz_scene_render");
     };
 
     /* unbind conext */
