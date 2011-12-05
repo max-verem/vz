@@ -99,7 +99,7 @@ OBJS_DIR	= ../../temp/x64/Debug/outputs/
 LIB_PATH	= /LIBPATH:"../../temp/x64/Debug/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64"
 LINKER_OPT	= /LDd
 LINKER_FLAGS	= $(LIB_PATH) /DEBUG
-CPPFLAGS	= $(CPPFLAGS) /MDd /Zm256
+CPPFLAGS	= $(CPPFLAGS) /MDd /Zm256 /Zp16
 !ENDIF
 
 !IF  "$(CFG)" == "Release64"
@@ -111,7 +111,7 @@ OBJS_DIR	= ../../temp/x64/Release/outputs/
 LIB_PATH	= /LIBPATH:"../../temp/x64/Release/" /LIBPATH:"$(WindowsSdkDir)\lib\x64" /LIBPATH:"$(VCINSTALLDIR)\lib\amd64"
 LINKER_OPT	= /LD
 LINKER_FLAGS	= $(LIB_PATH)
-CPPFLAGS	= $(CPPFLAGS) /MD /Zm256
+CPPFLAGS	= $(CPPFLAGS) /MD /Zm256 /Zp16
 !ENDIF
 
 # additional sdks
