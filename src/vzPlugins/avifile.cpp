@@ -1122,7 +1122,7 @@ PLUGIN_EXPORT int load(void* config)
     glGenBuffers(1, &_pbo_empty_buf);
     r = glGetError();
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_buf);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_size, 0, GL_STREAM_DRAW);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_size, 0, GL_STATIC_DRAW);
     p = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
     memset(p, 0, _pbo_empty_size);
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
@@ -1282,7 +1282,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             for(b = 0; b < PBO_SLICES; b++)
             {
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[b]);
-                glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_slice_size, 0, GL_STREAM_DRAW);
+                glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_slice_size, 0, GL_DYNAMIC_DRAW);
             };
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
         };
