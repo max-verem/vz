@@ -49,7 +49,7 @@ typedef struct nullvideo_input_context_desc
     int index;
     int pattern;
     void* parent;
-    vzImage img[3];
+    vzImage* img[3];
     long long cnt;
 } nullvideo_input_context_t;
 
@@ -68,13 +68,15 @@ typedef struct nullvideo_runtime_context_desc
     struct hr_sleep_data timer_data;
 
     nullvideo_input_context_t inputs[MAX_INPUTS];
-    vzImage tp[TP_COUNT];
+    vzImage* tp[TP_COUNT];
 } nullvideo_runtime_context_t;
 
 static nullvideo_runtime_context_t ctx;
 
 static int nullvideo_init(void* obj, void* config, vzTVSpec* tv)
 {
+    int i;
+
     /* clear context */
     memset(&ctx, 0, sizeof(nullvideo_runtime_context_t));
 
@@ -86,20 +88,37 @@ static int nullvideo_init(void* obj, void* config, vzTVSpec* tv)
     hr_sleep_init(&ctx.timer_data);
 
     /* setup test patterns */
-    _load_img_tp_UEIT(&ctx.tp[0]);
-    _load_img_tp_PM5544(&ctx.tp[1]);
-    _load_img_tp_0249(&ctx.tp[2]);
-    _load_img_tp_bars(&ctx.tp[3]);
-    _load_img_tp_grid(&ctx.tp[4]);
-    _load_img_tp_lines(&ctx.tp[5]);
+    for(i = 0; i < TP_COUNT; i++)
+    {
+        vzImage img;
+
+        switch(i)
+        {
+            case 0: _load_img_tp_UEIT(&img); break;
+            case 1: _load_img_tp_PM5544(&img); break;
+            case 2: _load_img_tp_0249(&img); break;
+            case 3: _load_img_tp_bars(&img); break;
+            case 4: _load_img_tp_grid(&img); break;
+            case 5: _load_img_tp_lines(&img); break;
+        };
+
+        vzImageCreate(&ctx.tp[i], img.width, img.height, img.pix_fmt);
+        memcpy(ctx.tp[i]->surface, img.surface, img.height * img.line_size);
+    };
 
     return 0;
 };
 
 static int nullvideo_release(void* obj, void* config, vzTVSpec* tv)
 {
+    int i;
+
     hr_sleep_destroy(&ctx.timer_data);
     CloseHandle(ctx.sync.src);
+
+    for(i = 0; i < TP_COUNT; i++)
+        vzImageRelease(&ctx.tp[i]);
+
     return 0;
 };
 
@@ -178,7 +197,7 @@ unsigned long WINAPI nullvideo_thread_input(void* obj)
 
         /* fetch new image */
         if(!img)
-            img = &inp->img[c++];
+            img = inp->img[c++];
 
         /* inc counter */
         img->sys_id = inp->cnt++;
