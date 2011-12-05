@@ -29,6 +29,7 @@
 #include "../../vz/vzImage.h"
 
 #define COLUMNS 5
+#define SURFACE_PADDING 256
 
 static void usage()
 {
@@ -96,9 +97,10 @@ int main(int argc, char** argv)
         "#define %s_h\n"
         "static int _load_img_%s(vzImage* img)\n"
         "{\n"
-        "    static const unsigned long surface[] =\n"
+        "    static const unsigned long surface[%d + %d] =\n"
         "    {\n",
-        const_prefix, const_prefix, const_prefix
+        const_prefix, const_prefix, const_prefix,
+        image->width * image->height, SURFACE_PADDING
     );
 
     for(int j = 0; j < (image->width*image->height); j++)
