@@ -62,10 +62,14 @@ BOOL APIENTRY DllMain
     return TRUE;
 }
 
-//#define SINGLE_PBO
-#ifndef SINGLE_PBO
-#define MAX_PBO_SLICES  1080
-#endif /* SINGLE_PBO */
+//#define DEBUG_TIMINGS
+#ifdef DEBUG_TIMINGS
+#define OUTPUT_TIMINGS logger_printf(1, "liveinput[%d]: %s:%d", ctx->l_input, __FILE__, __LINE__);
+#else
+#define OUTPUT_TIMINGS
+#endif
+
+#define PBO_RING 4
 #define _pbo_empty_size (2048 * 2048 * 4) /* 1920x1080 should fit */
 static unsigned int _pbo_empty_buf;
 
@@ -115,12 +119,8 @@ typedef struct
     long _base_height;
 	float* _ft_vertices;
 	float* _ft_texels;
-#ifdef SINGLE_PBO
-    unsigned int _pbo;
-#else
-    unsigned int _pbo[MAX_PBO_SLICES];
-    unsigned int _pbo_count;
-#endif
+    unsigned int _pbo[PBO_RING];
+    unsigned int _pbo_index;
     unsigned int _pbo_size;
 } vzPluginData;
 
@@ -237,7 +237,7 @@ PLUGIN_EXPORT int load(void* config)
     glGenBuffers(1, &_pbo_empty_buf);
     r = glGetError();
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_buf);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_size, 0, GL_STREAM_DRAW);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_size, 0, GL_STATIC_DRAW);
     p = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
     memset(p, 0, _pbo_empty_size);
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
@@ -294,13 +294,8 @@ PLUGIN_EXPORT int release(void* data)
     };
 
     /* delete buffers from non opengl context */
-#ifdef SINGLE_PBO
     if(ctx->_pbo_size)
-        glErrorLog(glDeleteBuffers(1, &ctx->_pbo););
-#else
-    if(ctx->_pbo_count)
-        glErrorLog(glDeleteBuffers(ctx->_pbo_count, ctx->_pbo););
-#endif
+        glErrorLog(glDeleteBuffers(PBO_RING, ctx->_pbo););
 
     // unlock
     ReleaseMutex(_DATA->_lock_update);
@@ -334,6 +329,9 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
     int r, b, c;
     vzImage* img;
     vzPluginData* ctx = (vzPluginData*)data;
+OUTPUT_TIMINGS;
+    if(session->field)
+        return;
 
     // try to lock struct
     WaitForSingleObject(_DATA->_lock_update,INFINITE);
@@ -355,49 +353,30 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
         return;
     };
 
+
     /* recreare PBO if needs */
-#ifdef SINGLE_PBO
     if(ctx->_pbo_size != img->height * img->line_size)
     {
         /* delete buffer if needed */
         if(ctx->_pbo_size)
-            glDeleteBuffers(1, &ctx->_pbo);
+            glDeleteBuffers(PBO_RING, ctx->_pbo);
 
         /* update frame size */
         ctx->_pbo_size = img->height * img->line_size;
 
         /* generate new buffers */
-        glErrorLog(glGenBuffers(1, &ctx->_pbo););
+        glErrorLog(glGenBuffers(PBO_RING, ctx->_pbo););
 
         /* setup buffers size */
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo);
-        glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_size, 0, GL_STREAM_DRAW);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-    };
-#else
-    if(ctx->_pbo_count != img->height ||
-        ctx->_pbo_size != img->line_size)
-    {
-        /* delete buffer if needed */
-        if(ctx->_pbo_count)
-            glDeleteBuffers(ctx->_pbo_count, ctx->_pbo);
-
-        /* update frame size */
-        ctx->_pbo_count = img->height;
-        ctx->_pbo_size = img->line_size;
-
-        /* generate new buffers */
-        glErrorLog(glGenBuffers(ctx->_pbo_count, ctx->_pbo););
-
-        /* setup buffers size */
-        for(b = 0; b < ctx->_pbo_count; b++)
+        for(b = 0; b < PBO_RING; b++)
         {
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[b]);
-            glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_size, 0, GL_STREAM_DRAW);
+            glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_size,
+                0, GL_DYNAMIC_DRAW/*GL_STREAM_DRAW*/);
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
         };
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+        ctx->_pbo_index = 0;
     };
-#endif
 
     /* recreate texture */
     if(!ctx->_textures_initialized ||
@@ -456,6 +435,7 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             glErrorLog(glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR));
             glErrorLog(glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR));
         };
+
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
     };
 
@@ -467,45 +447,62 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 
         ctx->_last_sys_id = img->sys_id;
         ctx->_textures_idx = 0;
+        ctx->_pbo_index = (ctx->_pbo_index + 1) % PBO_RING;
 
         /* load buffers */
-#ifdef SINGLE_PBO
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo);
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[ctx->_pbo_index]);
+OUTPUT_TIMINGS;
+//        glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_size, 0, GL_DYNAMIC_DRAW /*GL_STREAM_DRAW*/);
+//OUTPUT_TIMINGS;
         pbo_ptr = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
+OUTPUT_TIMINGS;
         src_ptr = (unsigned char*)img->surface;
         if(pbo_ptr)
-            memcpy(pbo_ptr, img->surface, ctx->_pbo_size);
-        glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
-#else
-        for(b = 0; b < ctx->_pbo_count; b++)
-        {
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[b]);
-            pbo_ptr = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
-            if(!pbo_ptr)
-                continue;
-
-            src_ptr = (unsigned char*)img->surface + b * ctx->_pbo_size;
-
             memcpy(pbo_ptr, src_ptr, ctx->_pbo_size);
+//logger_printf(1, "copyied %d bytes from 0x%llX to 0x%llX", ctx->_pbo_size, src_ptr, pbo_ptr);
+        glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
+OUTPUT_TIMINGS;
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+OUTPUT_TIMINGS;
 
-            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
-        };
-#endif
         /* put buffers to textures */
         GLint xoffset = (_DATA->_width - img->width)/2;
         GLint yoffset = (_DATA->_height - img->height)/2;
         GLenum format = vzImagePixFmt2OGL(img->pix_fmt);
-#ifdef SINGLE_PBO
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo);
-        for(b = 0; b < img->height; b++)
+
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[ctx->_pbo_index]);
+#if 0
+        if(img->interlaced)
         {
-#else
-        for(b = 0; b < ctx->_pbo_count; b++)
-        {
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[b]);
 #endif
-            for(r = 0, c = (img->interlaced)?2:1; r < c; r++)
+            glBindTexture(GL_TEXTURE_2D, _DATA->_textures[0]);
+            glTexSubImage2D
+            (
+                GL_TEXTURE_2D,      // GLenum target,
+                0,                  // GLint level,
+                xoffset,            // GLint xoffset,
+                yoffset,            // GLint yoffset,
+                img->width,         // GLsizei width,
+                img->height,        // GLsizei height,
+                format,             // GLenum format,
+                GL_UNSIGNED_BYTE,   // GLenum type,
+                0
+            );
+#if 0
+        }
+        else
+        {
+            for(r = 0; r < 2; r++)
             {
+                if(VZIMAGE_INTERLACED_U == img->interlaced)
+                    t = 1 - r;
+                else
+                    t = r;
+
+                glBindTexture(GL_TEXTURE_2D, _DATA->_textures[t]);
+
+                for(b = 0; b < img->height; b++)
+                {
 /*
      |  not intelaced |   upper fields   |
 -----+----------------+------------------+
@@ -523,61 +520,45 @@ src5 |  T[0][5]       | T[1][5], T[1][6] |
 -----+----------------+------------------+
 
 */
-                if(VZIMAGE_INTERLACED_NONE == img->interlaced)
-                    t = 0;
-                else if(VZIMAGE_INTERLACED_U == img->interlaced)
-                    t = r;
-                else
-                    t = 1 - r;
+                    glTexSubImage2D
+                    (
+                        GL_TEXTURE_2D,      // GLenum target,
+                        0,                  // GLint level,
+                        xoffset,            // GLint xoffset,
+                        yoffset + 0,        // GLint yoffset,
+                        img->width,         // GLsizei width,
+                        1,                  // GLsizei height,
+                        format,             // GLenum format,
+                        GL_UNSIGNED_BYTE,   // GLenum type,
+                        (void*)(b * img->line_size)
+                    );
 
-                glBindTexture(GL_TEXTURE_2D, _DATA->_textures[t]);
-
-                glTexSubImage2D
-                (
-                    GL_TEXTURE_2D,      // GLenum target,
-                    0,                  // GLint level,
-                    xoffset,            // GLint xoffset,
-                    yoffset + b,        // GLint yoffset,
-                    img->width,         // GLsizei width,
-                    1,                  // GLsizei height,
-                    format,             // GLenum format,
-                    GL_UNSIGNED_BYTE,   // GLenum type,
-#ifdef SINGLE_PBO
-                    (void*)(b * img->line_size)
-#else
-                    NULL
-#endif
-                );
-
-                if(VZIMAGE_INTERLACED_NONE == img->interlaced)
-                    continue;
-
-                glTexSubImage2D
-                (
-                    GL_TEXTURE_2D,      // GLenum target,
-                    0,                  // GLint level,
-                    xoffset,            // GLint xoffset,
-                    yoffset + b + 1,    // GLint yoffset,
-                    img->width,         // GLsizei width,
-                    1,                  // GLsizei height,
-                    format,             // GLenum format,
-                    GL_UNSIGNED_BYTE,   // GLenum type,
-#ifdef SINGLE_PBO
-                    (void*)(b * img->line_size)
-#else
-                    NULL
-#endif
-                );
-            }
+                    glTexSubImage2D
+                    (
+                        GL_TEXTURE_2D,      // GLenum target,
+                        0,                  // GLint level,
+                        xoffset,            // GLint xoffset,
+                        yoffset + b - 1,    // GLint yoffset,
+                        img->width,         // GLsizei width,
+                        1,                  // GLsizei height,
+                        format,             // GLenum format,
+                        GL_UNSIGNED_BYTE,   // GLenum type,
+                        (void*)(b * img->line_size)
+                    );
+                }
+            };
         };
-
+#endif
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
+
     };
 
     r = vzOutputInputPullBack(ctx->_output_context, ctx->l_input - 1, (void**)&img);
 
+
     // release mutex
     ReleaseMutex(_DATA->_lock_update);
+OUTPUT_TIMINGS;
 };
 
 PLUGIN_EXPORT void postrender(void* data,vzRenderSession* session)
