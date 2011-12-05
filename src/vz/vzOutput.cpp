@@ -195,15 +195,22 @@ VZOUTPUT_API int vzOutputFree(void** obj)
 
 static unsigned long WINAPI internal_sync_generator(void* obj)
 {
+    unsigned int d;
+    vzImage img;
     vzOutputContext_t* ctx = (vzOutputContext_t*)obj;
     if(!ctx) return -EINVAL;
 
+    d = 1000 * ctx->tv->TV_FRAME_PS_DEN / ctx->tv->TV_FRAME_PS_NOM;
+
     while(!ctx->f_exit)
     {
-        Sleep((1000 * ctx->tv->TV_FRAME_PS_DEN) / ctx->tv->TV_FRAME_PS_NOM);
+        Sleep(d);
 
-        // reset event
-        ResetEvent(ctx->syncer.ev);
+        /* request frame */
+        vzOutputOutGet(ctx, &img);
+
+        /* release frame back */
+        vzOutputOutRel(ctx, &img);
 
         // increment frame counter
         *ctx->syncer.cnt = 1 + *ctx->syncer.cnt;
@@ -241,7 +248,7 @@ VZOUTPUT_API int vzOutputInit(void* obj, HANDLE sync_event, unsigned long* sync_
 
         /* INIT BUFFER SIZE */
         glErrorLog(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, ctx->output.buffers[b].num));
-        glErrorLog(glBufferData(GL_PIXEL_PACK_BUFFER_ARB, ctx->output.gold, NULL, GL_STREAM_READ));
+        glErrorLog(glBufferData(GL_PIXEL_PACK_BUFFER_ARB, ctx->output.gold, NULL, GL_DYNAMIC_READ));
 
         /* REQUEST BUFFER PTR - MAP AND SAVE PTR */
         glErrorLog(ctx->output.buffers[b].data = glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB,GL_READ_ONLY));
