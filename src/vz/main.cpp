@@ -484,6 +484,12 @@ static int vz_scene_render(int rendered_limit)
         rendered_local++;
         rendered_frames++;
 
+        // save time of draw start
+        long draw_start_time = timeGetTime();
+
+        // finish all rendering
+//        glFinish();
+
         // output module tricks
         vzOutputPreRender(output_context);
 
@@ -491,9 +497,6 @@ static int vz_scene_render(int rendered_limit)
         WaitForSingleObject(layers_lock,INFINITE);
 
 OUTPUT_TIMINGS("vz_scene_render");
-
-        // save time of draw start
-        long draw_start_time = timeGetTime();
 
         /* draw layers */
         void* render_starter = NULL;
@@ -503,31 +506,32 @@ OUTPUT_TIMINGS("vz_scene_render");
         else
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-OUTPUT_TIMINGS("vz_scene_render");
+        // unlock scene
+        ReleaseMutex(layers_lock);
+
+        vzOutputPostRender(output_context);
 
         // flush all 
         glFlush();
 
-        // save time of draw start
-        long draw_stop_time = timeGetTime();
-
 OUTPUT_TIMINGS("vz_scene_render");
 
-        vzOutputPostRender(output_context);
-
-        render_time = draw_stop_time - draw_start_time;
-#ifdef DEBUG_TIMINGS
-        if(render_time > 30)
-            logger_printf(1, "frames draws to slow: %d", render_time);
-#endif
-
-        // unlock scene
-        ReleaseMutex(layers_lock);
-
+        // swap draw/read buffers
         fbo.index = 1 - fbo.index;
         glErrorLog(glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + (0 + fbo.index)););
         glErrorLog(glReadBuffer(GL_COLOR_ATTACHMENT0_EXT + (1 - fbo.index)););
 OUTPUT_TIMINGS("vz_scene_render");
+
+        // save time of draw start
+        long draw_stop_time = timeGetTime();
+
+        render_time = draw_stop_time - draw_start_time;
+#ifdef DEBUG_TIMINGS
+        if(render_time > 30)
+            logger_printf(1, "frame[%d] draws to slow: %d",
+                rendered_frames, render_time);
+#endif
+
     };
 
     /* unbind conext */
@@ -1188,6 +1192,7 @@ int main(int argc, char** argv)
             0,
             NULL
         );
+//SetThreadPriority(sync_render_handle , THREAD_PRIORITY_HIGHEST);
 
 		// start (tcp|udp)server
 		unsigned long thread;
