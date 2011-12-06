@@ -519,8 +519,6 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
         /* set params */
         ctx->inputs[ctx->inputs_count].mode = (BMDDisplayMode)bmd_modes_id[p];
         ctx->inputs[ctx->inputs_count].board = deckLinks[i];
-        deckLinks[i] = NULL;
-        ctx->inputs_count++;
 
         /* set interlaced */
         switch(ctx->inputs[ctx->inputs_count].mode)
@@ -539,6 +537,10 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
             default:
                 ctx->inputs[ctx->inputs_count].interlaced = VZIMAGE_INTERLACED_NONE;
         };
+
+        /* save decklink pointer */
+        deckLinks[i] = NULL;
+        ctx->inputs_count++;
     };
 
     /* release unused boards intstances */
