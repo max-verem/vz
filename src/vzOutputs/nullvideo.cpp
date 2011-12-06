@@ -22,6 +22,7 @@
 */
 #include <windows.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "../vz/vzOutput.h"
 #include "../vz/vzOutputModule.h"
@@ -71,21 +72,29 @@ typedef struct nullvideo_runtime_context_desc
     vzImage* tp[TP_COUNT];
 } nullvideo_runtime_context_t;
 
-static nullvideo_runtime_context_t ctx;
-
-static int nullvideo_init(void* obj, void* config, vzTVSpec* tv)
+static int nullvideo_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
 {
     int i;
+    nullvideo_runtime_context_t *ctx;
+
+    if(!pctx)
+        return -EINVAL;
+    *pctx = NULL;
+
+    /* allocate module context */
+    ctx = (nullvideo_runtime_context_t *)malloc(sizeof(nullvideo_runtime_context_t));
+    if(!ctx)
+        return -ENOMEM;
 
     /* clear context */
-    memset(&ctx, 0, sizeof(nullvideo_runtime_context_t));
+    memset(ctx, 0, sizeof(nullvideo_runtime_context_t));
 
     /* setup basic components */
-    ctx.config = config;
-    ctx.tv = tv;
-    ctx.output_context = obj;
-    ctx.sync.src = CreateEvent(NULL, TRUE, FALSE, NULL);
-    hr_sleep_init(&ctx.timer_data);
+    ctx->config = config;
+    ctx->tv = tv;
+    ctx->output_context = obj;
+    ctx->sync.src = CreateEvent(NULL, TRUE, FALSE, NULL);
+    hr_sleep_init(&ctx->timer_data);
 
     /* setup test patterns */
     for(i = 0; i < TP_COUNT; i++)
@@ -102,36 +111,54 @@ static int nullvideo_init(void* obj, void* config, vzTVSpec* tv)
             case 5: _load_img_tp_lines(&img); break;
         };
 
-        vzImageCreate(&ctx.tp[i], img.width, img.height, img.pix_fmt);
-        memcpy(ctx.tp[i]->surface, img.surface, img.height * img.line_size);
+        vzImageCreate(&ctx->tp[i], img.width, img.height, img.pix_fmt);
+        memcpy(ctx->tp[i]->surface, img.surface, img.height * img.line_size);
     };
 
+    *pctx = ctx;
+
     return 0;
 };
 
-static int nullvideo_release(void* obj, void* config, vzTVSpec* tv)
+static int nullvideo_release(void** pctx, void* obj, void* config, vzTVSpec* tv)
 {
     int i;
+    nullvideo_runtime_context_t *ctx;
 
-    hr_sleep_destroy(&ctx.timer_data);
-    CloseHandle(ctx.sync.src);
+    if(!pctx)
+        return -EINVAL;
+
+    ctx = (nullvideo_runtime_context_t *)(*pctx);
+    *pctx = NULL;
+
+    hr_sleep_destroy(&ctx->timer_data);
+    CloseHandle(ctx->sync.src);
 
     for(i = 0; i < TP_COUNT; i++)
-        vzImageRelease(&ctx.tp[i]);
+        vzImageRelease(&ctx->tp[i]);
+
+    free(ctx);
 
     return 0;
 };
 
-static int nullvideo_setup(HANDLE* sync_event, unsigned long** sync_cnt)
+static int nullvideo_setup(void* pctx, HANDLE* sync_event, unsigned long** sync_cnt)
 {
-    if(vzConfigParam(ctx.config, THIS_MODULE, "ENABLE_OUTPUT") && sync_event)
+    nullvideo_runtime_context_t *ctx;
+
+    if(!pctx)
+        return -EINVAL;
+
+    ctx = (nullvideo_runtime_context_t *)pctx;
+
+    if(vzConfigParam(ctx->config, THIS_MODULE, "ENABLE_OUTPUT") && sync_event)
     {
         logger_printf(0, THIS_MODULE_PREF "output enabled");
 
-        ctx.sync.dst = *sync_event;
+        ctx->sync.dst = *sync_event;
         *sync_event = NULL;
 
-        ctx.sync.cnt = *sync_cnt;
+        ctx->sync.cnt = *sync_cnt;
         *sync_cnt = NULL;
     };
 
@@ -210,36 +237,43 @@ unsigned long WINAPI nullvideo_thread_input(void* obj)
 };
 
 
-static int nullvideo_run()
+static int nullvideo_run(void* pctx)
 {
     int i;
 
+    nullvideo_runtime_context_t *ctx;
+
+    if(!pctx)
+        return -EINVAL;
+
+    ctx = (nullvideo_runtime_context_t *)pctx;
+
     /* reset exit flag */
-    ctx.f_exit = 0;
+    ctx->f_exit = 0;
 
     /* run syncer thread */
-    ctx.th[0] = CreateThread
+    ctx->th[0] = CreateThread
     (
         NULL,
         1024,
         nullvideo_thread_syncer,
-        &ctx,
+        ctx,
         0,
         NULL
     );
 
     /* set thread priority */
-    SetThreadPriority(ctx.th[0] , THREAD_PRIORITY_HIGHEST);
+    SetThreadPriority(ctx->th[0] , THREAD_PRIORITY_HIGHEST);
 
     /* run output thread */
-    if(ctx.sync.dst)
+    if(ctx->sync.dst)
     {
-        ctx.th[1] = CreateThread
+        ctx->th[1] = CreateThread
         (
             NULL,
             1024,
             nullvideo_thread_output,
-            &ctx,
+            ctx,
             0,
             NULL
         );
@@ -253,7 +287,7 @@ static int nullvideo_run()
 
         /* check if parameter specified */
         sprintf(name, "ENABLE_INPUT_%d", i + 1);
-        c = vzConfigParam(ctx.config, THIS_MODULE, name);
+        c = vzConfigParam(ctx->config, THIS_MODULE, name);
         if(!c) continue;
 
         /* check if index in range */
@@ -266,9 +300,9 @@ static int nullvideo_run()
         };
         j = j % TP_COUNT;
 
-        ctx.inputs[i].pattern = j;
+        ctx->inputs[i].pattern = j;
 
-        j = vzOutputInputAdd(ctx.output_context);
+        j = vzOutputInputAdd(ctx->output_context);
         if(j < 0)
         {
             logger_printf(1, THIS_MODULE_PREF "vzOutputInputAdd failed with %d", j);
@@ -277,15 +311,15 @@ static int nullvideo_run()
 
         logger_printf(0, THIS_MODULE_PREF "ENABLE_INPUT_%d will be mapped to liveinput %d", i, j);
 
-        ctx.inputs[i].parent = &ctx;
-        ctx.inputs[i].index = j;
+        ctx->inputs[i].parent = ctx;
+        ctx->inputs[i].index = j;
 
-        ctx.th[2 + i] = CreateThread
+        ctx->th[2 + i] = CreateThread
         (
             NULL,
             1024,
             nullvideo_thread_input,
-            &ctx.inputs[i],
+            &ctx->inputs[i],
             0,
             NULL
         );
@@ -294,21 +328,27 @@ static int nullvideo_run()
     return 0;
 };
 
-static int nullvideo_stop()
+static int nullvideo_stop(void* pctx)
 {
     int i;
+    nullvideo_runtime_context_t *ctx;
+
+    if(!pctx)
+        return -EINVAL;
+
+    ctx = (nullvideo_runtime_context_t *)pctx;
 
     /* reset exit flag */
-    ctx.f_exit = 1;
+    ctx->f_exit = 1;
 
     /* wait for threads finished */
     for(i = 0; i < (2 + MAX_INPUTS); i++)
-        if(ctx.th[i])
+        if(ctx->th[i])
         {
             logger_printf(0, THIS_MODULE_PREF "waiting for thread %d to finish...", i);
-            WaitForSingleObject(ctx.th[i], INFINITE);
-            CloseHandle(ctx.th[i]);
-            ctx.th[i] = NULL;
+            WaitForSingleObject(ctx->th[i], INFINITE);
+            CloseHandle(ctx->th[i]);
+            ctx->th[i] = NULL;
             logger_printf(0, THIS_MODULE_PREF "ok");
         };
 

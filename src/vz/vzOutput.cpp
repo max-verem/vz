@@ -157,8 +157,8 @@ VZOUTPUT_API int vzOutputNew(void** obj, void* config, char* names, vzTVSpec* tv
             };
 
             /* setup */
-            ctx->libs[ctx->count] = lib;
-            ctx->modules[ctx->count] = module;
+            ctx->modules[ctx->count].lib = lib;
+            ctx->modules[ctx->count].run = module;
             ctx->count++;
         };
     };
@@ -186,7 +186,7 @@ VZOUTPUT_API int vzOutputFree(void** obj)
     if(!ctx) return -EINVAL;
 
     for(i = 0; i < ctx->count; i++)
-        FreeLibrary(ctx->libs[i]);
+        FreeLibrary(ctx->modules[i].lib);
 
     free(ctx);
 
@@ -234,7 +234,7 @@ VZOUTPUT_API int vzOutputInit(void* obj, HANDLE sync_event, unsigned long* sync_
 
     /* initialize modules */
     for(i = 0; i < ctx->count; i++)
-        ctx->modules[i]->init(ctx, ctx->config, ctx->tv);
+        ctx->modules[i].run->init(&ctx->modules[i].ctx, ctx, ctx->config, ctx->tv);
 
     /* initialize buffers */
     ctx->output.gold = ctx->tv->TV_FRAME_WIDTH * ctx->tv->TV_FRAME_HEIGHT * 4;
@@ -267,7 +267,7 @@ VZOUTPUT_API int vzOutputInit(void* obj, HANDLE sync_event, unsigned long* sync_
 
     /* setup modules */
     for(i = 0; i < ctx->count; i++)
-        ctx->modules[i]->setup(&sync_event, &sync_cnt);
+        ctx->modules[i].run->setup(ctx->modules[i].ctx, &sync_event, &sync_cnt);
 
     /* check if we need to drive own sync source */
     if(sync_cnt)
@@ -302,7 +302,7 @@ VZOUTPUT_API int vzOutputRelease(void* obj)
 
     /* release modules modules */
     for(i = 0; i < ctx->count; i++)
-        ctx->modules[i]->release(ctx, ctx->config, ctx->tv);
+        ctx->modules[i].run->release(&ctx->modules[i].ctx, ctx, ctx->config, ctx->tv);
 
     /* free buffers */
     CloseHandle(ctx->output.lock);
@@ -493,7 +493,7 @@ VZOUTPUT_API int vzOutputRun(void* obj)
     if(!ctx) return -EINVAL;
 
     for(i = 0; i < ctx->count; i++)
-        ctx->modules[i]->run();
+        ctx->modules[i].run->run(ctx->modules[i].ctx);
 
     return 0;
 };
@@ -508,7 +508,7 @@ VZOUTPUT_API int vzOutputStop(void* obj)
     if(!ctx) return -EINVAL;
 
     for(i = 0; i < ctx->count; i++)
-        ctx->modules[i]->stop();
+        ctx->modules[i].run->stop(ctx->modules[i].ctx);
 
     return 0;
 };

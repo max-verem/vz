@@ -11,10 +11,15 @@ typedef struct vzOutputContext_desc
 {
     /** number of loaded modules */
     int count;
-    /** handles to modules */
-    HMODULE libs[MAX_MODULES];
-    /** method of modules */
-    vzOutputModule_t* modules[MAX_MODULES];
+    struct
+    {
+        /** handles to modules */
+        HMODULE lib;
+        /** method of modules */
+        vzOutputModule_t* run;
+        /** runtime datas */
+        void* ctx;
+    } modules[MAX_MODULES];
 
     void* config;
     vzTVSpec* tv;

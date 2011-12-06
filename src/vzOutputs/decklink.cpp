@@ -324,9 +324,7 @@ static int decklink_ScheduledPlaybackHasStopped
 #include "decklink_input_class.h"
 #include "decklink_output_class.h"
 
-static decklink_runtime_context_t ctx;
-
-static int decklink_init(void* obj, void* config, vzTVSpec* tv)
+static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
 {
     char* o;
     int c = 0, i, j;
@@ -336,9 +334,18 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
     IDeckLinkIterator *deckLinkIterator = NULL;
     BMDDisplayMode displayMode = bmdModePAL;
     BMDDisplayModeSupport displayModeSupport;
+    decklink_runtime_context_t *ctx;
+
+    if(!pctx)
+        return -EINVAL;
+
+    /* allocate module context */
+    ctx = (decklink_runtime_context_t *)malloc(sizeof(decklink_runtime_context_t));
+    if(!ctx)
+        return -ENOMEM;
 
     /* clear context */
-    memset(&ctx, 0, sizeof(decklink_runtime_context_t));
+    memset(ctx, 0, sizeof(decklink_runtime_context_t));
 
     hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     if(FAILED(hr))
@@ -349,14 +356,13 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
 
     timeBeginPeriod(1);
 
-
     /* clear boards list */
     memset(deckLinks, 0, sizeof(IDeckLink*) * MAX_BOARDS);
 
     /* setup basic components */
-    ctx.config = config;
-    ctx.tv = tv;
-    ctx.output_context = obj;
+    ctx->config = config;
+    ctx->tv = tv;
+    ctx->output_context = obj;
 
     /* create iterator */
     hr = CoCreateInstance(CLSID_CDeckLinkIterator, NULL, CLSCTX_ALL,
@@ -385,7 +391,7 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
     };
 
     /* check output */
-    o = (char*)vzConfigParam(ctx.config, THIS_MODULE, "ENABLE_OUTPUT");
+    o = (char*)vzConfigParam(ctx->config, THIS_MODULE, "ENABLE_OUTPUT");
     if(o)
     {
         i = atol(o);
@@ -394,46 +400,46 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
         else
         {
             // Obtain the video output interface
-            hr = deckLinks[i]->QueryInterface(IID_IDeckLinkOutput, (void**)&ctx.output.io);
-            if(hr != S_OK || !ctx.output.io)
+            hr = deckLinks[i]->QueryInterface(IID_IDeckLinkOutput, (void**)&ctx->output.io);
+            if(hr != S_OK || !ctx->output.io)
                 logger_printf(1, THIS_MODULE_PREF "board[%d]: failed to obtain IID_IDeckLinkOutput", i);
             else
             {
                 /* check if mode supported */
-                if(!_stricmp("576i", ctx.tv->NAME)) displayMode = bmdModePAL;
-                else if(!_stricmp("576p", ctx.tv->NAME)) displayMode = bmdModePAL;
-                else if(!_stricmp("480i", ctx.tv->NAME)) displayMode = bmdModeNTSC;
-                else if(!_stricmp("480p", ctx.tv->NAME)) displayMode = bmdModeNTSC;
-                else if(!_stricmp("720p50", ctx.tv->NAME)) displayMode = bmdModeHD720p50;
-                else if(!_stricmp("1080i25", ctx.tv->NAME)) displayMode = bmdModeHD1080p25;
-                else if(!_stricmp("1080p25", ctx.tv->NAME)) displayMode = bmdModeHD1080p25;
-                else if(!_stricmp("1080p50", ctx.tv->NAME)) displayMode = bmdModeHD1080p50;
-                ctx.output.io->DoesSupportVideoMode(displayMode, bmdFormat8BitYUV,
+                if(!_stricmp("576i", ctx->tv->NAME)) displayMode = bmdModePAL;
+                else if(!_stricmp("576p", ctx->tv->NAME)) displayMode = bmdModePAL;
+                else if(!_stricmp("480i", ctx->tv->NAME)) displayMode = bmdModeNTSC;
+                else if(!_stricmp("480p", ctx->tv->NAME)) displayMode = bmdModeNTSC;
+                else if(!_stricmp("720p50", ctx->tv->NAME)) displayMode = bmdModeHD720p50;
+                else if(!_stricmp("1080i25", ctx->tv->NAME)) displayMode = bmdModeHD1080p25;
+                else if(!_stricmp("1080p25", ctx->tv->NAME)) displayMode = bmdModeHD1080p25;
+                else if(!_stricmp("1080p50", ctx->tv->NAME)) displayMode = bmdModeHD1080p50;
+                ctx->output.io->DoesSupportVideoMode(displayMode, bmdFormat8BitYUV,
                     bmdVideoOutputFlagDefault, &displayModeSupport, NULL);
                 if(bmdDisplayModeSupported != displayModeSupport)
                 {
                     logger_printf(1, THIS_MODULE_PREF "board[%d]: do not support [%s] mode",
-                        i, ctx.tv->NAME);
-                    SAFE_RELEASE(ctx.output.io);
+                        i, ctx->tv->NAME);
+                    SAFE_RELEASE(ctx->output.io);
                 }
                 else
                 {
                     /* setup output datas */
-                    ctx.output.mode = displayMode;
-                    ctx.output.board = deckLinks[i];
+                    ctx->output.mode = displayMode;
+                    ctx->output.board = deckLinks[i];
                     deckLinks[i] = NULL;
 
                     /* request keyer */
-                    ctx.output.board->QueryInterface(IID_IDeckLinkKeyer,
-                        (void**)&ctx.output.keyer);
+                    ctx->output.board->QueryInterface(IID_IDeckLinkKeyer,
+                        (void**)&ctx->output.keyer);
 
                     /* create blank frame */
-                    ctx.output.io->CreateVideoFrame(
-                        ctx.tv->TV_FRAME_WIDTH,
-                        ctx.tv->TV_FRAME_HEIGHT,
-                        ctx.tv->TV_FRAME_WIDTH * 4,
+                    ctx->output.io->CreateVideoFrame(
+                        ctx->tv->TV_FRAME_WIDTH,
+                        ctx->tv->TV_FRAME_HEIGHT,
+                        ctx->tv->TV_FRAME_WIDTH * 4,
                         bmdFormat8BitBGRA, bmdFrameFlagFlipVertical,
-                        &ctx.output.blank_frame);
+                        &ctx->output.blank_frame);
                 };
             };
         };
@@ -448,7 +454,7 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
         sprintf(name, "ENABLE_INPUT_%d", j + 1);
 
         /* request param */
-        o = (char*)vzConfigParam(ctx.config, THIS_MODULE, name);
+        o = (char*)vzConfigParam(ctx->config, THIS_MODULE, name);
         if(!o) continue;
 
         /* parse */
@@ -475,7 +481,7 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
 
         // Obtain the audio/video input interface
         hr = deckLinks[i]->QueryInterface(IID_IDeckLinkInput,
-            (void**)&ctx.inputs[ctx.inputs_count].io);
+            (void**)&ctx->inputs[ctx->inputs_count].io);
         if(S_OK != hr)
         {
             logger_printf(1, THIS_MODULE_PREF "board[%d]: failed to obtain IID_IDeckLinkInput", i);
@@ -490,44 +496,44 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
         {
             logger_printf(1, THIS_MODULE_PREF "board[%d]: video mode [%s] not recognized",
                 i, name);
-            SAFE_RELEASE(ctx.inputs[ctx.inputs_count].io);
+            SAFE_RELEASE(ctx->inputs[ctx->inputs_count].io);
             continue;
         };
 
         /* check if mode supported */
-        ctx.inputs[ctx.inputs_count].io->DoesSupportVideoMode(
+        ctx->inputs[ctx->inputs_count].io->DoesSupportVideoMode(
             (BMDDisplayMode)bmd_modes_id[j], bmdFormat8BitYUV,
             bmdVideoInputFlagDefault, &displayModeSupport, NULL);
         if(bmdDisplayModeSupported != displayModeSupport)
         {
             logger_printf(1, THIS_MODULE_PREF "board[%d]: do not support [%s] input mode",
                 i, bmd_modes_name[j]);
-            SAFE_RELEASE(ctx.inputs[ctx.inputs_count].io);
+            SAFE_RELEASE(ctx->inputs[ctx->inputs_count].io);
             continue;
         }
 
         /* set params */
-        ctx.inputs[ctx.inputs_count].mode = (BMDDisplayMode)bmd_modes_id[j];
-        ctx.inputs[ctx.inputs_count].board = deckLinks[i];
+        ctx->inputs[ctx->inputs_count].mode = (BMDDisplayMode)bmd_modes_id[j];
+        ctx->inputs[ctx->inputs_count].board = deckLinks[i];
         deckLinks[i] = NULL;
-        ctx.inputs_count++;
+        ctx->inputs_count++;
 
         /* set interlaced */
-        switch(ctx.inputs[ctx.inputs_count].mode)
+        switch(ctx->inputs[ctx->inputs_count].mode)
         {
             case bmdModeHD1080i50:
             case bmdModePAL:
-                ctx.inputs[ctx.inputs_count].interlaced = VZIMAGE_INTERLACED_U;
+                ctx->inputs[ctx->inputs_count].interlaced = VZIMAGE_INTERLACED_U;
                 break;
 
             case bmdModeHD1080i5994:
             case bmdModeHD1080i6000:
             case bmdModeNTSC:
             case bmdModeNTSC2398:
-                ctx.inputs[ctx.inputs_count].interlaced = VZIMAGE_INTERLACED_L;
+                ctx->inputs[ctx->inputs_count].interlaced = VZIMAGE_INTERLACED_L;
                 break;
             default:
-                ctx.inputs[ctx.inputs_count].interlaced = VZIMAGE_INTERLACED_NONE;
+                ctx->inputs[ctx->inputs_count].interlaced = VZIMAGE_INTERLACED_NONE;
         };
     };
 
@@ -537,59 +543,83 @@ static int decklink_init(void* obj, void* config, vzTVSpec* tv)
 
     SAFE_RELEASE(deckLinkIterator);
 
+    /* return module context */
+    *pctx = ctx;
+
     return 0;
 };
 
-static int decklink_release(void* obj, void* config, vzTVSpec* tv)
+static int decklink_release(void** pctx, void* obj, void* config, vzTVSpec* tv)
 {
     int i, j;
+    decklink_runtime_context_t *ctx;
 
-    SAFE_RELEASE(ctx.output.io);
-    SAFE_RELEASE(ctx.output.board);
-    SAFE_RELEASE(ctx.output.keyer);
-    SAFE_RELEASE(ctx.output.blank_frame);
-    if(ctx.output.cb) delete ctx.output.cb;
+    if(!pctx)
+        return -EINVAL;
 
-    for(i = 0; i < ctx.inputs_count; i++)
+    ctx = (decklink_runtime_context_t *)(*pctx);
+    *pctx = NULL;
+
+    if(!ctx)
+        return -EINVAL;
+
+    SAFE_RELEASE(ctx->output.io);
+    SAFE_RELEASE(ctx->output.board);
+    SAFE_RELEASE(ctx->output.keyer);
+    SAFE_RELEASE(ctx->output.blank_frame);
+    if(ctx->output.cb) delete ctx->output.cb;
+
+    for(i = 0; i < ctx->inputs_count; i++)
     {
-        SAFE_RELEASE(ctx.inputs[i].io);
-        SAFE_RELEASE(ctx.inputs[i].board);
-        if(ctx.inputs[i].cb) delete ctx.inputs[i].cb;
+        SAFE_RELEASE(ctx->inputs[i].io);
+        SAFE_RELEASE(ctx->inputs[i].board);
+        if(ctx->inputs[i].cb) delete ctx->inputs[i].cb;
         for(j = 0; j < MAX_INPUT_BUFS; j++)
-            if(ctx.inputs[i].bufs[j])
-                vzImageRelease(&ctx.inputs[i].bufs[j]);
+            if(ctx->inputs[i].bufs[j])
+                vzImageRelease(&ctx->inputs[i].bufs[j]);
     };
+
+    free(ctx);
 
     return 0;
 };
 
-static int decklink_setup(HANDLE* sync_event, unsigned long** sync_cnt)
+static int decklink_setup(void* pctx, HANDLE* sync_event, unsigned long** sync_cnt)
 {
     int i;
+    decklink_runtime_context_t *ctx;
 
-    if(ctx.output.io && sync_event)
+    if(!pctx)
+        return -EINVAL;
+
+    ctx = (decklink_runtime_context_t *)pctx;
+
+    if(!ctx)
+        return -EINVAL;
+
+    if(ctx->output.io && sync_event)
     {
-        ctx.output.sync_event = *sync_event;
+        ctx->output.sync_event = *sync_event;
         *sync_event = NULL;
 
-        ctx.output.sync_cnt = *sync_cnt;
+        ctx->output.sync_cnt = *sync_cnt;
         *sync_cnt = NULL;
 
-        if(!ctx.output.keyer)
+        if(!ctx->output.keyer)
             logger_printf(1, THIS_MODULE_PREF "output keyer not supported");
         else
         {
-            if(vzConfigParam(ctx.config, THIS_MODULE, "ONBOARD_KEYER"))
+            if(vzConfigParam(ctx->config, THIS_MODULE, "ONBOARD_KEYER"))
             {
-                if(S_OK != ctx.output.keyer->Enable(0))
+                if(S_OK != ctx->output.keyer->Enable(0))
                     logger_printf(1, THIS_MODULE_PREF "failed to enable INTERNAL keyer");
             }
             else
             {
-                if(S_OK != ctx.output.keyer->Enable(1))
+                if(S_OK != ctx->output.keyer->Enable(1))
                     logger_printf(1, THIS_MODULE_PREF "failed to enable EXTERNAL keyer");
             };
-            ctx.output.keyer->SetLevel(255);
+            ctx->output.keyer->SetLevel(255);
         };
     }
     else
@@ -598,41 +628,47 @@ static int decklink_setup(HANDLE* sync_event, unsigned long** sync_cnt)
     return 0;
 };
 
-static int decklink_run()
+static int decklink_run(void* pctx)
 {
     int i;
     HRESULT hr;
+    decklink_runtime_context_t *ctx;
+
+    if(!pctx)
+        return -EINVAL;
+
+    ctx = (decklink_runtime_context_t *)pctx;
 
     /* run output */
-    if(ctx.output.sync_event)
+    if(ctx->output.sync_event)
     {
         IDeckLinkDisplayMode* mode;
         IDeckLinkDisplayModeIterator* iter;
 
         /* assign callback */
-        ctx.output.cb = new decklink_output_class(&ctx);
-        ctx.output.io->SetScheduledFrameCompletionCallback(ctx.output.cb);
+        ctx->output.cb = new decklink_output_class(ctx);
+        ctx->output.io->SetScheduledFrameCompletionCallback(ctx->output.cb);
 
         /* find mode timings */
-        ctx.output.io->GetDisplayModeIterator(&iter);
+        ctx->output.io->GetDisplayModeIterator(&iter);
         while(iter->Next(&mode) == S_OK)
         {
-            if(mode->GetDisplayMode() != ctx.output.mode)
+            if(mode->GetDisplayMode() != ctx->output.mode)
                 continue;
 
-            mode->GetFrameRate(&ctx.output.dur, &ctx.output.ts);
+            mode->GetFrameRate(&ctx->output.dur, &ctx->output.ts);
 
             break;
         };
         SAFE_RELEASE(iter);
-        if(!ctx.output.dur)
+        if(!ctx->output.dur)
         {
             logger_printf(1, THIS_MODULE_PREF "failed to find output mode timings");
             return -EINVAL;
         };
 
         /* enable video output */
-        if(S_OK != ctx.output.io->EnableVideoOutput(ctx.output.mode, bmdVideoOutputFlagDefault))
+        if(S_OK != ctx->output.io->EnableVideoOutput(ctx->output.mode, bmdVideoOutputFlagDefault))
         {
             logger_printf(1, THIS_MODULE_PREF "EnableVideoOutput FAILED");
             return -EINVAL;
@@ -640,34 +676,34 @@ static int decklink_run()
 
         /* send a preroll frames */
         for(i = 0; i < PREROLL; i++)
-            decklink_ScheduleNextFrame2(&ctx);
+            decklink_ScheduleNextFrame2(ctx);
 
         /* start sheduled playback */
-        ctx.output.io->StartScheduledPlayback( 0, ctx.output.ts, 1.0 );
+        ctx->output.io->StartScheduledPlayback( 0, ctx->output.ts, 1.0 );
     };
 
     /* setup inputs */
-    for(i = 0; i < ctx.inputs_count; i++)
+    for(i = 0; i < ctx->inputs_count; i++)
     {
         /* register input */
-        ctx.inputs[i].idx = vzOutputInputAdd(ctx.output_context);
-        if(ctx.inputs[i].idx < 0)
+        ctx->inputs[i].idx = vzOutputInputAdd(ctx->output_context);
+        if(ctx->inputs[i].idx < 0)
         {
             logger_printf(1, THIS_MODULE_PREF "vzOutputInputAdd failed with %d",
-                ctx.inputs[i].idx);
+                ctx->inputs[i].idx);
             continue;
         };
 
         /* setup callbacks */
-        ctx.inputs[i].cb = new decklink_input_class(&ctx, i);
-        hr = ctx.inputs[i].io->SetCallback(ctx.inputs[i].cb);
+        ctx->inputs[i].cb = new decklink_input_class(ctx, i);
+        hr = ctx->inputs[i].io->SetCallback(ctx->inputs[i].cb);
         if(S_OK != hr)
         {
             logger_printf(1, THIS_MODULE_PREF "SetCallback failed");
             continue;
         };
 
-        hr = ctx.inputs[i].io->EnableVideoInput(ctx.inputs[i].mode,
+        hr = ctx->inputs[i].io->EnableVideoInput(ctx->inputs[i].mode,
             bmdFormat8BitYUV, /* bmdVideoInputEnableFormatDetection */ bmdVideoInputFlagDefault);
         if(S_OK != hr)
         {
@@ -675,7 +711,7 @@ static int decklink_run()
             continue;
         };
 
-        hr = ctx.inputs[i].io->StartStreams();
+        hr = ctx->inputs[i].io->StartStreams();
         if(S_OK != hr)
         {
             logger_printf(1, THIS_MODULE_PREF "StartStreams failed");
@@ -683,26 +719,32 @@ static int decklink_run()
         };
 
         logger_printf(0, THIS_MODULE_PREF "ENABLE_INPUT_%d will be mapped to liveinput %d",
-            i, ctx.inputs[i].idx);
+            i, ctx->inputs[i].idx);
     };
 
     return 0;
 };
 
-static int decklink_stop()
+static int decklink_stop(void* pctx)
 {
     int i;
+    decklink_runtime_context_t *ctx;
 
-    for(i = 0; i < ctx.inputs_count; i++)
+    if(!pctx)
+        return -EINVAL;
+
+    ctx = (decklink_runtime_context_t *)pctx;
+
+    for(i = 0; i < ctx->inputs_count; i++)
     {
-        ctx.inputs[i].io->StopStreams();
-        ctx.inputs[i].io->DisableVideoInput();
+        ctx->inputs[i].io->StopStreams();
+        ctx->inputs[i].io->DisableVideoInput();
     };
 
-    if(ctx.output.sync_event)
+    if(ctx->output.sync_event)
     {
-        ctx.output.io->StopScheduledPlayback(0, 0, 0);
-        ctx.output.io->DisableVideoOutput();
+        ctx->output.io->StopScheduledPlayback(0, 0, 0);
+        ctx->output.io->DisableVideoOutput();
     };
 
     return 0;
