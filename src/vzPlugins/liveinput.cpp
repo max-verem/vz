@@ -471,10 +471,9 @@ OUTPUT_TIMINGS;
         GLenum format = vzImagePixFmt2OGL(img->pix_fmt);
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[ctx->_pbo_index]);
-#if 0
-        if(img->interlaced)
+
+        if(VZIMAGE_INTERLACED_NONE == img->interlaced)
         {
-#endif
             glBindTexture(GL_TEXTURE_2D, _DATA->_textures[0]);
             glTexSubImage2D
             (
@@ -488,20 +487,19 @@ OUTPUT_TIMINGS;
                 GL_UNSIGNED_BYTE,   // GLenum type,
                 0
             );
-#if 0
         }
         else
         {
             for(r = 0; r < 2; r++)
             {
                 if(VZIMAGE_INTERLACED_U == img->interlaced)
-                    t = 1 - r;
-                else
                     t = r;
+                else
+                    t = 1 - r;
 
-                glBindTexture(GL_TEXTURE_2D, _DATA->_textures[t]);
+                glErrorLogD(glBindTexture(GL_TEXTURE_2D, _DATA->_textures[t]););
 
-                for(b = 0; b < img->height; b++)
+                for(b = 0; b < img->height; b += 2)
                 {
 /*
      |  not intelaced |   upper fields   |
@@ -520,17 +518,19 @@ src5 |  T[0][5]       | T[1][5], T[1][6] |
 -----+----------------+------------------+
 
 */
+                    int l = b + r;
+
                     glTexSubImage2D
                     (
                         GL_TEXTURE_2D,      // GLenum target,
                         0,                  // GLint level,
                         xoffset,            // GLint xoffset,
-                        yoffset + 0,        // GLint yoffset,
+                        yoffset + b,        // GLint yoffset,
                         img->width,         // GLsizei width,
                         1,                  // GLsizei height,
                         format,             // GLenum format,
                         GL_UNSIGNED_BYTE,   // GLenum type,
-                        (void*)(b * img->line_size)
+                        (void*)(l * img->line_size)
                     );
 
                     glTexSubImage2D
@@ -538,19 +538,17 @@ src5 |  T[0][5]       | T[1][5], T[1][6] |
                         GL_TEXTURE_2D,      // GLenum target,
                         0,                  // GLint level,
                         xoffset,            // GLint xoffset,
-                        yoffset + b - 1,    // GLint yoffset,
+                        yoffset + b + 1,    // GLint yoffset,
                         img->width,         // GLsizei width,
                         1,                  // GLsizei height,
                         format,             // GLenum format,
                         GL_UNSIGNED_BYTE,   // GLenum type,
-                        (void*)(b * img->line_size)
+                        (void*)(l * img->line_size)
                     );
                 }
             };
         };
-#endif
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
-
     };
 
     r = vzOutputInputPullBack(ctx->_output_context, ctx->l_input - 1, (void**)&img);
@@ -575,6 +573,7 @@ PLUGIN_EXPORT void render(void* data, vzRenderSession* session)
         return;
 
     /* setup proper texture */
+//    tex = ctx->_textures[session->field];
     tex = ctx->_textures[ctx->_textures_idx];
     if(!ctx->_textures_idx) ctx->_textures_idx++;
 
