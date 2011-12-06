@@ -132,6 +132,7 @@ typedef struct decklink_runtime_context_desc
         vzImage *buf;
         vzImage *bufs[MAX_INPUT_BUFS];
         int interlaced;
+        long long cnt;
     } inputs[MAX_INPUTS];
     int inputs_count;
 
@@ -206,6 +207,8 @@ static int decklink_VideoInputFrameArrived
     src.interlaced = ctx->inputs[idx].interlaced;
 
     i = vzImageConv_UYVY_to_BGRA(&src, ctx->inputs[idx].buf);
+
+    ctx->inputs[idx].buf->sys_id = ctx->inputs[idx].cnt++;
 
     vzOutputInputPush(ctx->output_context, ctx->inputs[idx].idx,
         (void**)&ctx->inputs[idx].buf);
@@ -448,6 +451,7 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
     /* check inputs */
     for(j = 0; j < MAX_INPUTS; j++)
     {
+        int p;
         char name[32], m[32];
 
         /* compose parameter name */
@@ -489,10 +493,10 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
         };
 
         // find mode
-        for(j = 0; bmd_modes_name[j]; j++)
-            if(!_stricmp(bmd_modes_name[j], name))
+        for(p = 0; bmd_modes_name[p]; p++)
+            if(!_stricmp(bmd_modes_name[p], name))
                 break;
-        if(!bmd_modes_name[j])
+        if(!bmd_modes_name[p])
         {
             logger_printf(1, THIS_MODULE_PREF "board[%d]: video mode [%s] not recognized",
                 i, name);
@@ -502,18 +506,18 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
 
         /* check if mode supported */
         ctx->inputs[ctx->inputs_count].io->DoesSupportVideoMode(
-            (BMDDisplayMode)bmd_modes_id[j], bmdFormat8BitYUV,
+            (BMDDisplayMode)bmd_modes_id[p], bmdFormat8BitYUV,
             bmdVideoInputFlagDefault, &displayModeSupport, NULL);
         if(bmdDisplayModeSupported != displayModeSupport)
         {
             logger_printf(1, THIS_MODULE_PREF "board[%d]: do not support [%s] input mode",
-                i, bmd_modes_name[j]);
+                i, bmd_modes_name[p]);
             SAFE_RELEASE(ctx->inputs[ctx->inputs_count].io);
             continue;
         }
 
         /* set params */
-        ctx->inputs[ctx->inputs_count].mode = (BMDDisplayMode)bmd_modes_id[j];
+        ctx->inputs[ctx->inputs_count].mode = (BMDDisplayMode)bmd_modes_id[p];
         ctx->inputs[ctx->inputs_count].board = deckLinks[i];
         deckLinks[i] = NULL;
         ctx->inputs_count++;
