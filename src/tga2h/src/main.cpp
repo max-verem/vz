@@ -95,17 +95,15 @@ int main(int argc, char** argv)
         f,
         "#ifndef %s_h\n"
         "#define %s_h\n"
-        "static int _load_img_%s(vzImage* img)\n"
-        "{\n"
-        "    static const unsigned long surface[%d + %d] =\n"
-        "    {\n",
+        "static const unsigned long %s_surface[%d + %d] =\n"
+        "{\n",
         const_prefix, const_prefix, const_prefix,
         image->width * image->height, SURFACE_PADDING
     );
 
     for(int j = 0; j < (image->width*image->height); j++)
     {
-        if(!(j % COLUMNS)) fprintf(f, "\n        ");
+        if(!(j % COLUMNS)) fprintf(f, "\n    ");
         fprintf(f, " 0x%.8X", ((unsigned long*)image->surface)[j]);
         if( (j + 1) != (image->width*image->height) ) fprintf(f, ",");
     };
@@ -115,8 +113,16 @@ int main(int argc, char** argv)
     (
         f,
         "\n"
-        "    };\n"
+        "};\n"
         "\n"
+    );
+
+    fprintf
+    (
+        f,
+        "static int _load_img_%s(vzImage* img)\n"
+        "{\n",
+        const_prefix
     );
 
     fprintf(f, "    memset(img, 0, sizeof(vzImage));\n");
@@ -127,7 +133,7 @@ int main(int argc, char** argv)
     fprintf(f, "    img->line_size = %d;\n", image->line_size);
     fprintf(f, "    img->bpp = %d;\n", image->bpp);
     fprintf(f, "    img->pix_fmt = %d;\n", image->pix_fmt);
-    fprintf(f, "    img->surface = (void*)surface;\n");
+    fprintf(f, "    img->surface = (void*)%s_surface;\n", const_prefix);
 
     fprintf
     (
