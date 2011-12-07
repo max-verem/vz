@@ -540,24 +540,34 @@ static void vz_scene_display(void)
 	if(!(glExtInitDone)) 
 		return;
 
-	WaitForSingleObject(vz_window_desc.lock, INFINITE);
-	if(0 == wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc))
-	{
-		DWORD err = GetLastError();
-		wglMakeCurrent(NULL, NULL);
-		ReleaseMutex(vz_window_desc.lock);
-		return;
-	};
+    if(vz_window_lockgl(&vz_window_desc)) return;
 
-	// check if we need to make a screenshot
-	if(*screenshot_file)
-	{
-		char* error_log;
-		vzImage* screenshot = vzImageNewFromVB(tv.TV_FRAME_WIDTH,tv.TV_FRAME_HEIGHT);
-		vzImageSaveTGA(screenshot_file,screenshot,&error_log);
-		*screenshot_file = 0;
-		vzImageRelease(&screenshot);
-	};
+    // check if we need to make a screenshot
+    if(*screenshot_file)
+    {
+        int r;
+        char* error_log;
+        vzImage* temp_image;
+
+        // create buffer
+        r = vzImageCreate(&temp_image, tv.TV_FRAME_WIDTH, tv.TV_FRAME_HEIGHT,
+            VZIMAGE_PIXFMT_BGRA);
+        if(!r)
+        {
+            /* read gl pixels to buffer - ready to use */
+            glErrorLogD(glReadPixels(0, 0, tv.TV_FRAME_WIDTH, tv.TV_FRAME_HEIGHT,
+                GL_BGRA_EXT, GL_UNSIGNED_BYTE, temp_image->surface););
+
+            /* save image */
+            vzImageSaveTGA(screenshot_file, temp_image, &error_log);
+
+            /* release */
+            vzImageRelease(&temp_image);
+        };
+
+        /* reset flag */
+        *screenshot_file = 0;
+    };
 
 	/* unbind offscreen buffer */
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
@@ -681,9 +691,8 @@ static void vz_scene_display(void)
 	glFlush();
 	SwapBuffers(vz_window_desc.hdc);
 
-	/* unbind conext */
-	wglMakeCurrent(NULL, NULL);
-	ReleaseMutex(vz_window_desc.lock);
+    /* unbind conext */
+    vz_window_unlockgl(&vz_window_desc);
 
 	/* check if we need to update frames rendering info */
 	if((global_frame_no - last_title_update) > ((unsigned)(tv.TV_FRAME_PS_NOM / tv.TV_FRAME_PS_DEN)))
