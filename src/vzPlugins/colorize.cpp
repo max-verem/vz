@@ -32,7 +32,7 @@ static char* _plugin_notes =
 #include "../vz/plugin.h"
 
 // declare name and version of plugin
-DEFINE_PLUGIN_INFO("pixeltransfer");
+DEFINE_PLUGIN_INFO("colorize");
 
 // internal structure of plugin
 typedef struct
