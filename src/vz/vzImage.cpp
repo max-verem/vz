@@ -135,22 +135,6 @@ VZIMAGE_API int vzImageFlipVertical(vzImage* img)
     return 0;
 };
 
-VZIMAGE_API vzImage* vzImageNewFromVB(long width, long height)
-{
-    int r;
-    vzImage* temp_image;
-
-	// create buffer
-    r = vzImageCreate(&temp_image, width, height, VZIMAGE_PIXFMT_BGRA);
-
-    if(r) return NULL;
-
-	//read gl pixels to buffer - ready to use
-	glReadPixels(0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, temp_image->surface);
-
-	return temp_image;
-};
-
 VZIMAGE_API int vzImageSaveTGA(char* filename, vzImage* vzimage, char** error_log, int flipped)
 {
 	TGA_HEADER header = 

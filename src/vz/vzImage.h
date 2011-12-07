@@ -86,7 +86,6 @@ typedef struct vzImageDesc
 
 #define VZIMAGE_ALIGN_LINE      4
 
-VZIMAGE_API vzImage* vzImageNewFromVB(long width = 720, long height = 576);
 VZIMAGE_API int vzImageSaveTGA(char* filename, vzImage* vzimage, char** error_log, int flipped = 1);
 
 /**
