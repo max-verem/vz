@@ -424,6 +424,8 @@ VZOUTPUT_API int vzOutputPostRender(void* obj)
     ctx->output.buffers[ctx->output.pos_render].data =
         glMapBuffer(GL_PIXEL_PACK_BUFFER_ARB, GL_READ_ONLY);
 
+    glErrorLogD(glBindBuffer(GL_PIXEL_PACK_BUFFER_ARB, 0));
+
     /* set jump flag */
     ctx->output.pos_render_jump = 1;
 
