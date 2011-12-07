@@ -181,29 +181,15 @@ static int vz_window_unlockgl(vz_window_t* w)
 static HANDLE global_frame_event;
 static unsigned long global_frame_no = 0;
 
-#ifdef _DEBUG
 #define ENSURE_OPENGL_CONTEXT(BLOCK)                                \
-{                                                                   \
-    BOOL b = TRUE;                                                  \
-    HGLRC curr;                                                     \
-    WaitForSingleObject(vz_window_desc.lock, INFINITE);             \
-    curr = wglGetCurrentContext();                                  \
-    if(!curr)                                                       \
-        b = wglMakeCurrent(vz_window_desc.hdc, vz_window_desc.glrc);\
-    if(b)                                                           \
-    {                                                               \
-        BLOCK                                                       \
-    }                                                               \
-    else                                                            \
-        logger_printf(1, "wglMakeCurrent FAILED at %s:%d",          \
+    if(vz_window_lockgl(&vz_window_desc))                           \
+        logger_printf(1, "ENSURE_OPENGL_CONTEXT FAILED at %s:%d",   \
             __FILE__, __LINE__);                                    \
-    if(!curr)                                                       \
-        wglMakeCurrent(NULL, NULL);                                 \
-    ReleaseMutex(vz_window_desc.lock);                              \
-}
-#else
-#define ENSURE_OPENGL_CONTEXT(BLOCK) BLOCK
-#endif
+    else                                                            \
+    {                                                               \
+        BLOCK;                                                      \
+        vz_window_unlockgl(&vz_window_desc);                        \
+    };
 
 /* ---------------------------------------------------------
     scene load/unload
