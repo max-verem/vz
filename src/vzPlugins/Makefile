@@ -88,6 +88,7 @@ LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
 TARGET = "$(OBJS_DIR)" "$(INSTALL_DIR)"		\
+	clone_render.dll			\
 	colorize.dll				\
 	fillarc.dll				\
 	url_frame_notify.dll			\
