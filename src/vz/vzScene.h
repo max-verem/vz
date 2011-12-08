@@ -104,6 +104,8 @@ public:
 	int command(char* cmd,char** error_log);
 	int command(int cmd, int index, void* buf);
 
+    vzContainerFunction* find_function(char* function_id);
+
 #ifdef _DEBUG
 	void list_registred();
 #endif

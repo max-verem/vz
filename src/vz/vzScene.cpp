@@ -1058,3 +1058,8 @@ int vzScene::command(int cmd, int index, void* buf)
 
 	return r;
 };
+
+vzContainerFunction* vzScene::find_function(char* function_id)
+{
+    return _id_functions.find(function_id);
+};
