@@ -25,7 +25,10 @@ static char* _plugin_description =
 ;
 
 static char* _plugin_notes = 
-""
+"Please note, that functionality is implemented with glPixelTransfer.\n"
+"Some boards (nVidia Quadro 600 and 1800) has software implementation\n"
+"of this function. As result you may notice a drammatic slowdown of\n"
+"rendering picture. Please test you hardware before using that\n"
 ;
 
 #include "../vz/plugin-devel.h"
