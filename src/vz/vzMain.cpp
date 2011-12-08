@@ -432,3 +432,16 @@ VZMAIN_API void vzMainXMLRelease()
 {
     XMLPlatformUtilsX::Terminate();
 };
+
+VZMAIN_API void vzContainerFunctionRender(void* scene, char* function, void* session)
+{
+    vzContainerFunction* f;
+
+    f = ((vzScene*)scene)->find_function(function);
+
+    if(!f)
+        return;
+
+    f->render((vzRenderSession *)session);
+};
+
