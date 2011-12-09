@@ -689,7 +689,6 @@ static void vz_scene_display(void)
 
 	// and swap buffers
 	glFlush();
-	SwapBuffers(vz_window_desc.hdc);
 
     /* unbind conext */
     vz_window_unlockgl(&vz_window_desc);
@@ -697,7 +696,7 @@ static void vz_scene_display(void)
 	/* check if we need to update frames rendering info */
 	if((global_frame_no - last_title_update) > ((unsigned)(tv.TV_FRAME_PS_NOM / tv.TV_FRAME_PS_DEN)))
 	{
-		char buf[100];
+		char buf[1024];
 		sprintf
 		(
 			buf,
@@ -928,10 +927,9 @@ static int vz_create_window()
 	ZeroMemory (&pfd, sizeof(pfd));
 	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);		// Size Of This Pixel Format Descriptor
 	pfd.nVersion     = 1;							// The version of this data structure
-	pfd.dwFlags      = 
-		PFD_DRAW_TO_WINDOW |						// Buffer supports drawing to window
-		PFD_SUPPORT_OPENGL |						// Buffer supports OpenGL drawing
-		PFD_DOUBLEBUFFER;							// Supports double buffering
+    pfd.dwFlags = 
+        PFD_DRAW_TO_WINDOW |						// Buffer supports drawing to window
+        PFD_SUPPORT_OPENGL;                         // Buffer supports OpenGL drawing
 	pfd.dwLayerMask  = PFD_MAIN_PLANE;				// We want the standard mask (this is ignored anyway)
 	pfd.iPixelType   = PFD_TYPE_RGBA;				// RGBA color format
 	pfd.cColorBits   = 32;							// OpenGL color depth
