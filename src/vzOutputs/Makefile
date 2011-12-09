@@ -138,7 +138,7 @@ INCLUDE_DIR	= -I. -I../vz $(INCLUDES) $(SDK_INC) -I$(OBJS_DIR)
 LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
-TARGET = decklink nullvideo
+TARGET = d3d9 decklink nullvideo
 
 #!IF  "$(CFG)" == "Debug32" || "$(CFG)" == "Release32"
 #TARGET		= $(TARGET) streamalpha
@@ -238,3 +238,5 @@ nullvideo.tp_UEIT.h: nullvideo.tp_UEIT.png
 	@echo Converting $**
 	@SET PATH=$(PATH);$(INSTALL_DIR:outputs/=)
 	@tga2h $** $(OBJS_DIR)$(**:.png=.h) tp_UEIT
+
+d3d9: direct3d9.cpp direct3d9.dll
