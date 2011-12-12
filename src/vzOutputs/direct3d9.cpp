@@ -68,6 +68,7 @@ typedef struct d3d9_display_context_desc
     D3DADAPTER_IDENTIFIER9 ident;
     D3DPRESENT_PARAMETERS param;
     IDirect3DDevice9* dev;
+    IDirect3DSwapChain9 *swap;
     D3DDISPLAYMODE mode;
     D3DCAPS9 caps;
     int adapter_idx;
@@ -105,6 +106,8 @@ typedef struct d3d9_runtime_context_desc
     } sync;
 
     struct hr_sleep_data timer_data;
+
+    int vsync;
 }
 d3d9_runtime_context_t;
 
@@ -169,7 +172,7 @@ static HWND create_window(d3d9_runtime_context_t* ctx, HINSTANCE hInstance, HWND
 
     // Create the render window
     hWnd = CreateWindowEx(WS_EX_TOPMOST, window_name,
-        window_name, WS_POPUP | WS_VISIBLE,
+        window_name, WS_EX_TOPMOST | WS_POPUP | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
         hParent, NULL, hInstance, NULL);
 
@@ -258,7 +261,7 @@ static int d3d9_enum(d3d9_runtime_context_t* ctx)
 static int d3d9_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
 {
     int i, c, j;
-    char** list;
+    char **list, *v;
     d3d9_runtime_context_t *ctx;
 
     if(!pctx)
@@ -281,11 +284,16 @@ static int d3d9_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
     ctx->sync.src = CreateEvent(NULL, TRUE, FALSE, NULL);
     hr_sleep_init(&ctx->timer_data);
 
+    /* check if vsync honor */
+    v = (char*)vzConfigParam(ctx->config, THIS_MODULE, "VSYNC");
+    if(v)
+        ctx->vsync = atol(v);
+
     /* display options */
     for(i = 0; i < MAX_DISPLAYS; i++)
     {
         int idx;
-        char name[32], *v;
+        char name[32];
         d3d9_display_context_t *display = &ctx->displays.list[i];
 
         /* compose parameter name */
@@ -431,13 +439,16 @@ static int d3d9_run(void* pctx)
         /* setup params */
         param.MultiSampleType = D3DMULTISAMPLE_NONE;
         param.MultiSampleQuality = 0;
-        param.BackBufferCount = 1;
+        param.BackBufferCount = 2;
         param.BackBufferWidth = ctx->displays.list[i].mode.Width;
         param.BackBufferHeight = ctx->displays.list[i].mode.Height;
         param.BackBufferFormat = D3DFMT_X8R8G8B8;
         param.FullScreen_RefreshRateInHz = ctx->displays.list[i].mode.RefreshRate;
         param.SwapEffect = D3DSWAPEFFECT_FLIP;
-        param.PresentationInterval = D3DPRESENT_INTERVAL_ONE; //D3DPRESENT_INTERVAL_IMMEDIATE;
+        if(ctx->vsync)
+            param.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+        else
+            param.PresentationInterval = D3DPRESENT_FORCEIMMEDIATE;
         param.hDeviceWindow = ctx->displays.hwnd;
         ctx->displays.list[i].param = param;
 
@@ -451,28 +462,34 @@ static int d3d9_run(void* pctx)
         hr = ctx->d3d->CreateDevice
         (
             ctx->displays.list[i].adapter_idx, D3DDEVTYPE_HAL,
-            ctx->displays.hwnd, D3DCREATE_HARDWARE_VERTEXPROCESSING,
+            GetConsoleWindow(), D3DCREATE_HARDWARE_VERTEXPROCESSING,
             &ctx->displays.list[i].param, &ctx->displays.list[i].dev
         );
         if(D3D_OK != hr)
             logger_printf(1, THIS_MODULE_PREF "failed to CreateDevice: %s", D3DERR(hr));
         else
+        {
             c++;
+            ctx->displays.list[i].dev->GetSwapChain(0, &ctx->displays.list[i].swap);
+        };
     };
 
     /* run syncer thread */
-    ctx->sync.th = CreateThread
-    (
-        NULL,
-        1024,
-        d3d9_thread_syncer,
-        ctx,
-        0,
-        NULL
-    );
+    if(!ctx->vsync)
+    {
+        ctx->sync.th = CreateThread
+        (
+            NULL,
+            1024,
+            d3d9_thread_syncer,
+            ctx,
+            0,
+            NULL
+        );
 
-    /* set thread priority */
-    SetThreadPriority(ctx->sync.th , THREAD_PRIORITY_HIGHEST);
+        /* set thread priority */
+        SetThreadPriority(ctx->sync.th , THREAD_PRIORITY_HIGHEST);
+    };
 
     if(c)
     {
@@ -537,7 +554,10 @@ static int d3d9_stop(void* pctx)
     };
 
     for(i = 0; i < MAX_DISPLAYS; i++)
+    {
+        SAFE_RELEASE(ctx->displays.list[i].swap);
         SAFE_RELEASE(ctx->displays.list[i].dev);
+    };
 
     if(ctx->displays.hwnd)
     {
@@ -546,9 +566,12 @@ static int d3d9_stop(void* pctx)
     };
 
     /* syncer notify to exit */
-    ctx->f_exit = 2;
-    WaitForSingleObject(ctx->sync.th, INFINITE);
-    CloseHandle(ctx->sync.th);
+    if(ctx->sync.th)
+    {
+        ctx->f_exit = 2;
+        WaitForSingleObject(ctx->sync.th, INFINITE);
+        CloseHandle(ctx->sync.th);
+    };
 
     return 0;
 };
@@ -568,7 +591,7 @@ static unsigned long WINAPI d3d9_display_load(void* obj);
 
 static unsigned long WINAPI d3d9_display_thread(void* obj)
 {
-    int i, h;
+    int i, h, b, j;
     HRESULT hr;
     d3d9_runtime_context_t *ctx = (d3d9_runtime_context_t *)obj;
 
@@ -576,8 +599,9 @@ static unsigned long WINAPI d3d9_display_thread(void* obj)
 
     while(!ctx->f_exit)
     {
-        /* wait for internal sync */
-        WaitForSingleObject(ctx->sync.src, INFINITE);
+        if(ctx->sync.th)
+            /* wait for internal sync */
+            WaitForSingleObject(ctx->sync.src, INFINITE);
 
         /* request frame */
         vzOutputOutGet(ctx->output_context, &ctx->img);
@@ -648,44 +672,56 @@ static unsigned long WINAPI d3d9_display_thread(void* obj)
         *ctx->sync.cnt = *ctx->sync.cnt + 1;
         PulseEvent(ctx->sync.dst);
 
-        /* draw surfaces*/
-        for(i = 0; i < MAX_DISPLAYS; i++)
+        /* as minimal supported D3DPRESENT_INTERVAL_ONE
+           we should draw n times specified by vsync */
+        if(ctx->vsync)
+            b = ctx->vsync;
+        else
+            b = 1;
+
+        for(j = 0; j < b; j++)
         {
-            if(!ctx->displays.list[i].dev)
-                continue;
 
-            ctx->displays.list[i].th = CreateThread(NULL, 1024, d3d9_display_draw,
-                &ctx->displays.list[i], 0, NULL);
-        };
+            /* draw surfaces*/
+            for(i = 0; i < MAX_DISPLAYS; i++)
+            {
+                if(!ctx->displays.list[i].dev)
+                    continue;
 
-        /* wait drawer finish */
-        for(i = 0; i < MAX_DISPLAYS; i++)
-        {
-            if(!ctx->displays.list[i].th)
-                continue;
+                ctx->displays.list[i].th = CreateThread(NULL, 1024, d3d9_display_draw,
+                    &ctx->displays.list[i], 0, NULL);
+            };
 
-            WaitForSingleObject(ctx->displays.list[i].th, INFINITE);
-            CloseHandle(ctx->displays.list[i].th);
-        };
+            /* wait drawer finish */
+            for(i = 0; i < MAX_DISPLAYS; i++)
+            {
+                if(!ctx->displays.list[i].th)
+                    continue;
 
-        /* swap surfaces*/
-        for(i = 0; i < MAX_DISPLAYS; i++)
-        {
-            if(!ctx->displays.list[i].dev)
-                continue;
+                WaitForSingleObject(ctx->displays.list[i].th, INFINITE);
+                CloseHandle(ctx->displays.list[i].th);
+            };
 
-            ctx->displays.list[i].th = CreateThread(NULL, 1024, d3d9_display_swap,
-                &ctx->displays.list[i], 0, NULL);
-        };
+            /* swap surfaces*/
+            for(i = 0; i < MAX_DISPLAYS; i++)
+            {
+                if(!ctx->displays.list[i].dev)
+                    continue;
 
-        /* wait swapper finish */
-        for(i = 0; i < MAX_DISPLAYS; i++)
-        {
-            if(!ctx->displays.list[i].th)
-                continue;
+                ctx->displays.list[i].th = CreateThread(NULL, 1024, d3d9_display_swap,
+                    &ctx->displays.list[i], 0, NULL);
+            };
 
-            WaitForSingleObject(ctx->displays.list[i].th, INFINITE);
-            CloseHandle(ctx->displays.list[i].th);
+            /* wait swapper finish */
+            for(i = 0; i < MAX_DISPLAYS; i++)
+            {
+                if(!ctx->displays.list[i].th)
+                    continue;
+
+                WaitForSingleObject(ctx->displays.list[i].th, INFINITE);
+                CloseHandle(ctx->displays.list[i].th);
+            };
+
         };
     };
 
@@ -765,7 +801,14 @@ static unsigned long WINAPI d3d9_display_swap(void* obj)
     d3d9_runtime_context_t *ctx = (d3d9_runtime_context_t *)display->ctx;
 
     /* flip */
-    hr = display->dev->Present(NULL, NULL, 0, NULL);
+    do
+    {
+        hr = display->swap->Present(NULL, NULL, NULL, NULL, D3DPRESENT_DONOTWAIT);
+        if(D3DERR_WASSTILLDRAWING == hr)
+            Sleep(1);
+    }
+    while(D3DERR_WASSTILLDRAWING == hr);
+
     if(D3D_OK != hr)
         logger_printf(1, THIS_MODULE_PREF "Present failed: %s", D3DERR(hr));
 
