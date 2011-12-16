@@ -80,6 +80,8 @@ typedef struct d3d9_display_context_desc
     void* ctx;
     int mapping_count;
     d3d9_display_mapping_t mapping_data[MAX_MAPS];
+    int f_alpha;
+    vzImage *img;
 }
 d3d9_display_context_t;
 
@@ -92,7 +94,6 @@ typedef struct d3d9_runtime_context_desc
     HANDLE th;
 
     IDirect3D9* d3d;
-    vzImage img;
 
     struct
     {
@@ -343,6 +344,14 @@ static int d3d9_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
         /* setup displays requests */
         display->f_requested = 1;
         display->adapter_idx = idx;
+
+        /* compose parameter name */
+        sprintf(name, "DISPLAY_%d_ALPHA", i);
+
+        /* request param */
+        v = (char*)vzConfigParam(ctx->config, THIS_MODULE, name);
+        if(v)
+            display->f_alpha = 1;
     };
 
     ctx->d3d = Direct3DCreate9(D3D_SDK_VERSION);
@@ -594,9 +603,12 @@ static unsigned long WINAPI d3d9_display_load(void* obj);
 
 static unsigned long WINAPI d3d9_display_thread(void* obj)
 {
-    int i, h, b, j;
+    int i, h, b, j, a;
     HRESULT hr;
     d3d9_runtime_context_t *ctx = (d3d9_runtime_context_t *)obj;
+
+    vzImage img_origin;
+    vzImage *img_alpha = NULL;
 
     logger_printf(0, THIS_MODULE_PREF "d3d9_display_thread started...");
 
@@ -607,7 +619,7 @@ static unsigned long WINAPI d3d9_display_thread(void* obj)
             WaitForSingleObject(ctx->sync.src, INFINITE);
 
         /* request frame */
-        vzOutputOutGet(ctx->output_context, &ctx->img);
+        vzOutputOutGet(ctx->output_context, &img_origin);
 
         /* create surfaces */
         for(i = 0; i < MAX_DISPLAYS; i++)
@@ -619,7 +631,7 @@ static unsigned long WINAPI d3d9_display_thread(void* obj)
             if(!ctx->displays.list[i].gpu)
             {
                 hr = ctx->displays.list[i].dev->CreateOffscreenPlainSurface(
-                    ctx->img.width, ctx->img.height, D3DFMT_A8R8G8B8,
+                    img_origin.width, img_origin.height, D3DFMT_X8R8G8B8,
                     D3DPOOL_DEFAULT, &ctx->displays.list[i].gpu, NULL);
                 if(D3D_OK != hr)
                 {
@@ -635,7 +647,7 @@ static unsigned long WINAPI d3d9_display_thread(void* obj)
             if(!ctx->displays.list[i].cpu)
             {
                 hr = ctx->displays.list[i].dev->CreateOffscreenPlainSurface(
-                    ctx->img.width, ctx->img.height, D3DFMT_A8R8G8B8,
+                    img_origin.width, img_origin.height, D3DFMT_X8R8G8B8,
                     D3DPOOL_SYSTEMMEM, &ctx->displays.list[i].cpu, NULL);
                 if(D3D_OK != hr)
                 {
@@ -649,10 +661,26 @@ static unsigned long WINAPI d3d9_display_thread(void* obj)
         };
 
         /* load surfaces*/
-        for(i = 0; i < MAX_DISPLAYS; i++)
+        for(a = 0, i = 0; i < MAX_DISPLAYS; i++)
         {
             if(!ctx->displays.list[i].dev)
                 continue;
+
+            if(ctx->displays.list[i].f_alpha)
+            {
+                if(!img_alpha)
+                    vzImageCreate(&img_alpha, img_origin.width, img_origin.height);
+
+                if(!a)
+                {
+                    vzImageConv_BGRA_to_AAAA(&img_origin, img_alpha);
+                    a = 1;
+                };
+
+                ctx->displays.list[i].img = img_alpha;
+            }
+            else
+                ctx->displays.list[i].img = &img_origin;
 
             ctx->displays.list[i].th = CreateThread(NULL, 1024, d3d9_display_load,
                 &ctx->displays.list[i], 0, NULL);
@@ -669,7 +697,7 @@ static unsigned long WINAPI d3d9_display_thread(void* obj)
         };
 
         /* release frame back */
-        vzOutputOutRel(ctx->output_context, &ctx->img);
+        vzOutputOutRel(ctx->output_context, &img_origin);
 
         /* notify main */
         *ctx->sync.cnt = *ctx->sync.cnt + 1;
@@ -728,6 +756,9 @@ static unsigned long WINAPI d3d9_display_thread(void* obj)
         };
     };
 
+    if(img_alpha)
+        vzImageRelease(&img_alpha);
+
     return 0;
 };
 
@@ -746,15 +777,15 @@ static unsigned long WINAPI d3d9_display_load(void* obj)
         logger_printf(1, THIS_MODULE_PREF "pImageBuffer_cpu->LockRect failed: %s", D3DERR(hr));
         return -1;
     };
-    int dst_pitch = rect.Pitch, src_pitch = ctx->img.line_size, cpy_pitch;
+    int dst_pitch = rect.Pitch, src_pitch = display->img->line_size, cpy_pitch;
     unsigned char
         *dst_data = (unsigned char *)rect.pBits,
-        *src_data = (unsigned char *)ctx->img.surface + src_pitch * (ctx->img.height - 1);
+        *src_data = (unsigned char *)display->img->surface + src_pitch * (display->img->height - 1);
     if(dst_pitch > src_pitch)
         cpy_pitch = src_pitch;
     else
         cpy_pitch = dst_pitch;
-    for(h = 0; h < ctx->img.height; h++)
+    for(h = 0; h < display->img->height; h++)
     {
         memcpy(dst_data, src_data, cpy_pitch);
         dst_data += dst_pitch;
