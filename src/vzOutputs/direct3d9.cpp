@@ -56,6 +56,8 @@ static char* UuidToString2(GUID *pguid, char* szGuid)
 #define THIS_MODULE     "direct3d9"
 #define THIS_MODULE_PREF THIS_MODULE ": "
 
+//#define DEBUG_TIMINGS
+
 typedef struct d3d9_display_mapping_desc
 {
     RECT src, dst;
@@ -115,10 +117,12 @@ const char* D3DERR(HRESULT hr)
 {
     switch(hr)
     {
+        case D3D_OK:                    return "OK";
         case D3DERR_DEVICELOST:         return "DEVICELOST";
         case D3DERR_INVALIDCALL:        return "INVALIDCALL";
         case D3DERR_NOTAVAILABLE:       return "NOTAVAILABLE";
         case D3DERR_OUTOFVIDEOMEMORY:   return "OUTOFVIDEOMEMORY";
+        case D3DERR_WASSTILLDRAWING:    return "WASSTILLDRAWING";
     };
 
     return "<unknown>";
@@ -439,16 +443,13 @@ static int d3d9_run(void* pctx)
         /* setup params */
         param.MultiSampleType = D3DMULTISAMPLE_NONE;
         param.MultiSampleQuality = 0;
-        param.BackBufferCount = 2;
+        param.BackBufferCount = 1;
         param.BackBufferWidth = ctx->displays.list[i].mode.Width;
         param.BackBufferHeight = ctx->displays.list[i].mode.Height;
         param.BackBufferFormat = D3DFMT_X8R8G8B8;
         param.FullScreen_RefreshRateInHz = ctx->displays.list[i].mode.RefreshRate;
         param.SwapEffect = D3DSWAPEFFECT_FLIP;
-        if(ctx->vsync)
-            param.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-        else
-            param.PresentationInterval = D3DPRESENT_FORCEIMMEDIATE;
+        param.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
         param.hDeviceWindow = ctx->displays.hwnd;
         ctx->displays.list[i].param = param;
 
@@ -470,7 +471,9 @@ static int d3d9_run(void* pctx)
         else
         {
             c++;
-            ctx->displays.list[i].dev->GetSwapChain(0, &ctx->displays.list[i].swap);
+            hr = ctx->displays.list[i].dev->GetSwapChain(0, &ctx->displays.list[i].swap);
+            if(D3D_OK != hr)
+                logger_printf(1, THIS_MODULE_PREF "failed to GetSwapChain: %s", D3DERR(hr));
         };
     };
 
@@ -774,7 +777,7 @@ static unsigned long WINAPI d3d9_display_draw(void* obj)
     d3d9_runtime_context_t *ctx = (d3d9_runtime_context_t *)display->ctx;
 
     /* request backbuffer */
-    hr = display->dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer);
+    hr = display->swap->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer);
 
     /* clear backbuffer */
     hr = display->dev->ColorFill(pBackBuffer, NULL, D3DCOLOR_RGBA(0, 0, 0, 0));
@@ -800,14 +803,28 @@ static unsigned long WINAPI d3d9_display_swap(void* obj)
     d3d9_display_context_t *display = (d3d9_display_context_t*)obj;
     d3d9_runtime_context_t *ctx = (d3d9_runtime_context_t *)display->ctx;
 
+#ifdef DEBUG_TIMINGS
+    logger_printf(1, THIS_MODULE_PREF "d3d9_display_swap...");
+#endif /* DEBUG_TIMINGS */
+
     /* flip */
-    do
+    for(;;)
     {
+#ifdef DEBUG_TIMINGS
+        logger_printf(1, THIS_MODULE_PREF "presenting...");
+#endif /* DEBUG_TIMINGS */
+
         hr = display->swap->Present(NULL, NULL, NULL, NULL, D3DPRESENT_DONOTWAIT);
-        if(D3DERR_WASSTILLDRAWING == hr)
-            Sleep(1);
-    }
-    while(D3DERR_WASSTILLDRAWING == hr);
+
+#ifdef DEBUG_TIMINGS
+        logger_printf(1, THIS_MODULE_PREF "Present result: %s", D3DERR(hr));
+#endif /* DEBUG_TIMINGS */
+
+        if (D3D_OK == hr || D3DERR_WASSTILLDRAWING != hr)
+            break;
+
+        Sleep(1);
+    };
 
     if(D3D_OK != hr)
         logger_printf(1, THIS_MODULE_PREF "Present failed: %s", D3DERR(hr));
