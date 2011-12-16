@@ -452,6 +452,26 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\vz\vzImageDec_conv_bgra_aaaa_x64.asm"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="MASMx64"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="MASMx64"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="..\vz\vzImageDec_conv_uyvy_bgra_x64.asm"
 				>
 				<FileConfiguration

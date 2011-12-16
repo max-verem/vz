@@ -648,8 +648,14 @@ static void yuv2rgb(float Y, float Cb, float Cr, float *rgb)
 #ifdef _M_X64
 extern "C" void conv_uyvy_bgra(void* src, void* dst, long long rows, long long cols /* pixel count */,
     long long delta_src_pitch, long long delta_dst_pitch);
+extern "C" void conv_bgra_aaaa(void* src, void* dst, long long rows, long long cols /* pixel count */,
+    long long delta_src_pitch, long long delta_dst_pitch);
 #else
 void conv_uyvy_bgra(void* src, void* dst, int rows, int cols /* pixel count */,
+    int delta_src_pitch, int delta_dst_pitch)
+{
+};
+void conv_bgra_aaaa(void* src, void* dst, int rows, int cols /* pixel count */,
     int delta_src_pitch, int delta_dst_pitch)
 {
 };
@@ -679,3 +685,24 @@ VZIMAGE_API int vzImageConv_UYVY_to_BGRA(vzImage* src, vzImage* dst)
     return 0;
 };
 
+VZIMAGE_API int vzImageConv_BGRA_to_AAAA(vzImage* src, vzImage* dst)
+{
+    /* both should be defined */
+    if(!src || !dst)
+        return -EINVAL;
+
+    /* and identical dimention */
+    if(src->pix_fmt != VZIMAGE_PIXFMT_BGRA ||
+        dst->pix_fmt != VZIMAGE_PIXFMT_BGRA ||
+        src->width != dst->width ||
+        src->height != dst->height)
+        return -EINVAL;
+
+    conv_bgra_aaaa
+    (
+        src->surface, dst->surface, src->height, src->width,
+        src->line_size - 4 * src->width, dst->line_size - 4 * dst->width
+    );
+
+    return 0;
+};
