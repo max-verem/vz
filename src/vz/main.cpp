@@ -305,12 +305,13 @@ static int vz_scene_render(int rendered_limit);
 static void vz_scene_display(void);
 static unsigned long WINAPI sync_render(void* data)
 {
+    int l = (int)data;
     DWORD d;
 
     do
     {
         /* render frames */
-        vz_scene_render(4);
+        vz_scene_render(l);
 
         /* notify to redraw bg or direct render screen */
         vz_scene_display();
@@ -1142,6 +1143,7 @@ int main(int argc, char** argv)
 	/* create output window */
 	if(0 == vz_create_window())
 	{
+        int render_limit = 4;
         HANDLE sync_render_handle;
 
         /* create gl lock */
@@ -1168,6 +1170,10 @@ int main(int argc, char** argv)
         if(vzConfigParam(config, "main", "change_root"))
             _chdir(vzConfigParam(config, "main", "change_root"));
 
+        /* change render limit */
+        if(vzConfigParam(config, "main", "render_limit"))
+            render_limit = atol(vzConfigParam(config, "main", "render_limit"));
+
         // check if we need automaticaly load scene
         if(startup_scene_file)
         {
@@ -1181,7 +1187,7 @@ int main(int argc, char** argv)
             NULL,
             1024,
             sync_render,
-            NULL, // params
+            (void*)render_limit,
             0,
             NULL
         );
