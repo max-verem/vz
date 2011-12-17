@@ -1271,12 +1271,13 @@ int main(int argc, char** argv)
 		logger_printf(1, "main: WaitForSingleObject(serserver_handle) finished");
 		CloseHandle(serserver_handle);
 
-		/* stop sync render thread */
-		logger_printf(1, "main: waiting for sync_render_handle...");
-        SetEvent(global_frame_event); CloseHandle(global_frame_event);
-		WaitForSingleObject(sync_render_handle, INFINITE);
-		logger_printf(1, "main: WaitForSingleObject(sync_render_handle) finished");
-		CloseHandle(sync_render_handle);
+        /* stop sync render thread */
+        logger_printf(1, "main: waiting for sync_render_handle...");
+        while(WAIT_TIMEOUT == WaitForSingleObject(sync_render_handle, 100))
+            SetEvent(global_frame_event);
+        CloseHandle(sync_render_handle);
+        CloseHandle(global_frame_event);
+        logger_printf(1, "main: WaitForSingleObject(sync_render_handle) finished");
 
         /* unload layers */
         for(int idx = 0; idx < VZ_MAX_LAYERS; idx++)
