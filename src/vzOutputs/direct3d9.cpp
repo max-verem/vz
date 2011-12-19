@@ -235,7 +235,7 @@ static int d3d9_enum(d3d9_runtime_context_t* ctx)
                 continue;
 
             /* check if our index is here */
-            if(!ctx->displays.list[j].adapter_idx != i)
+            if(ctx->displays.list[j].adapter_idx != i)
                 continue;
 
             /* already occupied */
