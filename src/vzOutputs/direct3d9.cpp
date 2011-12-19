@@ -230,10 +230,6 @@ static int d3d9_enum(d3d9_runtime_context_t* ctx)
         /* check if it requested */
         for(j = 0; j < MAX_DISPLAYS; j++)
         {
-            /* setup self ident */
-            ctx->displays.list[j].ctx = ctx;
-            ctx->displays.list[j].display_idx = j;
-
             /* check if display is requested */
             if(!ctx->displays.list[j].f_requested)
                 continue;
@@ -288,6 +284,13 @@ static int d3d9_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
     ctx->output_context = obj;
     ctx->sync.src = CreateEvent(NULL, TRUE, FALSE, NULL);
     hr_sleep_init(&ctx->timer_data);
+
+    /* setup displays self ident */
+    for(j = 0; j < MAX_DISPLAYS; j++)
+    {
+        ctx->displays.list[j].ctx = ctx;
+        ctx->displays.list[j].display_idx = j;
+    };
 
     /* check if vsync honor */
     v = (char*)vzConfigParam(ctx->config, THIS_MODULE, "VSYNC");
