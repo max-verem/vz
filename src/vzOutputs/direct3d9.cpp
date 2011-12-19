@@ -310,7 +310,7 @@ static int d3d9_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
         idx = atol(v);
 
         /* check for default monitor */
-        if(!v)
+        if(!idx)
         {
             logger_printf(1, THIS_MODULE_PREF "default adapter 0 not allowed");
             continue;
