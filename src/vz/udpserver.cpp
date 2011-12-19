@@ -112,8 +112,8 @@ unsigned long WINAPI udpserver(void* _config)
         r = setsockopt(socket_listen, IPPROTO_IP, IP_ADD_MEMBERSHIP,
               (const char *)&imreq, sizeof(struct ip_mreq));
         if(SOCKET_ERROR == r)
-            logger_printf(1, "udpserver: setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, '%s') failed, r=%d",
-                temp, r);
+            logger_printf(1, "udpserver: setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, '%s') failed, r=%d, WSAGetLastError=%d",
+                temp, r, WSAGetLastError());
     };
 
 	/* initialize buffer */
