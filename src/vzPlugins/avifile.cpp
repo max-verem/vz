@@ -97,7 +97,6 @@ static int _avi_concur_working = 0;
 #endif /* MAX_CONCUR_LOAD */
 
 #define PBO_RING    4
-#define PBO_SLICES  4
 #define _pbo_empty_size (2048 * 2048 * 4) /* 1920x1080 should fit */
 static unsigned int _pbo_empty_buf;
 
@@ -970,10 +969,8 @@ typedef struct
 	float* _ft_vertices;
 	float* _ft_texels;
 
-    unsigned int _pbo[PBO_SLICES * PBO_RING];
+    unsigned int _pbo[PBO_RING];
     unsigned int _pbo_size;
-    unsigned int _pbo_slice_size;
-    unsigned int _pbo_slice_height;
     unsigned int _pbo_ring;
 } vzPluginData;
 
@@ -1027,8 +1024,6 @@ vzPluginData default_value =
 	NULL,					// float* _ft_texels;
     {0},                    // unsigned int _pbo[PBO_SLICES];
     0,                      // unsigned int _pbo_size;
-    0,                      // unsigned int _pbo_slice_height;
-    0,                      // unsigned int _pbo_slice_size;
     0                       // unsigned int _pbo_ring;
 };
 
@@ -1188,7 +1183,7 @@ PLUGIN_EXPORT int release(void* data)
 
     /* delete buffers from non opengl context */
     if(ctx->_pbo_size)
-        glErrorLog(glDeleteBuffers(PBO_SLICES * PBO_RING, ctx->_pbo););
+        glErrorLog(glDeleteBuffers(PBO_RING, ctx->_pbo););
 
     // unlock
     ReleaseMutex(_DATA->_lock_update);
@@ -1268,24 +1263,22 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
         {
             /* delete buffer if needed */
             if(ctx->_pbo_size)
-                glDeleteBuffers(PBO_SLICES * PBO_RING, ctx->_pbo);
+                glDeleteBuffers(PBO_RING, ctx->_pbo);
 
             /* update frame size */
             ctx->_pbo_size = pix_size(_DATA->_loaders[0]->bpp) *
                 _DATA->_loaders[0]->width * _DATA->_loaders[0]->height;
-            ctx->_pbo_slice_height = (_DATA->_loaders[0]->height + PBO_SLICES - 1) / PBO_SLICES;
-            ctx->_pbo_slice_size = pix_size(_DATA->_loaders[0]->bpp) *
-                _DATA->_loaders[0]->width * ctx->_pbo_slice_height;
             ctx->_pbo_ring = 0;
 
             /* generate new buffers */
-            glGenBuffers(PBO_SLICES * PBO_RING, ctx->_pbo);
+            glGenBuffers(PBO_RING, ctx->_pbo);
 
             /* setup buffers size */
-            for(b = 0; b < PBO_SLICES * PBO_RING; b++)
+            for(b = 0; b < PBO_RING; b++)
             {
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[b]);
-                glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_slice_size, 0, GL_DYNAMIC_DRAW);
+                glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo_size,
+                    0, GL_DYNAMIC_DRAW);
             };
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
         };
@@ -1347,46 +1340,33 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
             /* load frame */
             if(!(0.0f == session->f_alpha && ctx->l_loop))  // we ignore loading texture for looped hidden animations
             {
+                void *pbo_ptr, *src_ptr;
+
                 /* use newer ring buffer */
                 ctx->_pbo_ring = (ctx->_pbo_ring + 1) % PBO_RING;
 
+                /* load buffers */
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, ctx->_pbo[ctx->_pbo_ring]);
+                pbo_ptr = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
+                src_ptr = _DATA->_loaders[0]->buf_data[_DATA->_loaders[0]->cursor];
+                if(pbo_ptr && src_ptr)
+                    memcpy(pbo_ptr, src_ptr, ctx->_pbo_size);
+                glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
+
                 /* draw buffers */
-                for(b = 0; b < PBO_SLICES; b++)
-                {
-                    void* pbo_ptr;
-
-                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB,
-                        ctx->_pbo[ctx->_pbo_ring * PBO_RING + b]);
-                    pbo_ptr = glMapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, GL_WRITE_ONLY);
-                    if(pbo_ptr)
-                    {
-                        void* src_slice_ptr = 
-                            (unsigned char*)_DATA->_loaders[0]->buf_data[ _DATA->_loaders[0]->cursor ] +
-                            b * ctx->_pbo_slice_size;
-                        unsigned int src_slice_size =
-                            VZ_MIN(ctx->_pbo_size - b * ctx->_pbo_slice_size, ctx->_pbo_slice_size);
-
-                        memcpy(pbo_ptr, src_slice_ptr, src_slice_size);
-
-                        glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER_ARB);
-                    };
-
-                    glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
-                    glTexSubImage2D
-                    (
-                        GL_TEXTURE_2D,                                      // GLenum target,
-                        0,                                                  // GLint level,
-                        (_DATA->_width - _DATA->_loaders[0]->width)/2,      // GLint xoffset,
-                        (_DATA->_height - _DATA->_loaders[0]->height)/2 +
-                            b * ctx->_pbo_slice_height,                     // GLint yoffset,
-                        _DATA->_loaders[0]->width,                          // GLsizei width,
-                        VZ_MIN(_DATA->_loaders[0]->height - b * ctx->_pbo_slice_height,
-                            ctx->_pbo_slice_height),                        // GLsizei height,
-                        _DATA->_loaders[0]->bpp,                            // GLenum format,
-                        GL_UNSIGNED_BYTE,                                   // GLenum type,
-                        NULL                                                // const GLvoid *pixels 
-                    );
-                };
+                glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+                glTexSubImage2D
+                (
+                    GL_TEXTURE_2D,                                      // GLenum target,
+                    0,                                                  // GLint level,
+                    (_DATA->_width - _DATA->_loaders[0]->width)/2,      // GLint xoffset,
+                    (_DATA->_height - _DATA->_loaders[0]->height)/2,    // GLint yoffset,
+                    _DATA->_loaders[0]->width,                          // GLsizei width,
+                    _DATA->_loaders[0]->height,                         // GLsizei height,
+                    _DATA->_loaders[0]->bpp,                            // GLenum format,
+                    GL_UNSIGNED_BYTE,                                   // GLenum type,
+                    0
+                );
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
             };
 
