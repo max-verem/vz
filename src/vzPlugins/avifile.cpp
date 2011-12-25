@@ -157,6 +157,8 @@ struct aviloader_desc
 	int* buf_fill;
 	int* buf_filled;
     int buf_cnt;                        /* buffers count allocated */
+    int buf_size;
+    int buf_compression;
 	long cursor;
 };
 
@@ -247,8 +249,8 @@ static void imgseqloader_full(struct aviloader_desc* desc,
 
 };
 
-static void aviloader_full(struct aviloader_desc* desc, PGETFRAME pgf,
-    LPBITMAPINFOHEADER frame_info, int frame_size)
+static void aviloader_full_uncompressed(struct aviloader_desc* desc, PGETFRAME pgf,
+    LPBITMAPINFOHEADER frame_info)
 {
     int i, j;
     LPBITMAPINFOHEADER frame;
@@ -266,7 +268,7 @@ static void aviloader_full(struct aviloader_desc* desc, PGETFRAME pgf,
             (
                 desc->buf_data[i],
                 ((unsigned char*)frame) + frame_info->biSize,
-                frame_size
+                desc->buf_size
             );
 
             /* setup flags */
@@ -279,7 +281,7 @@ static void aviloader_full(struct aviloader_desc* desc, PGETFRAME pgf,
             /* inc error counter */
             j++;
 
-            logger_printf(1, "avifile: aviloader_full AVIStreamGetFrame('%s', %d) FAILED",
+            logger_printf(1, "avifile: aviloader_full_uncompressed AVIStreamGetFrame('%s', %d) FAILED",
                 desc->filename, i);
         };
     };
@@ -288,15 +290,54 @@ static void aviloader_full(struct aviloader_desc* desc, PGETFRAME pgf,
     if(!j)
     {
         desc->flag_ready = 1;
-        logger_printf(0, "avifile: aviloader_full loaded %d frames from %s",
+        logger_printf(0, "avifile: aviloader_full_uncompressed loaded %d frames from %s",
+            i, desc->filename);
+    };
+};
+
+static void aviloader_full_compressed(struct aviloader_desc* desc, PAVISTREAM avi_stream)
+{
+    int i, j, r;
+    DWORD ckid = 0;
+
+    for(i = 0, j = 0; i < desc->buf_cnt && !desc->flag_exit && !j; i++)
+    {
+        LONG cbData = desc->buf_size;
+
+        /* load frame */
+        r = AVIStreamRead(avi_stream, i, 1, desc->buf_data[i], desc->buf_size, NULL, NULL);
+
+        /* check if frame loaded */
+        if(!r)
+        {
+            /* setup flags */
+            desc->buf_fill[i] = 0;
+            desc->buf_clear[i] = 0;
+            desc->buf_filled[i] = i + 1;
+        }
+        else
+        {
+            /* inc error counter */
+            j++;
+
+            logger_printf(1, "avifile: aviloader_full_compressed AVIStreamRead('%s', %d) FAILED",
+                desc->filename, i);
+        };
+    };
+
+    /* rise ready flag if all frames loaded */
+    if(!j)
+    {
+        desc->flag_ready = 1;
+        logger_printf(0, "avifile: aviloader_full_compressed loaded %d frames from %s",
             i, desc->filename);
     };
 };
 
 static void aviloader_live(struct aviloader_desc* desc, PGETFRAME pgf,
-    LPBITMAPINFOHEADER frame_info, int frame_size)
+    PAVISTREAM avi_stream, LPBITMAPINFOHEADER frame_info)
 {
-    int i;
+    int i, r;
     LPBITMAPINFOHEADER frame;
 
     /* setup start plan */
@@ -324,17 +365,35 @@ static void aviloader_live(struct aviloader_desc* desc, PGETFRAME pgf,
             int f = desc->buf_frame[i];
             if(f < desc->frames_count) /* frame in range */
             {
-                frame = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pgf, f);
-                if(frame)
+                if(desc->buf_compression)
                 {
-                    /* copy frame data */
-                    memcpy
-                    (
-                        desc->buf_data[i],
-                        ((unsigned char*)frame) + frame_info->biSize,
-                        frame_size
-                    );
-                    /* setup flags */
+                    r = AVIStreamRead(avi_stream, f, 1, desc->buf_data[i], desc->buf_size, NULL, NULL);
+                    if(r)
+                        logger_printf(1, "avifile: aviloader_live AVIStreamRead('%d') == NULL",
+                            desc->buf_frame[i]);
+                }
+                else
+                {
+                    frame = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pgf, f);
+                    if(frame)
+                    {
+                        r = 0;
+
+                        /* copy frame data */
+                        memcpy(((unsigned char*)frame) + frame_info->biSize,
+                            desc->buf_data[i], desc->buf_size);
+                    }
+                    else
+                    {
+                        r = 1;
+                        logger_printf(1, "avifile: aviloader_live AVIStreamGetFrame('%d') == NULL",
+                            desc->buf_frame[i]);
+                    };
+                };
+
+                /* setup flags */
+                if(!r)
+                {
                     desc->buf_fill[i] = 0;
                     desc->buf_clear[i] = 0;
                     desc->buf_filled[i] = f + 1;
@@ -344,8 +403,6 @@ static void aviloader_live(struct aviloader_desc* desc, PGETFRAME pgf,
                 } else {
                     /* setup flags */
                     desc->buf_fill[i] = 0;
-                    logger_printf(1, "avifile: aviloader_live AVIStreamGetFrame('%d') == NULL",
-                        desc->buf_frame[i]);
                 };
 
                 Sleep(0);   /* allow context switch */
@@ -448,6 +505,20 @@ static unsigned long WINAPI aviloader_proc(void* p)
         goto ex1;
     };
 
+    /* check for known compression */
+    if(
+        mmioFOURCC('D','X','T','1') == strhdr->fccHandler ||
+        mmioFOURCC('D','X','T','3') == strhdr->fccHandler ||
+        mmioFOURCC('D','X','T','5') == strhdr->fccHandler ||
+        mmioFOURCC('d','x','t','1') == strhdr->fccHandler ||
+        mmioFOURCC('d','x','t','3') == strhdr->fccHandler ||
+        mmioFOURCC('d','x','t','5') == strhdr->fccHandler
+    )
+    {
+        desc->buf_compression = strhdr->fccHandler;
+        desc->buf_size = strhdr->dwSuggestedBufferSize;
+    };
+
     /* prepares to decompress video frames */
     pgf = AVIStreamGetFrameOpen
     (
@@ -473,16 +544,33 @@ static unsigned long WINAPI aviloader_proc(void* p)
     /* setup width, height, buffer type */
     desc->width = frame_info->biWidth;
     desc->height = frame_info->biHeight;
-    if(32 == frame_info->biBitCount)
-        desc->bpp = GL_BGRA_EXT;
-    else if (24 == frame_info->biBitCount)
-        desc->bpp = GL_BGR;
-    else
+    switch(desc->buf_compression)
     {
-        logger_printf(1, "avifile: aviloader_proc biBitCount=%d NOT SUPPORTED",
-            frame_info->biBitCount);
-        goto ex1;
+        case mmioFOURCC('D','X','T','1'):
+        case mmioFOURCC('d','x','t','1'):
+            desc->bpp = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
+            break;
+        case mmioFOURCC('D','X','T','3'):
+        case mmioFOURCC('d','x','t','3'):
+            desc->bpp = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
+            break;
+        case mmioFOURCC('D','X','T','5'):
+        case mmioFOURCC('d','x','t','5'):
+            desc->bpp = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+            break;
+        default:
+            if(32 == frame_info->biBitCount)
+                desc->bpp = GL_BGRA_EXT;
+            else if (24 == frame_info->biBitCount)
+                desc->bpp = GL_BGR;
+            else
+            {
+                logger_printf(1, "avifile: aviloader_proc biBitCount=%d NOT SUPPORTED",
+                    frame_info->biBitCount);
+                goto ex1;
+            };
     };
+
 
     /* init flags buffers */
     desc->buf_cnt = (desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH;
@@ -504,13 +592,15 @@ static unsigned long WINAPI aviloader_proc(void* p)
         goto ex1;
     };
     memset(desc->buf_data, 0, sizeof(void*) * desc->buf_cnt);
-    int frame_size = frame_info->biWidth * frame_info->biHeight *
+
+    if(!desc->buf_size)
+        desc->buf_size = frame_info->biWidth * frame_info->biHeight *
         (frame_info->biBitCount / 8);
     for(i = 0, j = 0; i < desc->buf_cnt && !j; i++)
     {
-        desc->buf_data[i] = malloc(frame_size);
+        desc->buf_data[i] = malloc(desc->buf_size);
         if(!desc->buf_data[i]) j++;
-        else memset(desc->buf_data[i], 0, frame_size);
+        else memset(desc->buf_data[i], 0, desc->buf_size);
     };
     if(j)
     {
@@ -543,7 +633,12 @@ static unsigned long WINAPI aviloader_proc(void* p)
 
         /* call mem preloader */
         if(!desc->flag_exit)
-            aviloader_full(desc, pgf, frame_info, frame_size);
+        {
+            if(desc->buf_compression)
+                aviloader_full_compressed(desc, avi_stream);
+            else
+                aviloader_full_uncompressed(desc, pgf, frame_info);
+        };
 
 #ifdef MAX_CONCUR_LOAD
         /* update counters */
@@ -569,7 +664,7 @@ static unsigned long WINAPI aviloader_proc(void* p)
     {
         /* call live preloader */
         if(!desc->flag_exit)
-            aviloader_live(desc, pgf, frame_info, frame_size);
+            aviloader_live(desc, pgf, avi_stream, frame_info);
     };
 
 ex1:
@@ -777,12 +872,12 @@ static unsigned long WINAPI imgseqloader_proc(void* p)
         goto ex1;
     };
     memset(desc->buf_data, 0, sizeof(void*) * desc->buf_cnt);
-    int frame_size = image->line_size * image->height;
+    desc->buf_size = image->line_size * image->height;
     for(i = 0, j = 0; i < desc->buf_cnt && !j; i++)
     {
-        desc->buf_data[i] = malloc(frame_size);
+        desc->buf_data[i] = malloc(desc->buf_size);
         if(!desc->buf_data[i]) j++;
-        else memset(desc->buf_data[i], 0, frame_size);
+        else memset(desc->buf_data[i], 0, desc->buf_size);
     };
     if(j)
     {
@@ -811,7 +906,7 @@ static unsigned long WINAPI imgseqloader_proc(void* p)
 
     /* call mem preloader */
     if(!desc->flag_exit)
-        imgseqloader_full(desc, list_data, list_len, image, frame_size);
+        imgseqloader_full(desc, list_data, list_len, image, desc->buf_size);
 
 #ifdef MAX_CONCUR_LOAD
     /* increment counters */
@@ -965,6 +1060,7 @@ typedef struct
 	unsigned int _texture_initialized;
 	long _width;
 	long _height;
+    long _compression;
 
 	float* _ft_vertices;
 	float* _ft_texels;
@@ -1020,6 +1116,7 @@ vzPluginData default_value =
 	0,						// unsigned int _texture_initialized;
 	0,						// long _width;
 	0,						// long _height;
+    0,                      // long compression;
 	NULL,					// float* _ft_vertices;
 	NULL,					// float* _ft_texels;
     {0},                    // unsigned int _pbo[PBO_SLICES];
@@ -1223,23 +1320,6 @@ PLUGIN_EXPORT void destructor(void* data)
 	free(data);
 };
 
-inline unsigned int pix_size(int t)
-{
-    switch(t)
-    {
-        case GL_BGR:
-        case GL_RGB:
-            return 3;
-        case GL_BGRA_EXT:
-        case GL_RGBA:
-            return 4;
-        case GL_LUMINANCE:
-            return 1;
-    };
-
-    return 0;
-};
-
 PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 {
 	unsigned long r;
@@ -1258,16 +1338,14 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 	)
 	{
         /* recreare PBO if needs */
-        if(ctx->_pbo_size != pix_size(_DATA->_loaders[0]->bpp) *
-            _DATA->_loaders[0]->width * _DATA->_loaders[0]->height)
+        if(ctx->_pbo_size != ctx->_loaders[0]->buf_size)
         {
             /* delete buffer if needed */
             if(ctx->_pbo_size)
                 glDeleteBuffers(PBO_RING, ctx->_pbo);
 
             /* update frame size */
-            ctx->_pbo_size = pix_size(_DATA->_loaders[0]->bpp) *
-                _DATA->_loaders[0]->width * _DATA->_loaders[0]->height;
+            ctx->_pbo_size = _DATA->_loaders[0]->buf_size;
             ctx->_pbo_ring = 0;
 
             /* generate new buffers */
@@ -1289,6 +1367,8 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			(_DATA->_width != POT(_DATA->_loaders[0]->width))
 			||
 			(_DATA->_height != POT(_DATA->_loaders[0]->height))
+            ||
+            (ctx->_compression != ctx->_loaders[0]->buf_compression)
 		)
 		{
 			/* texture should be (re)initialized */
@@ -1302,23 +1382,41 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 			/* set flags */
 			_DATA->_width = POT(_DATA->_loaders[0]->width);
 			_DATA->_height = POT(_DATA->_loaders[0]->height);
+            ctx->_compression = ctx->_loaders[0]->buf_compression;
 			_DATA->_texture_initialized = 1;
 
 			/* create texture (init texture memory) */
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, _pbo_empty_buf);
-			glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
-			glTexImage2D
-			(
-				GL_TEXTURE_2D,			// GLenum target,
-				0,						// GLint level,
-                GL_RGBA8,               // GLint components,
-				_DATA->_width,			// GLsizei width, 
-				_DATA->_height,			// GLsizei height, 
-				0,						// GLint border,
-				GL_BGRA_EXT,			// GLenum format,
-				GL_UNSIGNED_BYTE,		// GLenum type,
-                NULL                    // const GLvoid *pixels
-			);
+            glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
+            if(!ctx->_compression)
+            {
+                glTexImage2D
+                (
+                    GL_TEXTURE_2D,          // GLenum target,
+                    0,                      // GLint level,
+                    GL_RGBA8,               // GLint components,
+                    ctx->_width,            // GLsizei width, 
+                    ctx->_height,           // GLsizei height, 
+                    0,                      // GLint border,
+                    GL_BGRA_EXT,            // GLenum format,
+                    GL_UNSIGNED_BYTE,       // GLenum type,
+                    NULL                    // const GLvoid *pixels
+                );
+            }
+            else
+            {
+                glErrorLogD(glCompressedTexImage2D
+                (
+                    GL_TEXTURE_2D,          // GLenum target,
+                    0,                      // GLint level,
+                    ctx->_loaders[0]->bpp,  // GLenum  internalformat,
+                    ctx->_width,            // GLsizei width, 
+                    ctx->_height,           // GLsizei height, 
+                    0,                      // GLint border,
+                    ctx->_width * ctx->_height, // GLsizei  imageSize
+                    NULL                    // const GLvoid *pixels
+                ));
+            };
 			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
@@ -1355,18 +1453,38 @@ PLUGIN_EXPORT void prerender(void* data,vzRenderSession* session)
 
                 /* draw buffers */
                 glBindTexture(GL_TEXTURE_2D, _DATA->_texture);
-                glTexSubImage2D
-                (
-                    GL_TEXTURE_2D,                                      // GLenum target,
-                    0,                                                  // GLint level,
-                    (_DATA->_width - _DATA->_loaders[0]->width)/2,      // GLint xoffset,
-                    (_DATA->_height - _DATA->_loaders[0]->height)/2,    // GLint yoffset,
-                    _DATA->_loaders[0]->width,                          // GLsizei width,
-                    _DATA->_loaders[0]->height,                         // GLsizei height,
-                    _DATA->_loaders[0]->bpp,                            // GLenum format,
-                    GL_UNSIGNED_BYTE,                                   // GLenum type,
-                    0
-                );
+                GLint xoffset = (ctx->_width - ctx->_loaders[0]->width)/2;
+                GLint yoffset = (ctx->_height - ctx->_loaders[0]->height)/2;
+                if(!ctx->_loaders[0]->buf_compression)
+                {
+                    glErrorLogD(glTexSubImage2D
+                    (
+                        GL_TEXTURE_2D,                                      // GLenum target,
+                        0,                                                  // GLint level,
+                        xoffset,                                            // GLint xoffset,
+                        yoffset,                                            // GLint yoffset,
+                        ctx->_loaders[0]->width,                            // GLsizei width,
+                        ctx->_loaders[0]->height,                           // GLsizei height,
+                        ctx->_loaders[0]->bpp,                              // GLenum format,
+                        GL_UNSIGNED_BYTE,                                   // GLenum type,
+                        0
+                    ));
+                }
+                else
+                {
+                    glErrorLogD(glCompressedTexSubImage2D
+                    (
+                        GL_TEXTURE_2D,                                      // GLenum target,
+                        0,                                                  // GLint level,
+                        (xoffset >> 2) << 2,                                // GLint xoffset,
+                        (yoffset >> 2) << 2,                                // GLint yoffset,
+                        ctx->_loaders[0]->width,                            // GLsizei width,
+                        ctx->_loaders[0]->height,                           // GLsizei height,
+                        ctx->_loaders[0]->bpp,                              // GLenum format,
+                        ctx->_pbo_size,
+                        0
+                    ));
+                };
                 glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
             };
 
