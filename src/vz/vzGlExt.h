@@ -227,6 +227,15 @@ http://oss.sgi.com/projects/ogl-sample/ABI/glext.h
 #define GL_CURRENT_PROGRAM                      0x8B8D
 #endif /* GL_VERTEX_SHADER */
 
+#ifndef GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+#define GL_COMPRESSED_RGB_S3TC_DXT1_EXT         0x83F0
+#define GL_COMPRESSED_RGBA_S3TC_DXT1_EXT        0x83F1
+#define GL_COMPRESSED_RGBA_S3TC_DXT3_EXT        0x83F2
+#define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT        0x83F3
+#define GL_NUM_COMPRESSED_TEXTURE_FORMATS       0x86A2
+#define GL_COMPRESSED_TEXTURE_FORMATS           0x86A3
+#endif /* GL_COMPRESSED_RGBA_S3TC_DXT5_EXT */
+
 typedef char GLchar;
 
 /* extensions functions types */
@@ -286,6 +295,8 @@ extern VZGLEXT_API void (WINAPI *glUniform3i)(GLint location, GLint v0, GLint v1
 extern VZGLEXT_API void (WINAPI *glUniform4i)(GLint location, GLint v0, GLint v1, GLint v2, GLint v3);
 extern VZGLEXT_API void (WINAPI *glActiveTexture)(GLenum texture);
 extern VZGLEXT_API void (WINAPI *glClientActiveTexture)(GLenum texture);
+extern VZGLEXT_API void (WINAPI *glCompressedTexImage2D)(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid * data);
+extern VZGLEXT_API void (WINAPI *glCompressedTexSubImage2D)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const GLvoid * data);
 extern VZGLEXT_API int  glExtInitDone;
 
 /* init function */

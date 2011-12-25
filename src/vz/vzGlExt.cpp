@@ -147,6 +147,9 @@ static void* _gl_extensions_list[][4] =
     {"ARB_multitexture", NULL, "glActiveTexture", &glActiveTexture},
     {"ARB_multitexture", NULL, "glClientActiveTexture", &glClientActiveTexture},
 
+    {"ARB_texture_compression", NULL, "glCompressedTexImage2D", &glCompressedTexImage2D},
+    {"ARB_texture_compression", NULL, "glCompressedTexSubImage2D", &glCompressedTexSubImage2D},
+
 	/* stop list */
 	{NULL,NULL,NULL}
 };
@@ -208,6 +211,8 @@ VZGLEXT_API void (WINAPI *glUniform3i)(GLint location, GLint v0, GLint v1, GLint
 VZGLEXT_API void (WINAPI *glUniform4i)(GLint location, GLint v0, GLint v1, GLint v2, GLint v3) = NULL;
 VZGLEXT_API void (WINAPI *glActiveTexture)(GLenum texture);
 VZGLEXT_API void (WINAPI *glClientActiveTexture)(GLenum texture);
+VZGLEXT_API void (WINAPI *glCompressedTexImage2D)(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid * data) = NULL;
+VZGLEXT_API void (WINAPI *glCompressedTexSubImage2D)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const GLvoid * data) = NULL;
 VZGLEXT_API int  glExtInitDone = 0;;
 
 // function
