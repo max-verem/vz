@@ -65,7 +65,7 @@ VZMAIN_API void vzMainSceneDisplay(void* scene, long frame, long renders_count =
 VZMAIN_API void vzMainSceneInit(void* scene);
 VZMAIN_API void vzMainSceneRelease(void* scene);
 VZMAIN_API void vzContainerFunctionRender(void* scene, char* function, void* session);
-
+VZMAIN_API void* vzContainerFunctionData(void* scene, char* function);
 
 // config interface
 VZMAIN_API void* vzConfigOpen(char* filename);

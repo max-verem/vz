@@ -445,3 +445,15 @@ VZMAIN_API void vzContainerFunctionRender(void* scene, char* function, void* ses
     f->render((vzRenderSession *)session);
 };
 
+VZMAIN_API void* vzContainerFunctionData(void* scene, char* function)
+{
+    vzContainerFunction* f;
+
+    f = ((vzScene*)scene)->find_function(function);
+
+    if(f)
+        return f->get_data();
+
+    return NULL;
+};
+

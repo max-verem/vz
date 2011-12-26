@@ -95,6 +95,8 @@ public:
 
     inline void release()
     { if (_function) _function->release(_data);};
+
+    inline void* get_data() {return _data;};
 };
 
 #endif
