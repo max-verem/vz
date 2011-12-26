@@ -93,6 +93,9 @@ PLUGIN_EXPORT void render(void* data, vzRenderSession* session)
     if(!ctx || !ctx->s_master)
         return;
 
+    if((void*)ctx == vzContainerFunctionData(ctx->_scene, ctx->s_master))
+        return;
+
     vzContainerFunctionRender(ctx->_scene, ctx->s_master, session);
 };
 
