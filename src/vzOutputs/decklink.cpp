@@ -63,6 +63,7 @@ static const int bmd_modes_id[] =
     bmdMode2k2398,
     bmdMode2k24,
     bmdMode2k25,
+    bmdModeHD1080i50,
     0
 };
 
@@ -88,6 +89,7 @@ static const char* bmd_modes_name[] =
     "2k2398",
     "2k24",
     "2k25",
+    "HD1080i25",
     0
 };
 
