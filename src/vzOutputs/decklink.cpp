@@ -63,7 +63,6 @@ static const int bmd_modes_id[] =
     bmdMode2k2398,
     bmdMode2k24,
     bmdMode2k25,
-    bmdModeHD1080i50,
     0
 };
 
@@ -89,7 +88,6 @@ static const char* bmd_modes_name[] =
     "2k2398",
     "2k24",
     "2k25",
-    "HD1080i25",
     0
 };
 
@@ -416,7 +414,7 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
                 else if(!_stricmp("480i", ctx->tv->NAME)) displayMode = bmdModeNTSC;
                 else if(!_stricmp("480p", ctx->tv->NAME)) displayMode = bmdModeNTSC;
                 else if(!_stricmp("720p50", ctx->tv->NAME)) displayMode = bmdModeHD720p50;
-                else if(!_stricmp("1080i25", ctx->tv->NAME)) displayMode = bmdModeHD1080p25;
+                else if(!_stricmp("1080i25", ctx->tv->NAME)) displayMode = bmdModeHD1080i50;
                 else if(!_stricmp("1080p25", ctx->tv->NAME)) displayMode = bmdModeHD1080p25;
                 else if(!_stricmp("1080p50", ctx->tv->NAME)) displayMode = bmdModeHD1080p50;
                 ctx->output.io->DoesSupportVideoMode(displayMode, bmdFormat8BitYUV,
