@@ -1048,6 +1048,7 @@ static void vz_window_event_loop()
 
 int main(int argc, char** argv)
 {
+    char* buf;
     char *output_context_name;
 
 #ifdef _DEBUG
@@ -1167,8 +1168,12 @@ int main(int argc, char** argv)
         vz_window_unlockgl(&vz_window_desc);
 
         /* change working directory */
-        if(vzConfigParam(config, "main", "change_root"))
-            _chdir(vzConfigParam(config, "main", "change_root"));
+        buf = vzConfigParam(config, "main", "change_root");
+        if(buf)
+        {
+            _chdir(buf);
+            logger_printf(0, "main: dir changed to [%s]", buf);
+        };
 
         /* change render limit */
         if(vzConfigParam(config, "main", "render_limit"))
