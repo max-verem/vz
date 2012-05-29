@@ -139,9 +139,6 @@ static unsigned long WINAPI logger_queue_proc(void* desc_)
 		Sleep(100);
 	};
 
-	/* ensure all messages sent */
-	process_queue();
-
 	ExitThread(0);
 
 	return 0;
@@ -160,9 +157,6 @@ VZLOGGER_API int logger_setup(char* log_file, int rotate_interval, int dup_to_st
 VZLOGGER_API int logger_release()
 {
 	int i, r;
-
-    if(log_file_handle)
-        fclose(log_file_handle);
 
     /* check if initialized */
     if
@@ -183,6 +177,13 @@ VZLOGGER_API int logger_release()
     if(0 != r)
         return -2;
     CloseHandle(th_h);
+
+    /* ensure all messages sent */
+    process_queue();
+
+    if(log_file_handle)
+        fclose(log_file_handle);
+
 	/* destroy mutex */
 	CloseHandle(lock);
 	/* destroy queue and messages */
