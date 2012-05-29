@@ -138,6 +138,7 @@ typedef struct
     HWND wnd;
     HGLRC glrc;
     HANDLE lock;
+    int vsync_swap;
 } vz_window_t;
 
 static vz_window_t vz_window_desc;
@@ -688,8 +689,10 @@ static void vz_scene_display(void)
 
 	};
 
-	// and swap buffers
-	glFlush();
+    // and swap buffers
+    glFlush();
+    if(vz_window_desc.vsync_swap)
+        SwapBuffers(vz_window_desc.hdc);
 
     /* unbind conext */
     vz_window_unlockgl(&vz_window_desc);
@@ -845,9 +848,6 @@ static int vz_destroy_window()
 
 static int vz_create_window()
 {
-	/* clear window desc struct */
-	memset(&vz_window_desc, 0, sizeof(vz_window_desc));
-
 	/* setup module instance */
 	vz_window_desc.instance = GetModuleHandle(NULL);
 
@@ -931,6 +931,9 @@ static int vz_create_window()
     pfd.dwFlags = 
         PFD_DRAW_TO_WINDOW |						// Buffer supports drawing to window
         PFD_SUPPORT_OPENGL;                         // Buffer supports OpenGL drawing
+    if(vz_window_desc.vsync_swap)
+        pfd.dwFlags |= PFD_DOUBLEBUFFER;            // Supports double buffering
+
 	pfd.dwLayerMask  = PFD_MAIN_PLANE;				// We want the standard mask (this is ignored anyway)
 	pfd.iPixelType   = PFD_TYPE_RGBA;				// RGBA color format
 	pfd.cColorBits   = 32;							// OpenGL color depth
@@ -1140,6 +1143,13 @@ int main(int argc, char** argv)
     logger_printf(0, "Loading output modules '%s'...", output_context_name);
     vzOutputNew(&output_context, config, output_context_name, &tv);
     vzOutputGlobalContextSet(output_context);
+
+    /* clear window desc struct */
+    memset(&vz_window_desc, 0, sizeof(vz_window_desc));
+
+    /* setup some specific parameters */
+    if(vzConfigParam(config, "main", "vsync_swap"))
+        vz_window_desc.vsync_swap = 1;
 
 	/* create output window */
 	if(0 == vz_create_window())
