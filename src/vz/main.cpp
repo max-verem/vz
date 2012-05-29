@@ -1109,9 +1109,9 @@ int main(int argc, char** argv)
 			parse_args = 0;
 	};
 
-	/* setup logger */
-	logger_init();
-	logger_setup("vz.log", 3600*24, 0);
+    /* setup logger */
+    logger_setup("vz.log", 3600*24, 0);
+    logger_init();
 
 	/* hello message */
 	logger_printf(0, "%s (vz-%s) [controller]",VZ_TITLE, VZ_VERSION);

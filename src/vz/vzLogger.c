@@ -24,6 +24,7 @@ static time_t rot_last = 0;		/**< last log file rotation process */
 static time_t rot_period = 24*3600;
 static int dup_to_stderr = 1;
 static char log_file_name[MAX_PATH] = "";
+static FILE* log_file_handle = NULL;
 
 static char* fetch_msg()
 {
@@ -62,58 +63,58 @@ static char* fetch_msg()
 	return buf;
 };
 
+static void log_file_open(void)
+{
+    static char *templ = "-%Y%m%d_%H%M%S";
+    char* file_name = NULL;
+    time_t ltime;
+    struct tm *rtime;
+
+    /* check if filename is defined */
+    if(0 == log_file_name[0])
+        return;
+
+    /* check if log file should be rotated */
+    time( &ltime );
+
+    /* allocate file name */
+    file_name = (char*)malloc(MAX_PATH + 1);
+
+    /* compose file name */
+    strncpy(file_name, log_file_name, MAX_PATH);
+
+    /* append date to filename */
+    rtime = localtime( &ltime );
+    strftime
+    (
+        file_name + strlen(file_name),
+        MAX_PATH - strlen(file_name),
+        templ,
+        rtime
+    );  /* append time */
+
+    /* rename */
+    MoveFile(log_file_name, file_name);
+
+    /* free file name */
+    free(file_name);
+
+    /* open file for writing */
+    log_file_handle = fopen(log_file_name, "wt");
+};
+
 static void output_msg(char* buf)
 {
-	static char *templ = "-%Y%m%d_%H%M%S";
-	char* file_name = NULL;
-	time_t ltime;
-	struct tm *rtime;
-	FILE* f;
+    /* output to console */
+    if(dup_to_stderr)
+        fprintf(stderr, buf);
 
-	/* output to console */
-	if(0 != dup_to_stderr)
-		fprintf(stderr, buf);
-
-	/* check if filename is defined */
-	if(0 == log_file_name[0])
-		return;
-
-	/* check if log file should be rotated */
-	time( &ltime );
-	if(rot_last + rot_period < ltime)
-	{
-		/* allocate file name */
-		file_name = (char*)malloc(MAX_PATH + 1);
-
-		/* compose file name */
-		strncpy(file_name, log_file_name, MAX_PATH);
-
-		/* append date to filename */
-		rtime = localtime( &ltime );
-		strftime
-		(
-			file_name + strlen(file_name), 
-			MAX_PATH - strlen(file_name),
-			templ , 
-			rtime 
-		);	/* append time */
-
-		/* rename */
-		MoveFile(log_file_name, file_name);
-
-		/* free file name */
-		free(file_name);
-
-		/* assign new time */
-		rot_last = ltime;
-	};
-
-	/* try to create or append file */
-	if(NULL != (f = fopen(log_file_name, "a")))
-	{
-		fprintf(f, buf);
-		fclose(f);
-	};
+    /* output to file */
+    if(log_file_handle)
+    {
+        fprintf(log_file_handle, buf);
+        fflush(log_file_handle);
+    };
 };
 
 static void process_queue()
@@ -159,6 +160,10 @@ VZLOGGER_API int logger_setup(char* log_file, int rotate_interval, int dup_to_st
 VZLOGGER_API int logger_release()
 {
 	int i, r;
+
+    if(log_file_handle)
+        fclose(log_file_handle);
+
     /* check if initialized */
     if
     (
@@ -198,6 +203,8 @@ VZLOGGER_API int logger_init()
     msg_q_tail = 0;
     msg_q_list = (char**)malloc(sizeof(char*) * (MAX_MSG_CNT + 1));
     memset(msg_q_list, 0, sizeof(char*) * (MAX_MSG_CNT + 1));
+
+    log_file_open();
 
     /* create thread */
     th_h = CreateThread
