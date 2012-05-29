@@ -1147,6 +1147,9 @@ int main(int argc, char** argv)
     /* clear window desc struct */
     memset(&vz_window_desc, 0, sizeof(vz_window_desc));
 
+    /* create gl lock */
+    vz_window_desc.lock = CreateMutex(NULL,FALSE,NULL);
+
     /* setup some specific parameters */
     if(vzConfigParam(config, "main", "vsync_swap"))
         vz_window_desc.vsync_swap = 1;
@@ -1156,9 +1159,6 @@ int main(int argc, char** argv)
 	{
         int render_limit = 4;
         HANDLE sync_render_handle;
-
-        /* create gl lock */
-        vz_window_desc.lock = CreateMutex(NULL,FALSE,NULL);
 
         /* init layers lock */
         layers_lock = CreateMutex(NULL,FALSE,NULL);
@@ -1322,8 +1322,9 @@ int main(int argc, char** argv)
 
 		/* close mutexes */
         CloseHandle(layers_lock);
-		CloseHandle(vz_window_desc.lock);
 	};
+
+    CloseHandle(vz_window_desc.lock);
 
     // release output
     logger_printf(1, "main: waiting for vzOutputRelease(output_context)...");
