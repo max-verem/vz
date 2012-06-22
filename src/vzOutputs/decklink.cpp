@@ -115,7 +115,7 @@ typedef struct decklink_runtime_context_desc
         IDeckLinkOutput* io;
         IDeckLinkKeyer* keyer;
         decklink_output_class* cb;
-        BMDDisplayMode mode;
+        IDeckLinkDisplayMode* mode;
         BMDTimeValue dur;
         BMDTimeScale ts;
         IDeckLinkMutableVideoFrame* blank_frame;
@@ -417,32 +417,41 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
                 else if(!_stricmp("1080i25", ctx->tv->NAME)) displayMode = bmdModeHD1080i50;
                 else if(!_stricmp("1080p25", ctx->tv->NAME)) displayMode = bmdModeHD1080p25;
                 else if(!_stricmp("1080p50", ctx->tv->NAME)) displayMode = bmdModeHD1080p50;
-                ctx->output.io->DoesSupportVideoMode(displayMode, bmdFormat8BitYUV,
-                    bmdVideoOutputFlagDefault, &displayModeSupport, NULL);
-                if(bmdDisplayModeSupported != displayModeSupport)
+                ctx->output.io->DoesSupportVideoMode(displayMode, (BMDPixelFormat)0 /*bmdFormat8BitBGRA*/,
+                    bmdVideoOutputFlagDefault, &displayModeSupport, &ctx->output.mode);
+                if(bmdDisplayModeNotSupported == displayModeSupport)
                 {
                     logger_printf(1, THIS_MODULE_PREF "board[%d]: do not support [%s] mode",
                         i, ctx->tv->NAME);
                     SAFE_RELEASE(ctx->output.io);
+                    SAFE_RELEASE(ctx->output.mode);
                 }
                 else
                 {
+                    /* notify about non-native support */
+                    if(bmdDisplayModeSupported == bmdDisplayModeSupportedWithConversion)
+                        logger_printf(1, THIS_MODULE_PREF "board[%d]: support [%s] mode with converion",
+                            i, ctx->tv->NAME);
+
                     /* setup output datas */
-                    ctx->output.mode = displayMode;
                     ctx->output.board = deckLinks[i];
                     deckLinks[i] = NULL;
 
                     /* request keyer */
-                    ctx->output.board->QueryInterface(IID_IDeckLinkKeyer,
+                    hr = ctx->output.board->QueryInterface(IID_IDeckLinkKeyer,
                         (void**)&ctx->output.keyer);
+                    if(S_OK != hr)
+                        logger_printf(1, THIS_MODULE_PREF "board[%d]: QueryInterface failed IID_IDeckLinkKeyer", i);
 
                     /* create blank frame */
-                    ctx->output.io->CreateVideoFrame(
+                    hr = ctx->output.io->CreateVideoFrame(
                         ctx->tv->TV_FRAME_WIDTH,
                         ctx->tv->TV_FRAME_HEIGHT,
                         ctx->tv->TV_FRAME_WIDTH * 4,
                         bmdFormat8BitBGRA, bmdFrameFlagFlipVertical,
                         &ctx->output.blank_frame);
+                    if(S_OK != hr)
+                        logger_printf(1, THIS_MODULE_PREF "board[%d]: CreateVideoFrame failed", i);
                 };
             };
         };
@@ -648,25 +657,12 @@ static int decklink_run(void* pctx)
     /* run output */
     if(ctx->output.sync_event)
     {
-        IDeckLinkDisplayMode* mode;
-        IDeckLinkDisplayModeIterator* iter;
-
         /* assign callback */
         ctx->output.cb = new decklink_output_class(ctx);
         ctx->output.io->SetScheduledFrameCompletionCallback(ctx->output.cb);
 
         /* find mode timings */
-        ctx->output.io->GetDisplayModeIterator(&iter);
-        while(iter->Next(&mode) == S_OK)
-        {
-            if(mode->GetDisplayMode() != ctx->output.mode)
-                continue;
-
-            mode->GetFrameRate(&ctx->output.dur, &ctx->output.ts);
-
-            break;
-        };
-        SAFE_RELEASE(iter);
+        ctx->output.mode->GetFrameRate(&ctx->output.dur, &ctx->output.ts);
         if(!ctx->output.dur)
         {
             logger_printf(1, THIS_MODULE_PREF "failed to find output mode timings");
@@ -674,10 +670,25 @@ static int decklink_run(void* pctx)
         };
 
         /* enable video output */
-        if(S_OK != ctx->output.io->EnableVideoOutput(ctx->output.mode, bmdVideoOutputFlagDefault))
+        if(S_OK != ctx->output.io->EnableVideoOutput(ctx->output.mode->GetDisplayMode(), bmdVideoOutputFlagDefault))
         {
             logger_printf(1, THIS_MODULE_PREF "EnableVideoOutput FAILED");
             return -EINVAL;
+        }
+        else
+        {
+            char* nc;
+            BSTR nb;
+
+            ctx->output.mode->GetName(&nb);
+            nc = _com_util::ConvertBSTRToString(nb);
+
+            logger_printf(0, THIS_MODULE_PREF "EnableVideoOutput: %s, %dx%d@[%lld/%lld]",
+                nc, ctx->output.mode->GetWidth(), ctx->output.mode->GetHeight(),
+                ctx->output.dur, ctx->output.ts);
+
+            SysFreeString(nb);
+            delete[] nc;
         };
 
         /* send a preroll frames */
@@ -685,7 +696,9 @@ static int decklink_run(void* pctx)
             decklink_ScheduleNextFrame2(ctx);
 
         /* start sheduled playback */
-        ctx->output.io->StartScheduledPlayback( 0, ctx->output.ts, 1.0 );
+        hr = ctx->output.io->StartScheduledPlayback(0, ctx->output.ts, 1.0);
+        if(S_OK != hr)
+            logger_printf(1, THIS_MODULE_PREF "StartScheduledPlayback failed");
     };
 
     /* setup inputs */
