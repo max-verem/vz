@@ -348,6 +348,36 @@ static struct _vzTVSpec _known_tv_modes[] =
         NULL        /** safe area markers */
     },
 
+    {
+        "720p60",   /** NAME                    */
+        720,        /** TV_FRAME_HEIGHT         */
+        1280,       /** TV_FRAME_WIDTH          */
+        0,          /** TV_FRAME_INTERLACED     */
+        0,          /** TV_FRAME_1ST            */
+        60,         /** TV_FRAME_PS_NOM         */
+        1,          /** TV_FRAME_PS_DEN         */
+        16,         /** TV_FRAME_DAR_H          */
+        9,          /** TV_FRAME_DAR_V          */
+        1,          /** TV_FRAME_PAR_H          */
+        1,          /** TV_FRAME_PAR_V          */
+        NULL        /** safe area markers */
+    },
+
+    {
+        "720p5994",   /** NAME                    */
+        720,        /** TV_FRAME_HEIGHT         */
+        1280,       /** TV_FRAME_WIDTH          */
+        0,          /** TV_FRAME_INTERLACED     */
+        0,          /** TV_FRAME_1ST            */
+        60000,      /** TV_FRAME_PS_NOM         */
+        1001,       /** TV_FRAME_PS_DEN         */
+        16,         /** TV_FRAME_DAR_H          */
+        9,          /** TV_FRAME_DAR_V          */
+        1,          /** TV_FRAME_PAR_H          */
+        1,          /** TV_FRAME_PAR_V          */
+        NULL        /** safe area markers */
+    },
+
 	/* list terminator */
 	{
 		NULL
