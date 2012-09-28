@@ -417,6 +417,9 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
                 else if(!_stricmp("1080i25", ctx->tv->NAME)) displayMode = bmdModeHD1080i50;
                 else if(!_stricmp("1080p25", ctx->tv->NAME)) displayMode = bmdModeHD1080p25;
                 else if(!_stricmp("1080p50", ctx->tv->NAME)) displayMode = bmdModeHD1080p50;
+                else if(!_stricmp("1080i6000", ctx->tv->NAME)) displayMode = bmdModeHD1080i6000;
+                else if(!_stricmp("1080i5994", ctx->tv->NAME)) displayMode = bmdModeHD1080i5994;
+
                 ctx->output.io->DoesSupportVideoMode(displayMode, (BMDPixelFormat)0 /*bmdFormat8BitBGRA*/,
                     bmdVideoOutputFlagDefault, &displayModeSupport, &ctx->output.mode);
                 if(bmdDisplayModeNotSupported == displayModeSupport)
