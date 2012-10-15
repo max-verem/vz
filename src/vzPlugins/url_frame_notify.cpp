@@ -217,13 +217,16 @@ PLUGIN_EXPORT void render(void* data, vzRenderSession* session)
 
     /* check if url template is live */
     if(!ctx->s_url || !ctx->s_url[0])
-        return;
+    {
+        /* reset counter value */
+        ctx->_last_frame = 0;
+        ctx->_last_url = 0;
 
-    /* increment field counter */
-    ctx->_last_frame++;
+        return;
+    };
 
     /* check if we need get URL */
-    if(ctx->_last_frame > ctx->_last_url)
+    if(!ctx->_last_frame || ctx->_last_frame > ctx->_last_url)
     {
         int r;
 
@@ -248,6 +251,9 @@ PLUGIN_EXPORT void render(void* data, vzRenderSession* session)
             ctx->_last_url = ctx->_last_frame + ctx->l_delay;
         };
     };
+
+    /* increment field counter */
+    ctx->_last_frame++;
 };
 
 PLUGIN_EXPORT void notify(void* data, char* param_name)
