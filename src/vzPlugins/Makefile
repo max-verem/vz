@@ -88,10 +88,10 @@ LINKER		= /incremental:no $(LINKER_FLAGS)
 
 # created modules
 TARGET = "$(OBJS_DIR)" "$(INSTALL_DIR)"		\
+	url_frame_notify.dll			\
 	clone_render.dll			\
 	colorize.dll				\
 	fillarc.dll				\
-	url_frame_notify.dll			\
 	text_seq.dll				\
 	ctrl_director.dll			\
 	trajectory_live.dll			\

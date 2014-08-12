@@ -334,6 +334,112 @@ static void aviloader_full_compressed(struct aviloader_desc* desc, PAVISTREAM av
     };
 };
 
+static void imgseqloader_live(struct aviloader_desc* desc,
+    char** list_data, int list_len,
+    vzImage* ref, int frame_size)
+{
+    vzImage* image;
+    int i, r, j = 0, f;
+
+    /* setup start plan */
+    for(i = 0; i < desc->buf_cnt && i < desc->frames_count && !desc->flag_exit; i++)
+    {
+        desc->buf_frame[i] = i;
+        desc->buf_fill[i] = 1;
+        desc->buf_clear[i] = 1;
+    };
+
+    /* "endless" loop */
+    while(!desc->flag_exit)
+    {
+        /* check if frames should be loaded */
+        for(i = 0; i < desc->buf_cnt && i < desc->frames_count && !desc->flag_exit; i++)
+        {
+            if
+            (!(
+                (1 == desc->buf_clear[i])       /* frame is clear */
+                &&                              /* and */
+                (1 == desc->buf_fill[i])        /* should be loaded */
+            ))
+                continue;
+
+            f = desc->buf_frame[i];
+
+            if(f < desc->frames_count) /* frame in range */
+            {
+                /* load image */
+                r = vzImageLoad(&image, list_data[f]);
+logger_printf(1, "imgseqloader_live: f=%d, vzImageLoad(\"%s\")=%d", f, list_data[f], r);
+
+                /* check if image loaded */
+                if(!r)
+                {
+                    /* check if it equal to reference */
+                    if(ref->width == image->width && ref->height == image->height &&
+                        ref->bpp == image->bpp && ref->pix_fmt == image->pix_fmt)
+                    {
+                        /* copy data */
+                        memcpy
+                        (
+                            desc->buf_data[i],
+                            image->surface,
+                            frame_size
+                        );
+
+                        /* setup flags */
+                        desc->buf_fill[i] = 0;
+                        desc->buf_clear[i] = 0;
+                        desc->buf_filled[i] = i + 1;
+                    }
+                    else
+                        r = 1;
+
+                    /* free image */
+                    vzImageRelease(&image);
+                }
+                else
+                    r = 2;
+
+                /* check if errors occured */
+                if(r)
+                {
+                    /* inc error counter */
+                    j++;
+
+                    /* setup flags */
+                    desc->buf_fill[i] = 0;
+
+                    switch(r)
+                    {
+                        case 1:
+                            logger_printf(1, "avifile: imgseqloader_live image ('%s') differs from reference",
+                                list_data[f]);
+                            break;
+
+                        case 2:
+                            logger_printf(1, "avifile: imgseqloader_live image ('%s') failed to load",
+                                list_data[f]);
+                            break;
+                    };
+                };
+                Sleep(0);   /* allow context switch */
+            } else {
+                /* setup flags */
+                desc->buf_fill[i] = 0;
+                logger_printf(1, "avifile: imgseqloader_live desc->buf_frame[%d] >= %d",
+                    desc->buf_frame[i], i, desc->frames_count);
+            };
+        };
+
+        /* rise flag about ready */
+        desc->flag_ready = 1;
+
+        /* wait for signal if no jobs done */
+        WaitForSingleObject(desc->wakeup, 10);
+        ResetEvent(desc->wakeup);
+    };
+};
+
 static void aviloader_live(struct aviloader_desc* desc, PGETFRAME pgf,
     PAVISTREAM avi_stream, LPBITMAPINFOHEADER frame_info)
 {
@@ -853,7 +959,7 @@ static unsigned long WINAPI imgseqloader_proc(void* p)
     desc->bpp       = vzImagePixFmt2OGL(image->pix_fmt);
 
     /* init flags buffers */
-    desc->buf_cnt = desc->frames_count;
+    desc->buf_cnt = (desc->flag_mem_preload)?desc->frames_count:RING_BUFFER_LENGTH;
     desc->buf_frame     = (int*)malloc(sizeof(int) * desc->buf_cnt);
     desc->buf_clear     = (int*)malloc(sizeof(int) * desc->buf_cnt);
     desc->buf_fill      = (int*)malloc(sizeof(int) * desc->buf_cnt);
@@ -885,47 +991,57 @@ static unsigned long WINAPI imgseqloader_proc(void* p)
         goto ex1;
     };
 
-#ifdef MAX_CONCUR_LOAD
-    /* increment waiters counter */
-    WaitForSingleObject(_avi_concur_lock, INFINITE);
-    _avi_concur_pending++;
-    logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: PENDING[%s]",
-        _avi_concur_pending, _avi_concur_working, desc->filename);
-    ReleaseMutex(_avi_concur_lock);
-
-    /* wait */
-    WaitForSingleObject(_avi_concur_sem, INFINITE);
-
-    /* increment counters */
-    WaitForSingleObject(_avi_concur_lock, INFINITE);
-    _avi_concur_working++;
-    logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: START[%s]",
-        _avi_concur_pending, _avi_concur_working, desc->filename);
-    ReleaseMutex(_avi_concur_lock);
-#endif /* MAX_CONCUR_LOAD */
-
-    /* call mem preloader */
-    if(!desc->flag_exit)
-        imgseqloader_full(desc, list_data, list_len, image, desc->buf_size);
-
-#ifdef MAX_CONCUR_LOAD
-    /* increment counters */
-    WaitForSingleObject(_avi_concur_lock, INFINITE);
-    _avi_concur_pending--;
-    _avi_concur_working--;
-    logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: FINISHED[%s]",
-        _avi_concur_pending, _avi_concur_working, desc->filename);
-    ReleaseMutex(_avi_concur_lock);
-
-    ReleaseSemaphore(_avi_concur_sem, 1, NULL);
-#endif /* MAX_CONCUR_LOAD */
-
-    /* wait for exit flag */
-    while(desc->flag_ready && !desc->flag_exit)
+    /* check method */
+    if(desc->flag_mem_preload)
     {
-        /* wait for signal if no jobs done */
-        WaitForSingleObject(desc->wakeup, 10);
-        ResetEvent(desc->wakeup);
+#ifdef MAX_CONCUR_LOAD
+        /* increment waiters counter */
+        WaitForSingleObject(_avi_concur_lock, INFINITE);
+        _avi_concur_pending++;
+        logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: PENDING[%s]",
+            _avi_concur_pending, _avi_concur_working, desc->filename);
+        ReleaseMutex(_avi_concur_lock);
+
+        /* wait */
+        WaitForSingleObject(_avi_concur_sem, INFINITE);
+
+        /* increment counters */
+        WaitForSingleObject(_avi_concur_lock, INFINITE);
+        _avi_concur_working++;
+        logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: START[%s]",
+            _avi_concur_pending, _avi_concur_working, desc->filename);
+        ReleaseMutex(_avi_concur_lock);
+#endif /* MAX_CONCUR_LOAD */
+
+        /* call mem preloader */
+        if(!desc->flag_exit)
+            imgseqloader_full(desc, list_data, list_len, image, desc->buf_size);
+
+#ifdef MAX_CONCUR_LOAD
+        /* increment counters */
+        WaitForSingleObject(_avi_concur_lock, INFINITE);
+        _avi_concur_pending--;
+        _avi_concur_working--;
+        logger_printf(0, "avifile: imgseqloader_proc pending %d, working %d: FINISHED[%s]",
+            _avi_concur_pending, _avi_concur_working, desc->filename);
+        ReleaseMutex(_avi_concur_lock);
+
+        ReleaseSemaphore(_avi_concur_sem, 1, NULL);
+#endif /* MAX_CONCUR_LOAD */
+
+        /* wait for exit flag */
+        while(desc->flag_ready && !desc->flag_exit)
+        {
+            /* wait for signal if no jobs done */
+            WaitForSingleObject(desc->wakeup, 10);
+            ResetEvent(desc->wakeup);
+        };
+    }
+    else
+    {
+        /* call live preloader */
+        if(!desc->flag_exit)
+            imgseqloader_live(desc, list_data, list_len, image, desc->buf_size);
     };
 
 ex1:
