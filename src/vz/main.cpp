@@ -143,21 +143,31 @@ typedef struct
 
 static vz_window_t vz_window_desc;
 
+#define WGL_TRY_COUNT   10
+#define WGL_TRY_DELAY   1
 static int vz_window_lockgl(vz_window_t* w)
 {
+    int i = 0;
+
     if(WaitForSingleObject(w->lock, INFINITE))
     {
         logger_printf(1, "vz_window_lockgl: WaitForSingleObject failed");
         return -EFAULT;
     };
 
-    if(!wglMakeCurrent(w->hdc, w->glrc))
-    {
-        logger_printf(1, "vz_window_lockgl: wglMakeCurrent failed");
-        return -EFAULT;
-    };
+    for(i = 0; i < WGL_TRY_COUNT; i++)
+        if(wglMakeCurrent(w->hdc, w->glrc))
+        {
+            if(i)
+                logger_printf(1, "vz_window_lockgl: wglMakeCurrent successed after %d attemps", i);
+            return 0;
+        }
+        else
+            Sleep(WGL_TRY_DELAY);
 
-    return 0;
+    logger_printf(1, "vz_window_lockgl: wglMakeCurrent failed, error=%d", GetLastError());
+    ReleaseMutex(w->lock);
+    return -EFAULT;
 };
 
 static int vz_window_unlockgl(vz_window_t* w)
@@ -173,7 +183,7 @@ static int vz_window_unlockgl(vz_window_t* w)
     if(!ReleaseMutex(w->lock))
     {
         r = -EFAULT;
-        logger_printf(1, "vz_window_lockgl: ReleaseMutex failed");
+        logger_printf(1, "vz_window_unlockgl: ReleaseMutex failed");
     };
 
     return r;
