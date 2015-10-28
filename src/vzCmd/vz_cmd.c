@@ -26,7 +26,7 @@
 #include "vz_cmd.h"
 #include "vz_cmd-private.h"
 
-static int 
+static int
     alLOAD_SCENE[]              = {-1},
     alSTART_DIRECTOR[]          = {-1, 4},
     alRESET_DIRECTOR[]          = {-1, 4},
@@ -40,12 +40,12 @@ static int
     alLAYER_UNLOAD[]            = {4}
 ;
 
-#define REG_CMD(ID, ARGS, LENS)						\
-{													\
-    ID,												\
-    #ID,											\
-    ARGS,											\
-    LENS											\
+#define REG_CMD(ID, ARGS, LENS) \
+{                               \
+    ID,                         \
+    #ID,                        \
+    ARGS,                       \
+    LENS                        \
 }
 
 static struct vz_cmd_desc commands[] =

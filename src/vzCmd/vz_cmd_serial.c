@@ -27,9 +27,9 @@
 #include "vz_cmd.h"
 #include "vz_cmd-private.h"
 
-static unsigned char vz_serial_cmd_cs(unsigned char* datas, int len)
+static unsigned char vz_serial_cmd_cs(uint8_t* datas, int len)
 {
-    unsigned char cs = 0;
+    uint8_t cs = 0;
     int i;
 
     for(i=0; i< len ;i++) cs += datas[i];
@@ -45,18 +45,18 @@ static int vz_serial_cmd_create_single(uint8_t* _buf, uint32_t* _len, int _id, v
     uint8_t *args_ptr, *arg;
     uint8_t *buf_start = (uint8_t*)_buf;
     uint32_t *args_len = (uint32_t*)(buf_start + 1);
-    
+
     /* lookup cmd */
     struct vz_cmd_desc* desc = (struct vz_cmd_desc*)vz_cmd_lookup_by_id(_id);
 
     /* reset len */
     *_len = 0;
-    
+
     /* setup / map fields */
     *buf_start = (uint8_t)desc->id;
     *_len = 1 + desc->args_count * sizeof(uint32_t);
     args_ptr = buf_start + (*_len);
-    
+
     /* pop args */
     for(i = 0; i< desc->args_count; i++)
     {
@@ -76,9 +76,9 @@ static int vz_serial_cmd_create_single(uint8_t* _buf, uint32_t* _len, int _id, v
         args_ptr += args_len[i];
         *_len = (*_len) + args_len[i];
     };
-    
-    
-    return 0;    
+
+
+    return 0;
 };
 
 int vz_serial_cmd_count(void* _buf)
@@ -92,10 +92,10 @@ int vz_serial_cmd_id(void* _buf, int index)
     uint8_t *buf = (uint8_t*)_buf;
     uint8_t *buf_cmd = buf + 6;
     int i, c = (unsigned int)buf[1];
-    
+
     /* check index range */
     if(c <= index) return -VZ_EINVAL;
-    
+
     /* skip forward */
     for(i = 0; (i< index) ; i++) buf_cmd += *((uint32_t*)buf_cmd) + sizeof(uint32_t);
 
@@ -118,23 +118,23 @@ int vz_serial_cmd_parseNmap(void* _buf, int index, ...)
     uint8_t *buf_cmd = buf + 6;
     int i;
     uint32_t c = (unsigned int)buf[1];
-    
+
     /* check index range */
     if(c <= (unsigned)index) return -VZ_EINVAL;
-    
+
     /* skip forward */
     for(i = 0; (i < index) ; i++) buf_cmd += *((uint32_t*)buf_cmd) + sizeof(uint32_t);
 
     /* cmd len */
     c = *((uint32_t*)buf_cmd);
     buf_cmd += sizeof(uint32_t);
-    
+
     /* find command descriptin */
     desc = (struct vz_cmd_desc*)vz_cmd_lookup_by_id( *buf_cmd );
-    
+
     /* check if defined */
     if(NULL == desc) return -VZ_EINVAL;
-    
+
     /* goto first arg */
     buf_cmd += 1;
     arg_buf = buf_cmd + sizeof(uint32_t) * desc->args_count;
@@ -145,15 +145,15 @@ int vz_serial_cmd_parseNmap(void* _buf, int index, ...)
     {
         /* get var ptr */
         arg = (unsigned char**)va_arg(ap, void*);
-	
+
         /* map */
         *arg = arg_buf;
-	
+
         /* goto to next */
-	    arg_buf += ((uint32_t*)buf_cmd)[i];
+        arg_buf += ((uint32_t*)buf_cmd)[i];
     };
     va_end(ap);
-    
+
     /* return success */
     return 0;
 };
@@ -165,13 +165,13 @@ int vz_serial_cmd_probe(void* _buf, int* _len)
 
     /* check len #1 */
     if(0 == *_len) return -VZ_EINVAL;
-    
+
     /* check STH */
     if(VZ_SERIAL_CMD_STH != *buf) return -VZ_EINVAL;
-    
+
     /* check len #1 - unsure if fail */
     if(*_len < 6) return -VZ_EBUSY;
-    
+
     /* retieve length */
     l = *((uint32_t*)( buf + 2 ));
 
@@ -186,12 +186,12 @@ int vz_serial_cmd_probe(void* _buf, int* _len)
         vz_serial_cmd_cs(buf + 1, l + 5)
     )
         return -VZ_EFAIL;
-    
+
     /* set appropriate length */
     *_len = l + 7;
 
-    /* success */    
-    return 0;    
+    /* success */
+    return 0;
 };
 
 int vz_serial_cmd_create_va(void* _buf, int* _len, va_list ap)
@@ -207,42 +207,42 @@ int vz_serial_cmd_create_va(void* _buf, int* _len, va_list ap)
     *buf = VZ_SERIAL_CMD_STH;
     *cmds_count = 0;
     *cmds_length = 0;
-    
-    /* retrieve args */    
+
+    /* retrieve args */
     do
     {
-		/* pop command id */
-		id = (int)va_arg(ap, void*);
+        /* pop command id */
+        id = (int)va_arg(ap, void*);
 
-		/* lookup cmd */
-		desc = (struct vz_cmd_desc*)vz_cmd_lookup_by_id(id);
+        /* lookup cmd */
+        desc = (struct vz_cmd_desc*)vz_cmd_lookup_by_id(id);
 
-		/* check if id define */
-		if(NULL != desc)
-		{
-			/* put command into packet */
-			vz_serial_cmd_create_single(buf_data + sizeof(uint32_t), (uint32_t*)buf_data, id, &ap);
+        /* check if id define */
+        if(NULL != desc)
+        {
+            /* put command into packet */
+            vz_serial_cmd_create_single(buf_data + sizeof(uint32_t), (uint32_t*)buf_data, id, &ap);
 
-		    /* calc offset and lengths */
-			l = *((uint32_t*)buf_data) + sizeof(uint32_t);
-			*cmds_length = (*cmds_length) +  l;
-			*cmds_count = (*cmds_count) + 1;
-			buf_data += l;
-		}
-		else
-		{
-			if(0 != id)
-				r = -VZ_EINVAL;
-		}
+            /* calc offset and lengths */
+            l = *((uint32_t*)buf_data) + sizeof(uint32_t);
+            *cmds_length = (*cmds_length) +  l;
+            *cmds_count = (*cmds_count) + 1;
+            buf_data += l;
+        }
+        else
+        {
+            if(0 != id)
+                r = -VZ_EINVAL;
+        }
     }
     while(NULL != desc);
-    
+
     /* fix buffer length */
     *_len = 7 + *cmds_length;
 
     /* control sum */
     buf[*_len - 1] = vz_serial_cmd_cs(buf + 1, *_len - 2);
-    
+
     return r;
 };
 
