@@ -39,6 +39,49 @@ static unsigned char vz_serial_cmd_cs(uint8_t* datas, int len)
     return cs;
 }
 
+static int vz_serial_cmd_create_single2(uint8_t* dst, int len_limit, struct vz_cmd_desc* desc, void*** pargs)
+{
+    int len, l, i;
+    void** args = *pargs;
+    uint8_t* dst_args_data;
+    uint32_t* dst_args_len;
+
+    /* set command */
+    *dst = (uint8_t)desc->id;
+
+    /* setup pointers */
+    len = 1 + desc->args_count * sizeof(uint32_t);
+    dst_args_data = dst + len;
+    dst_args_len  = (uint32_t*)(dst + 1);
+
+    /* load args into list */
+    for(i = 0; i< desc->args_count; i++)
+    {
+        /* arg len */
+        l =
+            (-1 == desc->args_length[i]) ?
+            ((uint32_t)strlen((char*)(*args)) + 1) :
+            (uint32_t)desc->args_length[i];
+
+        /* check if reached end of buffer */
+        if(l + len >= len_limit)
+            return -VZ_ENOMEM;
+
+        /* copy data */
+        memcpy(dst_args_data, *args, l);
+
+        /* shift ptrs */
+        dst_args_data += l;
+        len += l;
+        dst_args_len[i] = l;
+        args++;
+    };
+
+    *pargs = args;
+
+    return len;
+};
+
 static int vz_serial_cmd_create_single(uint8_t* _buf, uint32_t* _len, int _id, va_list *ap)
 {
     int i;
@@ -244,6 +287,43 @@ int vz_serial_cmd_create_va(void* _buf, int* _len, va_list ap)
     buf[*_len - 1] = vz_serial_cmd_cs(buf + 1, *_len - 2);
 
     return r;
+};
+
+int vz_serial_cmd_create_list(void* dst, int len_limit, void** args)
+{
+    int cmd_cnt = 0, cmd_len = 0;
+    uint8_t *head = (uint8_t*)dst + 6;
+
+    while(*args)
+    {
+        int r, id = (int32_t)(*args);
+        struct vz_cmd_desc* desc = (struct vz_cmd_desc*)vz_cmd_lookup_by_id(id);
+
+        args++;
+
+        if(!desc)
+            return -VZ_EINVAL;
+
+        r = vz_serial_cmd_create_single2(head + sizeof(uint32_t), len_limit - cmd_len, desc, &args);
+        if(r > 0)
+        {
+            r += sizeof(uint32_t);
+            *((uint32_t*)head) = r;
+            cmd_cnt++;
+            cmd_len += r;
+            head += r;
+        };
+
+    };
+
+    /* setup */
+    *((uint8_t*)dst + 0) = VZ_SERIAL_CMD_STH;           // STH
+    *((uint8_t*)dst + 1) = cmd_cnt;                     // CMD_CNT
+    *((uint32_t*)((uint8_t*)dst + 2)) = cmd_len;        // CMD_LEN
+    *((uint8_t*)dst + cmd_len + 6) =                    // CS
+        vz_serial_cmd_cs((uint8_t*)dst + 1, cmd_len + 5);
+
+    return cmd_len + 7; // STH(1) + CMD_CNT(1) + CMD_LEN(4) + CS(1)
 };
 
 int vz_serial_cmd_create(void* _buf, int* _len, ...)

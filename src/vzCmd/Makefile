@@ -6,6 +6,7 @@ LONG_VERSION=1.1.$(LONG_VERSION_SVN)
 SHORT_VERSION=1
 VZ_CMD=vz_cmd
 VZ_CMD_SEND=vz_cmd_send
+DEBUG=-O0 -ggdb
 
 ifeq ($(INSTALL_PATH),)
 INSTALL_PATH=/usr/local/vz

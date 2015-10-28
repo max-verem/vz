@@ -72,6 +72,7 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
 	int port, r, l;
 	struct sockaddr_in addr;
     struct sockaddr_in saddr;
+    struct in_addr *tmp_in_addr;
 	struct hostent *host_ip;
 #ifndef __linux__
 	SOCKET
@@ -79,6 +80,11 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
 	int
 #endif
 		 s;
+
+    in_addr_t
+        multicast_a = ntohl(inet_addr("224.0.0.0")),
+        multicast_b = ntohl(inet_addr("239.255.255.255"));
+
 
 	/* check for hostname:port */
 	tmp = strchr(dst->name, ':');
@@ -120,21 +126,23 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
     saddr.sin_addr.s_addr = htonl(INADDR_ANY); // bind socket to any interface
     r = bind(s, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in));
 #ifndef __linux__
-    if(INVALID_SOCKET == s)
+    if(INVALID_SOCKET == r)
         return -WSAGetLastError();
 #else /* __linux__ */
-    if(-1 == s)
+    if(-1 == r)
         return -errno;
 #endif /* __linux__ */
 
 	/* prepare address */
     addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(inet_ntoa(*(struct in_addr*)(host_ip->h_addr_list[0])));
+    tmp_in_addr = (struct in_addr*)host_ip->h_addr_list[0];
+    tmp = inet_ntoa(*tmp_in_addr);
+    addr.sin_addr.s_addr = inet_addr(tmp);
 	addr.sin_port = htons((unsigned short)port);
 
+
     /* check for multicast setup */
-    if((addr.sin_addr.s_addr > inet_addr("224.0.0.0")) &&
-        (addr.sin_addr.s_addr < inet_addr("239.255.255.255")))
+    if(ntohl(addr.sin_addr.s_addr) > multicast_a && addr.sin_addr.s_addr < multicast_b)
     {
         struct in_addr iaddr;
         unsigned char ttl = 3;
@@ -189,29 +197,55 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
 	return r;
 };
 
+
 int vz_cmd_send_va(struct vz_cmd_send_target* dst, va_list ap)
 {
-	void* buf;
-	int r, l = VZ_CMD_SEND_UDP_BUF;
+    void* buf;
+    int r, l = VZ_CMD_SEND_UDP_BUF;
 
-	if(VZ_CMD_SEND_UDP != dst->transport)
-		return -EINVAL;
+    if(VZ_CMD_SEND_UDP != dst->transport)
+        return -EINVAL;
 
-	/* compose buffer */
-	buf = malloc(l);
+    /* compose buffer */
+    buf = malloc(l);
 
-	/* create a command */
-	r = vz_serial_cmd_create_va(buf, &l, ap);
+    /* create a command */
+    r = vz_serial_cmd_create_va(buf, &l, ap);
 
-	if(0 != r)
-		r = -EINVAL;
-	else
-		r = vz_cmd_send_udp(dst, buf, l);
+    if(0 != r)
+        r = -EINVAL;
+    else
+        r = vz_cmd_send_udp(dst, buf, l);
 
-	/* free buffer */
-	free(buf);
+    /* free buffer */
+    free(buf);
 
-	return r;
+    return r;
+};
+
+int vz_cmd_send_list(struct vz_cmd_send_target* dst, void** args)
+{
+    void* buf;
+    int r, l = VZ_CMD_SEND_UDP_BUF;
+
+    if(VZ_CMD_SEND_UDP != dst->transport)
+        return -EINVAL;
+
+    /* compose buffer */
+    buf = malloc(l);
+
+    /* create a command */
+    r = vz_serial_cmd_create_list(buf, l, args);
+
+    if(r < 0)
+        r = -EINVAL;
+    else
+        r = vz_cmd_send_udp(dst, buf, r);
+
+    /* free buffer */
+    free(buf);
+
+    return r;
 };
 
 int vz_cmd_send_init()
@@ -358,7 +392,7 @@ int vz_cmd_send_strlist_udp(char* host, char** argv, int argc, char* error)
 
 	/* send */
 	if(r > 0)
-		r = vz_cmd_send_va(&dst, (va_list)cmds);
+		r = vz_cmd_send_list(&dst, cmds);
 
 	/* free lists */
 	if(NULL != cmds) free(cmds);
