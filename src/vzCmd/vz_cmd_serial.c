@@ -20,8 +20,7 @@
     along with vz_cmd; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
-
-
+//#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include "vz_cmd.h"
@@ -305,13 +304,15 @@ int vz_serial_cmd_create_list(void* dst, int len_limit, void** args)
             return -VZ_EINVAL;
 
         r = vz_serial_cmd_create_single2(head + sizeof(uint32_t), len_limit - cmd_len, desc, &args);
+//fprintf(stderr, "%s:%d: r=%.8X\n", __FUNCTION__, __LINE__, r);
         if(r > 0)
         {
-            r += sizeof(uint32_t);
             *((uint32_t*)head) = r;
+            r += sizeof(uint32_t);
             cmd_cnt++;
             cmd_len += r;
             head += r;
+//fprintf(stderr, "%s:%d: r=%.8X cmd_len=%.8X\n", __FUNCTION__, __LINE__, r, cmd_len);
         };
 
     };
