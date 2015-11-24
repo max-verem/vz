@@ -48,7 +48,7 @@ enum vz_serial_cmd_enum
     VZ_CMD_STOP_DIRECTOR,
     VZ_CMD_SET,
     VZ_CMD_PING,
-	VZ_CMD_CONTAINER_VISIBLE,
+    VZ_CMD_CONTAINER_VISIBLE,
     VZ_CMD_SCREENSHOT,
     VZ_CMD_LAYER_LOAD,
     VZ_CMD_LAYER_UNLOAD,
@@ -59,6 +59,7 @@ enum vz_serial_cmd_enum
 #define VZ_EINVAL				1
 #define VZ_EBUSY				2
 #define VZ_EFAIL				3
+#define VZ_ENOMEM				4
 
 #ifdef __cplusplus
 extern "C"
@@ -75,6 +76,7 @@ extern VZCMD_API int vz_serial_cmd_parseNmap(void* _buf, int index, ...);
 extern VZCMD_API int vz_serial_cmd_probe(void* _buf, int* _len);
 extern VZCMD_API int vz_serial_cmd_create_va(void* _buf, int* _len, va_list ap);
 extern VZCMD_API int vz_serial_cmd_create(void* _buf, int* _len, ...);
+extern VZCMD_API int vz_serial_cmd_create_list(void* dst, int len_limit, void** args);
 
 #ifdef __cplusplus
 };
