@@ -421,6 +421,11 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
                 else if(!_stricmp("1080i5994", ctx->tv->NAME)) displayMode = bmdModeHD1080i5994;
                 else if(!_stricmp("720p60", ctx->tv->NAME)) displayMode = bmdModeHD720p60;
                 else if(!_stricmp("720p5994", ctx->tv->NAME)) displayMode = bmdModeHD720p5994;
+                else if(!_stricmp("1080p2398", ctx->tv->NAME)) displayMode = bmdModeHD1080p2398;
+                else if(!_stricmp("1080p24", ctx->tv->NAME)) displayMode =bmdModeHD1080p24;
+                else if(!_stricmp("1080p2997", ctx->tv->NAME)) displayMode = bmdModeHD1080p2997;
+                else if(!_stricmp("1080p30", ctx->tv->NAME)) displayMode = bmdModeHD1080p30;
+
 
                 ctx->output.io->DoesSupportVideoMode(displayMode, (BMDPixelFormat)0 /*bmdFormat8BitBGRA*/,
                     bmdVideoOutputFlagDefault, &displayModeSupport, &ctx->output.mode);
@@ -544,6 +549,9 @@ static int decklink_init(void** pctx, void* obj, void* config, vzTVSpec* tv)
 
             case bmdModeHD1080i5994:
             case bmdModeHD1080i6000:
+                ctx->inputs[ctx->inputs_count].interlaced = VZIMAGE_INTERLACED_U;
+                break;
+
             case bmdModeNTSC:
             case bmdModeNTSC2398:
                 ctx->inputs[ctx->inputs_count].interlaced = VZIMAGE_INTERLACED_L;
