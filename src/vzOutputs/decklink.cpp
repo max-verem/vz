@@ -20,6 +20,8 @@
     along with ViZualizator; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <windows.h>
 #include <comutil.h>
 #include <stdio.h>
@@ -33,7 +35,7 @@
 #define THIS_MODULE "decklink"
 #define THIS_MODULE_PREF "decklink: "
 
-#include "DeckLinkAPI.h"
+#include "DeckLinkAPI_h.h"
 #include "DeckLinkAPI_i.c"
 
 #pragma comment(lib, "comsuppw.lib")

@@ -4,10 +4,10 @@
 #include <png.h>
 
 #ifdef _DEBUG
-	#pragma comment(lib, "libpngd.lib")
-	#pragma comment(lib, "zlibd.lib")
+	#pragma comment(lib, "libpng16.lib")
+	#pragma comment(lib, "zlib.lib")
 #else
-	#pragma comment(lib, "libpng.lib")
+	#pragma comment(lib, "libpng16.lib")
 	#pragma comment(lib, "zlib.lib")
 #endif
 
@@ -62,8 +62,13 @@ static int vzImageLoadPNG(vzImage** pimg, char* filename)
     /* Convert low bit colors to 8 bit colors */
     if (bd < 8)
     {
+/*
+*  GRP 20060307: In libpng-1.2.9, png_set_gray_1_2_4_to_8() was modified
+*  to expand only the sample depth but not to expand the tRNS to alpha
+*  and its name was changed to png_set_expand_gray_1_2_4_to_8().
+*/
         if (PNG_COLOR_TYPE_GRAY == ct || PNG_COLOR_TYPE_GRAY_ALPHA == ct)
-            png_set_gray_1_2_4_to_8(png_ptr);
+            png_set_expand_gray_1_2_4_to_8(png_ptr);
         else
             png_set_packing(png_ptr);
     }

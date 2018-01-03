@@ -51,6 +51,8 @@ static char* _plugin_notes =
 "Accept 24 and 32 bpp files. Uses system decompressor."
 ;
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 #include "../vz/plugin-procs.h"

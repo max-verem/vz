@@ -30,6 +30,8 @@ static char* _plugin_notes =
 ""
 ;
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 #include "../vz/vzMain.h"
@@ -74,29 +76,19 @@ PLUGIN_EXPORT vzPluginParameter parameters[] =
     {NULL,NULL,0}
 };
 
-//#define CURL_STATICLIB
+#define CURL_STATICLIB
 #include <curl/curl.h>
 
-#ifdef CURL_STATICLIB
+#include <curl/curl.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Wldap32.lib")
 
 #ifdef _DEBUG
-#pragma comment(lib, "libcurl_DEBUG_STATIC.lib")
+#pragma comment(lib, "libcurld.lib")
 #else
-#pragma comment(lib, "libcurl_RELEASE_STATIC.lib")
+#pragma comment(lib, "libcurl.lib")
 #endif
-
-#else
-
-#ifdef _DEBUG
-#pragma comment(lib, "libcurl_DEBUG_DLL.lib")
-#else
-#pragma comment(lib, "libcurl_RELEASE_DLL.lib")
-#endif
-
-#endif /* CURL_STATICLIB */
 
 #define MAX_URL_LEN 2048
 

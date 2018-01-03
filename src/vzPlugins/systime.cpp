@@ -40,6 +40,8 @@ static char* _plugin_notes =
 ""
 ;
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 
@@ -95,7 +97,7 @@ PLUGIN_EXPORT void* constructor(void* scene, void* parent_container)
 	*data = default_value;
 
 	/* setup timezone */
-	tzset();
+	_tzset();
 
 	// create mutexes
 	_DATA->_lock_update = CreateMutex(NULL,FALSE,NULL);

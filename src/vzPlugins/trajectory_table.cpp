@@ -40,6 +40,8 @@ static char* _plugin_notes =
 ""
 ;
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 

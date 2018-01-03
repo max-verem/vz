@@ -81,7 +81,7 @@ static int vz_cmd_send_udp(struct vz_cmd_send_target* dst, void* buf, int len)
 #endif
 		 s;
 
-    in_addr_t
+    u_long
         multicast_a = ntohl(inet_addr("224.0.0.0")),
         multicast_b = ntohl(inet_addr("239.255.255.255"));
 

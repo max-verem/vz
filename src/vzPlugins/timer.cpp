@@ -45,6 +45,8 @@ static char* _plugin_notes =
 "    MM:SS.DDD   - high resulotion with miliseconds\n"
 ;
 
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "../vz/plugin-devel.h"
 #include "../vz/plugin.h"
 

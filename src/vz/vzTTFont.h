@@ -38,9 +38,9 @@ ChangeLog:
 #ifdef VZTTFONT_EXPORTS
 #define VZTTFONT_API __declspec(dllexport)
 #ifdef _DEBUG
-    #pragma comment(lib, "freetype240_D.lib") 
+    #pragma comment(lib, "freetype281d.lib") 
 #else
-    #pragma comment(lib, "freetype240.lib") 
+    #pragma comment(lib, "freetype281.lib") 
 #endif
 #else
 #define VZTTFONT_API __declspec(dllimport)
